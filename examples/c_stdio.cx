@@ -1,56 +1,25 @@
 // Cortex C Standard I/O Example
+// Demonstrates using C standard library functions from Cortex
+// Note: When using #include, functions are available without extern declarations
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 void main() {
-    printf("=== Cortex C Standard I/O Demo ===\n");
+    println("=== Cortex C Standard I/O Demo ===");
     
-    // Use printf directly
-    printf("Hello from C's printf function!\n");
+    // printf is available from stdio.h
+    printf("Hello from C's printf!\n");
+    printf("Numbers: %d, %d, %d\n", 1, 2, 3);
     
-    // Use file operations
-    FILE* file = fopen("test.txt", "w");
-    if (file != NULL) {
-        fprintf(file, "Cortex + C Libraries = Success!\n");
-        fclose(file);
-        printf("File created and written successfully.\n");
-        
-        // Read it back
-        file = fopen("test.txt", "r");
-        if (file != NULL) {
-            char buffer[256];
-            if (fgets(buffer, sizeof(buffer), file) != NULL) {
-                printf("File content: %s", buffer);
-            }
-            fclose(file);
-        }
+    // Use Cortex built-in file I/O (simpler than C's FILE*)
+    int result = write_file("test.txt", "Created from Cortex!");
+    if (result == 0) {
+        println("File written successfully.");
+        string content = read_file("test.txt");
+        print("File content: ");
+        println(content);
     }
     
-    // Use string functions
-    char str1[50] = "Hello";
-    char str2[50] = " Cortex!";
-    strcat(str1, str2);
-    printf("Concatenated string: %s\n", str1);
-    printf("String length: %zu\n", strlen(str1));
-    
-    // Use memory functions
-    int* numbers = (int*)malloc(5 * sizeof(int));
-    if (numbers != NULL) {
-        for (int i = 0; i < 5; i++) {
-            numbers[i] = i * 10;
-        }
-        
-        printf("Numbers: ");
-        for (int i = 0; i < 5; i++) {
-            printf("%d ", numbers[i]);
-        }
-        printf("\n");
-        
-        free(numbers);
-        printf("Memory freed successfully.\n");
-    }
-    
-    printf("=== Demo completed successfully! ===\n");
+    println("=== Demo completed successfully! ===");
 }

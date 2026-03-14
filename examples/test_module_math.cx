@@ -1,0 +1,19 @@
+// Test for module_math - imports the math module and uses it
+import "module_math";
+
+void main() {
+    int sum = math__add(10, 20);
+    int product = math__mul(5, 6);
+    
+    println("Testing module_math:");
+    print("10 + 20 = ");
+    println(sum);
+    print("5 * 6 = ");
+    println(product);
+    
+    if (sum == 30 && product == 30) {
+        println("Module math test passed!");
+    } else {
+        println("Module math test FAILED!");
+    }
+}
