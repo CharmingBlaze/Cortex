@@ -1,0 +1,222 @@
+// drawing_program.cx - Simple Drawing Program
+// A demonstration of Cortex GUI capabilities
+
+// Global state
+int current_color_r;
+int current_color_g;
+int current_color_b;
+string current_tool;
+int shape_count;
+gui_container canvas_container;
+gui_widget status_label;
+int last_x;
+int last_y;
+
+// Update status label
+void update_status() {
+    string tool_name = current_tool;
+    string color_name = "custom";
+    
+    if (current_color_r == 255 && current_color_g == 0 && current_color_b == 0) {
+        color_name = "red";
+    }
+    if (current_color_r == 0 && current_color_g == 255 && current_color_b == 0) {
+        color_name = "green";
+    }
+    if (current_color_r == 0 && current_color_g == 0 && current_color_b == 255) {
+        color_name = "blue";
+    }
+    if (current_color_r == 255 && current_color_g == 255 && current_color_b == 0) {
+        color_name = "yellow";
+    }
+    if (current_color_r == 128 && current_color_g == 0 && current_color_b == 128) {
+        color_name = "purple";
+    }
+    if (current_color_r == 0 && current_color_g == 0 && current_color_b == 0) {
+        color_name = "black";
+    }
+    if (current_color_r == 255 && current_color_g == 255 && current_color_b == 255) {
+        color_name = "white";
+    }
+    
+    string status = "Tool: " + tool_name + " | Color: " + color_name + " | Shapes: " + shape_count;
+    gui_label_set_text(status_label, status);
+}
+
+// Color callbacks
+void set_color_red() {
+    current_color_r = 255;
+    current_color_g = 0;
+    current_color_b = 0;
+    update_status();
+}
+
+void set_color_green() {
+    current_color_r = 0;
+    current_color_g = 255;
+    current_color_b = 0;
+    update_status();
+}
+
+void set_color_blue() {
+    current_color_r = 0;
+    current_color_g = 0;
+    current_color_b = 255;
+    update_status();
+}
+
+void set_color_yellow() {
+    current_color_r = 255;
+    current_color_g = 255;
+    current_color_b = 0;
+    update_status();
+}
+
+void set_color_purple() {
+    current_color_r = 128;
+    current_color_g = 0;
+    current_color_b = 128;
+    update_status();
+}
+
+void set_color_black() {
+    current_color_r = 0;
+    current_color_g = 0;
+    current_color_b = 0;
+    update_status();
+}
+
+void set_color_white() {
+    current_color_r = 255;
+    current_color_g = 255;
+    current_color_b = 255;
+    update_status();
+}
+
+// Tool callbacks
+void set_tool_rect() {
+    current_tool = "rect";
+    update_status();
+}
+
+void set_tool_circle() {
+    current_tool = "circle";
+    update_status();
+}
+
+void set_tool_line() {
+    current_tool = "line";
+    update_status();
+}
+
+// Add shape
+void add_shape() {
+    gui_widget shape;
+    
+    if (current_tool == "rect") {
+        shape = gui_rectangle_create(current_color_r, current_color_g, current_color_b, 255);
+        gui_resize(shape, 40, 40);
+        gui_move(shape, last_x, last_y);
+    }
+    if (current_tool == "circle") {
+        shape = gui_circle_create(current_color_r, current_color_g, current_color_b, 255);
+        gui_resize(shape, 40, 40);
+        gui_move(shape, last_x, last_y);
+    }
+    if (current_tool == "line") {
+        shape = gui_line_create(last_x, last_y, last_x + 50, last_y + 50);
+        gui_line_set_color(shape, current_color_r, current_color_g, current_color_b, 255);
+    }
+    
+    if (shape != 0) {
+        gui_container_add(canvas_container, shape);
+        shape_count = shape_count + 1;
+        
+        last_x = last_x + 30;
+        if (last_x > 400) {
+            last_x = 50;
+            last_y = last_y + 30;
+        }
+        if (last_y > 300) {
+            last_y = 50;
+        }
+        
+        update_status();
+    }
+}
+
+// Clear canvas
+void clear_canvas() {
+    shape_count = 0;
+    last_x = 50;
+    last_y = 50;
+    gui_dialog_info(0, "Clear Canvas", "Canvas cleared!");
+    update_status();
+}
+
+// Help
+void show_help() {
+    string help_text = "Simple Drawing Program\n\n";
+    help_text = help_text + "1. Select a color\n";
+    help_text = help_text + "2. Select a tool\n";
+    help_text = help_text + "3. Click Add Shape";
+    gui_dialog_info(0, "Help", help_text);
+}
+
+// Main
+int main() {
+    current_color_r = 0;
+    current_color_g = 0;
+    current_color_b = 0;
+    current_tool = "rect";
+    shape_count = 0;
+    last_x = 50;
+    last_y = 50;
+    
+    gui_window win = gui_window_create("Cortex Drawing Program", 600, 500);
+    gui_container main_vbox = gui_vbox_create();
+    
+    // Toolbar
+    gui_container toolbar = gui_hbox_create();
+    gui_container_add(toolbar, gui_button_create("Rectangle", set_tool_rect));
+    gui_container_add(toolbar, gui_button_create("Circle", set_tool_circle));
+    gui_container_add(toolbar, gui_button_create("Line", set_tool_line));
+    gui_container_add(main_vbox, toolbar);
+    
+    // Color palette
+    gui_container color_bar = gui_hbox_create();
+    gui_container_add(color_bar, gui_button_create("Red", set_color_red));
+    gui_container_add(color_bar, gui_button_create("Green", set_color_green));
+    gui_container_add(color_bar, gui_button_create("Blue", set_color_blue));
+    gui_container_add(color_bar, gui_button_create("Yellow", set_color_yellow));
+    gui_container_add(color_bar, gui_button_create("Purple", set_color_purple));
+    gui_container_add(color_bar, gui_button_create("Black", set_color_black));
+    gui_container_add(color_bar, gui_button_create("White", set_color_white));
+    gui_container_add(main_vbox, color_bar);
+    
+    // Canvas
+    canvas_container = gui_vbox_create();
+    gui_widget canvas_bg = gui_rectangle_create(240, 240, 240, 255);
+    gui_resize(canvas_bg, 500, 300);
+    gui_container_add(canvas_container, canvas_bg);
+    gui_container_add(main_vbox, canvas_container);
+    
+    // Actions
+    gui_container action_bar = gui_hbox_create();
+    gui_container_add(action_bar, gui_button_create("Add Shape", add_shape));
+    gui_container_add(action_bar, gui_button_create("Clear", clear_canvas));
+    gui_container_add(action_bar, gui_button_create("Help", show_help));
+    gui_container_add(main_vbox, action_bar);
+    
+    // Status
+    status_label = gui_label_create("Tool: rect | Color: black | Shapes: 0");
+    gui_container_add(main_vbox, status_label);
+    
+    gui_window_set_content(win, main_vbox);
+    gui_window_center(win);
+    gui_window_show(win);
+    
+    gui_run();
+    
+    return 0;
+}

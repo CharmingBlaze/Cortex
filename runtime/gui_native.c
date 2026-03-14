@@ -41,6 +41,10 @@ typedef struct NativeWidget {
     int64_t id;
     gui_event_callback callback;
     struct NativeWidget* next;
+    // Shape data for custom drawing
+    uint8_t color_r, color_g, color_b, color_a;
+    int shape_x, shape_y, shape_w, shape_h;
+    int line_x1, line_y1, line_x2, line_y2;
 } NativeWidget;
 
 typedef struct NativeContainer {
@@ -211,8 +215,33 @@ LRESULT CALLBACK CortexWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
             if (win && win->content) {
                 NativeWidget* w = win->content->widgets;
                 while (w) {
-                    if (w->type == WIDGET_RECTANGLE || w->type == WIDGET_CIRCLE || w->type == WIDGET_LINE) {
-                        // Custom drawing handled by widget state
+                    if (w->type == WIDGET_RECTANGLE) {
+                        // Draw filled rectangle
+                        HBRUSH brush = CreateSolidBrush(RGB(w->color_r, w->color_g, w->color_b));
+                        RECT rc = {w->shape_x, w->shape_y, w->shape_x + w->shape_w, w->shape_y + w->shape_h};
+                        FillRect(hdc, &rc, brush);
+                        DeleteObject(brush);
+                    }
+                    else if (w->type == WIDGET_CIRCLE) {
+                        // Draw filled ellipse
+                        HBRUSH brush = CreateSolidBrush(RGB(w->color_r, w->color_g, w->color_b));
+                        HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, brush);
+                        HPEN pen = CreatePen(PS_NULL, 0, 0);
+                        HPEN oldPen = (HPEN)SelectObject(hdc, pen);
+                        Ellipse(hdc, w->shape_x, w->shape_y, w->shape_x + w->shape_w, w->shape_y + w->shape_h);
+                        SelectObject(hdc, oldBrush);
+                        SelectObject(hdc, oldPen);
+                        DeleteObject(brush);
+                        DeleteObject(pen);
+                    }
+                    else if (w->type == WIDGET_LINE) {
+                        // Draw line
+                        HPEN pen = CreatePen(PS_SOLID, 2, RGB(w->color_r, w->color_g, w->color_b));
+                        HPEN oldPen = (HPEN)SelectObject(hdc, pen);
+                        MoveToEx(hdc, w->line_x1, w->line_y1, NULL);
+                        LineTo(hdc, w->line_x2, w->line_y2);
+                        SelectObject(hdc, oldPen);
+                        DeleteObject(pen);
                     }
                     w = w->next;
                 }
@@ -316,6 +345,20 @@ void gui_window_center_native(gui_window window) {
     int y = (screen_height - height) / 2;
     
     SetWindowPos((HWND)window, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+}
+
+void gui_window_set_content_native(gui_window window, gui_container content) {
+    // Find the window structure
+    for (int i = 0; i < window_count; i++) {
+        if (windows[i].hwnd == (HWND)window) {
+            windows[i].content = (NativeContainer*)content;
+            // Also set the container's hwnd to the window
+            if (content) {
+                ((NativeContainer*)content)->hwnd = (HWND)window;
+            }
+            break;
+        }
+    }
 }
 
 void gui_run_native(void) {
@@ -563,6 +606,89 @@ void gui_progress_set_value(gui_widget progress, double value) {
 }
 
 // ============================================================================
+// Shape Widgets (Custom Drawing)
+// ============================================================================
+
+gui_widget gui_rectangle_create_native(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    if (!current_window || widget_count >= MAX_WIDGETS) {
+        return GUI_INVALID_HANDLE;
+    }
+    
+    NativeWidget* w = &widgets[widget_count++];
+    w->hwnd = NULL; // No native window handle for shapes
+    w->type = WIDGET_RECTANGLE;
+    w->id = get_next_id();
+    w->callback = NULL;
+    w->next = NULL;
+    w->color_r = r;
+    w->color_g = g;
+    w->color_b = b;
+    w->color_a = a;
+    w->shape_x = 0;
+    w->shape_y = 0;
+    w->shape_w = 50;
+    w->shape_h = 50;
+    
+    return (gui_widget)w;
+}
+
+gui_widget gui_circle_create_native(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    if (!current_window || widget_count >= MAX_WIDGETS) {
+        return GUI_INVALID_HANDLE;
+    }
+    
+    NativeWidget* w = &widgets[widget_count++];
+    w->hwnd = NULL;
+    w->type = WIDGET_CIRCLE;
+    w->id = get_next_id();
+    w->callback = NULL;
+    w->next = NULL;
+    w->color_r = r;
+    w->color_g = g;
+    w->color_b = b;
+    w->color_a = a;
+    w->shape_x = 0;
+    w->shape_y = 0;
+    w->shape_w = 50;
+    w->shape_h = 50;
+    
+    return (gui_widget)w;
+}
+
+gui_widget gui_line_create_native(float x1, float y1, float x2, float y2) {
+    if (!current_window || widget_count >= MAX_WIDGETS) {
+        return GUI_INVALID_HANDLE;
+    }
+    
+    NativeWidget* w = &widgets[widget_count++];
+    w->hwnd = NULL;
+    w->type = WIDGET_LINE;
+    w->id = get_next_id();
+    w->callback = NULL;
+    w->next = NULL;
+    w->color_r = 0;
+    w->color_g = 0;
+    w->color_b = 0;
+    w->color_a = 255;
+    w->line_x1 = (int)x1;
+    w->line_y1 = (int)y1;
+    w->line_x2 = (int)x2;
+    w->line_y2 = (int)y2;
+    
+    return (gui_widget)w;
+}
+
+void gui_line_set_color_native(gui_widget line, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    NativeWidget* w = (NativeWidget*)line;
+    if (w && w->type == WIDGET_LINE) {
+        w->color_r = r;
+        w->color_g = g;
+        w->color_b = b;
+        w->color_a = a;
+    }
+}
+
+// ============================================================================
 // Layout Containers
 // ============================================================================
 
@@ -593,18 +719,34 @@ void gui_container_add(gui_container container, gui_widget widget) {
     if (!container || !widget) return;
     
     NativeContainer* c = (NativeContainer*)container;
-    NativeWidget* w = find_widget_by_hwnd((HWND)widget);
+    NativeWidget* w = NULL;
     
-    if (w) {
-        w->next = c->widgets;
-        c->widgets = w;
-        c->widget_count++;
-        
-        // Position widget based on container type
+    // Check if widget is a native HWND (regular widget) or a NativeWidget pointer (shape)
+    if (IsWindow((HWND)widget)) {
+        // Regular widget - find the NativeWidget by HWND
+        w = find_widget_by_hwnd((HWND)widget);
+    } else {
+        // Shape widget - widget IS the NativeWidget pointer
+        w = (NativeWidget*)widget;
+    }
+    
+    if (!w) return;
+    
+    // Add widget to container's list
+    w->next = c->widgets;
+    c->widgets = w;
+    c->widget_count++;
+    
+    // Position native widgets (shapes don't have hwnd)
+    if (w->hwnd) {
         int y = 10 + (c->widget_count - 1) * 35;
         int x = 10;
-        
-        SetWindowPos((HWND)widget, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+        SetWindowPos(w->hwnd, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+    }
+    
+    // Trigger repaint for shapes
+    if (c->hwnd) {
+        InvalidateRect(c->hwnd, NULL, TRUE);
     }
 }
 
@@ -613,16 +755,37 @@ void gui_container_add(gui_container container, gui_widget widget) {
 // ============================================================================
 
 void gui_refresh(gui_widget widget) {
-    InvalidateRect((HWND)widget, NULL, TRUE);
-    UpdateWindow((HWND)widget);
+    NativeWidget* w = (NativeWidget*)widget;
+    if (w && w->hwnd) {
+        InvalidateRect(w->hwnd, NULL, TRUE);
+        UpdateWindow(w->hwnd);
+    }
 }
 
 void gui_resize(gui_widget widget, float width, float height) {
-    SetWindowPos((HWND)widget, NULL, 0, 0, (int)width, (int)height, SWP_NOMOVE | SWP_NOZORDER);
+    NativeWidget* w = (NativeWidget*)widget;
+    if (!w) return;
+    
+    if (w->hwnd) {
+        SetWindowPos(w->hwnd, NULL, 0, 0, (int)width, (int)height, SWP_NOMOVE | SWP_NOZORDER);
+    } else {
+        // Shape widget
+        w->shape_w = (int)width;
+        w->shape_h = (int)height;
+    }
 }
 
 void gui_move(gui_widget widget, float x, float y) {
-    SetWindowPos((HWND)widget, NULL, (int)x, (int)y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+    NativeWidget* w = (NativeWidget*)widget;
+    if (!w) return;
+    
+    if (w->hwnd) {
+        SetWindowPos(w->hwnd, NULL, (int)x, (int)y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+    } else {
+        // Shape widget
+        w->shape_x = (int)x;
+        w->shape_y = (int)y;
+    }
 }
 
 void gui_enable(gui_widget widget) {

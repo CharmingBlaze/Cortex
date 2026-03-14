@@ -239,7 +239,8 @@ void gui_window_set_fullscreen(gui_window window, bool fullscreen) {
 
 void gui_window_set_content(gui_window window, gui_container content) {
 #ifdef _WIN32
-    (void)window; (void)content;
+    extern void gui_window_set_content_native(gui_window window, gui_container content);
+    gui_window_set_content_native(window, content);
 #else
     CortexGUI_SetWindowContent(window, content);
 #endif
@@ -351,8 +352,8 @@ void gui_image_set_fill(gui_widget image, int fill_mode) {
 
 gui_widget gui_rectangle_create(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 #ifdef _WIN32
-    (void)r; (void)g; (void)b; (void)a;
-    return GUI_INVALID_HANDLE;
+    extern gui_widget gui_rectangle_create_native(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+    return gui_rectangle_create_native(r, g, b, a);
 #else
     return (gui_widget)CortexGUI_CreateRectangle(r, g, b, a);
 #endif
@@ -360,8 +361,8 @@ gui_widget gui_rectangle_create(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 
 gui_widget gui_circle_create(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 #ifdef _WIN32
-    (void)r; (void)g; (void)b; (void)a;
-    return GUI_INVALID_HANDLE;
+    extern gui_widget gui_circle_create_native(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+    return gui_circle_create_native(r, g, b, a);
 #else
     return (gui_widget)CortexGUI_CreateCircle(r, g, b, a);
 #endif
@@ -369,8 +370,8 @@ gui_widget gui_circle_create(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 
 gui_widget gui_line_create(float x1, float y1, float x2, float y2) {
 #ifdef _WIN32
-    (void)x1; (void)y1; (void)x2; (void)y2;
-    return GUI_INVALID_HANDLE;
+    extern gui_widget gui_line_create_native(float x1, float y1, float x2, float y2);
+    return gui_line_create_native(x1, y1, x2, y2);
 #else
     return (gui_widget)CortexGUI_CreateLine(x1, y1, x2, y2);
 #endif
@@ -378,7 +379,8 @@ gui_widget gui_line_create(float x1, float y1, float x2, float y2) {
 
 void gui_line_set_color(gui_widget line, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 #ifdef _WIN32
-    (void)line; (void)r; (void)g; (void)b; (void)a;
+    extern void gui_line_set_color_native(gui_widget line, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+    gui_line_set_color_native(line, r, g, b, a);
 #else
     CortexGUI_SetLineColor(line, r, g, b, a);
 #endif

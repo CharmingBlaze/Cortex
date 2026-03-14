@@ -15,6 +15,7 @@ const (
 	SymbolFunction
 	SymbolStruct
 	SymbolEnum
+	SymbolConst
 	SymbolParameter
 )
 
@@ -25,6 +26,7 @@ type Symbol struct {
 	SymbolType SymbolType
 	Node       ast.ASTNode
 	Scope      *Scope
+	Value      interface{} // For constants/enums: the constant value
 }
 
 type Scope struct {
@@ -1203,6 +1205,21 @@ func (a *SemanticAnalyzer) VisitEnumDecl(node *ast.EnumDeclNode) {
 
 	if err := a.currentScope.Define(enumSymbol); err != nil {
 		a.AddError(err)
+	}
+
+	// Register each enum value as a constant with auto-incrementing value
+	for i, value := range node.Values {
+		valueSymbol := &Symbol{
+			Name:       value,
+			EmitName:   value,
+			Type:       "int",
+			SymbolType: SymbolConst,
+			Node:       node,
+			Value:      i, // Auto-increment: first value = 0, second = 1, etc.
+		}
+		if err := a.currentScope.Define(valueSymbol); err != nil {
+			a.AddError(fmt.Errorf("enum value '%s' already defined at line %d", value, node.Line))
+		}
 	}
 }
 
