@@ -1,0 +1,40 @@
+// test_enums.cx - Test enum support
+enum Color { Red, Green, Blue }
+enum Tool { Rect, Circle, Line }
+
+void main() {
+    int c = Red;
+    int t = Circle;
+    
+    // Test enum values
+    if (c == 0) {
+        show("Red = 0 OK");
+    }
+    if (Green == 1) {
+        show("Green = 1 OK");
+    }
+    if (Blue == 2) {
+        show("Blue = 2 OK");
+    }
+    if (t == 1) {
+        show("Circle = 1 OK");
+    }
+    
+    // Test switch with enum values
+    switch (c) {
+        case Red: {
+            show("Color is Red");
+            break;
+        }
+        case Green: {
+            show("Color is Green");
+            break;
+        }
+        case Blue: {
+            show("Color is Blue");
+            break;
+        }
+    }
+    
+    show("Enum test passed!");
+}

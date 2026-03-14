@@ -909,6 +909,7 @@ So you can call **any C library** (e.g. raylib, SDL, libcurl) from Cortex by inc
 | — | defer | Complete | `defer { cleanup() }` |
 | — | Result Type | Complete | `result_ok`, `result_err`, `match` on Result |
 | — | Struct Methods | Complete | Methods inside structs, `self->field` |
+| — | Enums | Complete | Auto-increment values, usable in switch |
 
 ## What's still missing (vs. LANGUAGE_SPEC.md)
 
