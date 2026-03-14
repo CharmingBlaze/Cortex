@@ -1,0 +1,42 @@
+// Cortex Hello World Example
+
+void main() {
+    println("╔══════════════════════════════════╗");
+    println("║       HELLO FROM CORTEX!         ║");
+    println("╚══════════════════════════════════╝");
+    println("");
+    println("Welcome to Cortex - A C-like language!");
+    println("");
+    
+    // Basic types
+    int count = 42;
+    float price = 19.99;
+    string message = "Hello, World!";
+    bool is_active = true;
+    
+    println("Basic Types Demo:");
+    println("  int:    " + count);
+    println("  float:  " + price);
+    println("  string: " + message);
+    println("  bool:   " + is_active);
+    println("");
+    
+    // Math operations
+    int x = 10;
+    int y = 3;
+    println("Math: " + x + " + " + y + " = " + (x + y));
+    println("Math: " + x + " * " + y + " = " + (x * y));
+    println("");
+    
+    // Control flow
+    println("Countdown:");
+    for (int i = 5; i > 0; i--) {
+        println("  " + i + "...");
+    }
+    println("  Liftoff!");
+    println("");
+    
+    println("══════════════════════════════════");
+    println("Press any key to exit...");
+    waitkey();
+}

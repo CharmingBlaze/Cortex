@@ -1,0 +1,41 @@
+// Test struct with dot notation
+struct Point {
+    int x;
+    int y;
+}
+
+void main() {
+    Point p;
+    p.x = 10;
+    p.y = 20;
+    
+    println("Point p:");
+    println("  x = " + p.x);
+    println("  y = " + p.y);
+    
+    // Modify fields
+    p.x = p.x + 5;
+    p.y = p.y * 2;
+    
+    println("After modification:");
+    println("  x = " + p.x);
+    println("  y = " + p.y);
+    
+    // Create another point
+    Point q;
+    q.x = 100;
+    q.y = 200;
+    
+    println("Point q:");
+    println("  x = " + q.x);
+    println("  y = " + q.y);
+    
+    // Sum
+    int sum_x = p.x + q.x;
+    int sum_y = p.y + q.y;
+    println("Sum: (" + sum_x + ", " + sum_y + ")");
+    
+    println("");
+    println("Press any key to exit...");
+    waitkey();
+}

@@ -1,0 +1,18 @@
+// Cortex + raylib — use any C library easily.
+// Build: cortex -i raylib_hello.cx -o raylib_hello -I <path_to_raylib_include> -L <path_to_raylib_lib> -l raylib
+// Or:   cortex -i raylib_hello.cx -o raylib_hello -config configs/raylib.json
+// (Edit configs/raylib.json to set your include_paths and library_paths.)
+
+#include <raylib.h>
+#pragma link("raylib")
+
+void main() {
+    InitWindow(800, 450, "Cortex + raylib");
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        DrawText("Hello from Cortex!", 190, 200, 20, LIGHTGRAY);
+        EndDrawing();
+    }
+    CloseWindow();
+}

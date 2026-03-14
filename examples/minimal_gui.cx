@@ -1,0 +1,15 @@
+// Minimal GUI Demo - Shows a dialog
+
+void main() {
+    // Create a window
+    var win = gui_window_create("Cortex GUI Demo", 400, 300);
+    gui_window_center(win);
+    
+    // Show an info dialog
+    gui_dialog_info(win, "Welcome!", "Hello from Cortex GUI!\n\nThis is a native Windows dialog.");
+    
+    // Show another dialog
+    gui_dialog_error(win, "Just Kidding!", "This is an 'error' dialog.\nBut everything is actually fine!");
+    
+    println("GUI demo complete!");
+}

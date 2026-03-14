@@ -1,0 +1,8 @@
+{
+  "features": {
+    "async": false,
+    "actors": false,
+    "blockchain": false,
+    "qol": false
+  }
+}

@@ -1,0 +1,29 @@
+// Simple number-guessing game — Cortex is great for small games.
+
+void main() {
+    int target = random_int(1, 100);
+    int tries = 0;
+    int guess = 0;
+
+    println("Guess the number (1-100).");
+    println("");
+
+    while (guess != target) {
+        println("Your guess:");
+        string line = input_line();
+        if (line == null) {
+            println("Goodbye.");
+            return;
+        }
+        guess = atoi(line);
+        tries = tries + 1;
+
+        if (guess < target) {
+            println("Higher!");
+        } else if (guess > target) {
+            println("Lower!");
+        } else {
+            println("You got it in " + tries + " tries.");
+        }
+    }
+}

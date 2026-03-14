@@ -1,0 +1,13 @@
+// test_multiarg.cx - Test GUI with dialog
+
+void main() {
+    // Create a window first - GUI needs an active window
+    var win = gui_window_create("Test", 300, 200);
+    gui_window_center(win);
+    
+    // Show dialog
+    gui_dialog_info(win, "Hello", "This is a Cortex GUI dialog!");
+    
+    // Run the GUI event loop
+    gui_run();
+}

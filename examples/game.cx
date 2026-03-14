@@ -1,0 +1,98 @@
+// SimpleC Game Example - A simple text-based adventure game
+
+void main() {
+    // Initialize random seed
+    srand(time(null));
+    
+    // Player state (using separate variables for simplicity)
+    float player_x = 0.0;
+    float player_y = 0.0;
+    int player_hp = 100;
+    string player_name = "Hero";
+    
+    println("Welcome to Cortex Adventure Game!");
+    println("You are: " + player_name);
+    println("Health: " + player_hp);
+    
+    // Enemy positions and state
+    float e1_x = random_float(-10.0, 10.0);
+    float e1_y = random_float(-10.0, 10.0);
+    int e1_hp = 50;
+    
+    float e2_x = random_float(-10.0, 10.0);
+    float e2_y = random_float(-10.0, 10.0);
+    int e2_hp = 50;
+    
+    float e3_x = random_float(-10.0, 10.0);
+    float e3_y = random_float(-10.0, 10.0);
+    int e3_hp = 50;
+    
+    // Game loop
+    int steps = 0;
+    while (player_hp > 0 && steps < 20) {
+        println("");
+        println("--- Position: (" + player_x + ", " + player_y + ") ---");
+        
+        // Check enemy 1
+        if (e1_hp > 0) {
+            float dx = e1_x - player_x;
+            float dy = e1_y - player_y;
+            float dist = sqrt(dx * dx + dy * dy);
+            if (dist < 2.0) {
+                println("Enemy 1 is nearby! Distance: " + dist);
+                player_hp = player_hp - 10;
+                println("Enemy attacks! Your health: " + player_hp);
+            }
+        }
+        
+        // Check enemy 2
+        if (e2_hp > 0) {
+            float dx = e2_x - player_x;
+            float dy = e2_y - player_y;
+            float dist = sqrt(dx * dx + dy * dy);
+            if (dist < 2.0) {
+                println("Enemy 2 is nearby! Distance: " + dist);
+                player_hp = player_hp - 10;
+                println("Enemy attacks! Your health: " + player_hp);
+            }
+        }
+        
+        // Check enemy 3
+        if (e3_hp > 0) {
+            float dx = e3_x - player_x;
+            float dy = e3_y - player_y;
+            float dist = sqrt(dx * dx + dy * dy);
+            if (dist < 2.0) {
+                println("Enemy 3 is nearby! Distance: " + dist);
+                player_hp = player_hp - 10;
+                println("Enemy attacks! Your health: " + player_hp);
+            }
+        }
+        
+        // Move randomly
+        player_x = player_x + random_float(-1.0, 1.0);
+        player_y = player_y + random_float(-1.0, 1.0);
+        
+        // Count defeated
+        int defeated = 0;
+        if (e1_hp <= 0) { defeated = defeated + 1; }
+        if (e2_hp <= 0) { defeated = defeated + 1; }
+        if (e3_hp <= 0) { defeated = defeated + 1; }
+        
+        if (defeated == 3) {
+            println("You defeated all enemies! Victory!");
+            break;
+        }
+        
+        steps = steps + 1;
+        sleep_func(1);
+    }
+    
+    if (player_hp <= 0) {
+        println("Game Over - You were defeated!");
+    }
+    
+    println("");
+    println("Thanks for playing!");
+    waitkey();
+}

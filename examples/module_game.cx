@@ -1,0 +1,11 @@
+// Uses module-qualified calls: math.add, math.mul (emitted as math__add, math__mul).
+// Compile with: cortex module_math.cx module_game.cx -o game
+// Or list module_math first so its symbols are available.
+
+int main() {
+    int x = math.add(1, 2);
+    int y = math.mul(3, 4);
+    show("" + x);
+    show("" + y);
+    return 0;
+}

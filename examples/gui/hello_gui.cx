@@ -1,0 +1,36 @@
+// hello_gui.cx - Simple Hello World GUI application
+//
+// This example demonstrates the basics of creating a window,
+// adding widgets, and handling events.
+
+#include <gui_runtime.h>
+
+void main() {
+    // Create a window with title and size
+    gui_window w = gui_window_create("Hello GUI", 400, 300);
+    
+    // Create a container for our widgets
+    gui_container box = gui_vbox_create();
+    
+    // Add a label
+    gui_widget label = gui_label_create("Welcome to Cortex GUI!");
+    gui_container_add(box, label);
+    
+    // Add a button with click handler
+    gui_widget button = gui_button_create("Click Me!", [](event e) {
+        gui_dialog_info(0, "Hello", "You clicked the button!");
+    });
+    gui_container_add(box, button);
+    
+    // Set the window content
+    gui_window_set_content(w, box);
+    
+    // Show the window
+    gui_window_show(w);
+    
+    // Center on screen
+    gui_window_center(w);
+    
+    // Run the GUI event loop
+    gui_run();
+}

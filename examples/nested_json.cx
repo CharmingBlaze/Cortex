@@ -1,0 +1,21 @@
+// Nested JSON: parse and stringify objects/arrays
+void main() {
+    string s = "{\"name\":\"Cortex\",\"scores\":[10,20,30],\"meta\":{\"x\":1,\"y\":2}}";
+    dict d = json_parse(s);
+    show("name: " + as_string(dict_get(d, "name")));
+    any scoresVal = dict_get(d, "scores");
+    if (is_type(scoresVal, "array")) {
+        array arr = as_array(scoresVal);
+        show("scores len: " + array_len(arr));
+        show("scores[0]: " + as_int(array_get(arr, 0)));
+    }
+    any metaVal = dict_get(d, "meta");
+    if (is_type(metaVal, "dict")) {
+        dict meta = as_dict(metaVal);
+        show("meta.x: " + as_int(dict_get(meta, "x")));
+        show("meta.y: " + as_int(dict_get(meta, "y")));
+    }
+    string out = json_stringify(make_any_dict(d));
+    show("roundtrip: " + out);
+    dict_free(d);
+}

@@ -1,0 +1,177 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Cortex",
+	"scopeName": "source.cortex",
+	"patterns": [
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#types"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#numbers"
+		},
+		{
+			"include": "#operators"
+		},
+		{
+			"include": "#functions"
+		},
+		{
+			"include": "#identifiers"
+		}
+	],
+	"repository": {
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.double-slash.cortex",
+					"match": "//.*$"
+				},
+				{
+					"name": "comment.block.cortex",
+					"begin": "/\\*",
+					"end": "\\*/"
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [
+				{
+					"name": "keyword.control.cortex",
+					"match": "\\b(if|else|elif|for|while|do|repeat|until|switch|case|default|break|continue|return|yield|await|async|coroutine|actor)\\b"
+				},
+				{
+					"name": "keyword.declaration.cortex",
+					"match": "\\b(fn|func|function|void|int|float|double|string|bool|char|var|const|let|struct|enum|import|export|module|extern|null|true|false)\\b"
+				},
+				{
+					"name": "keyword.other.cortex",
+					"match": "\\b(sizeof|typeof|as|in|is|new|delete|defer|assert|print|println|show|say|writeline|waitkey|sleep|sleep_func)\\b"
+				},
+				{
+					"name": "keyword.storage.cortex",
+					"match": "\\b(static|global|local|public|private|protected|readonly|override|virtual|abstract|final)\\b"
+				}
+			]
+		},
+		"types": {
+			"patterns": [
+				{
+					"name": "support.type.primitive.cortex",
+					"match": "\\b(int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|float|float32|float64|double|string|bool|char|void|size_t|any|dict|array|result)\\b"
+				},
+				{
+					"name": "entity.name.type.struct.cortex",
+					"match": "\\b([A-Z][a-zA-Z0-9_]*)\\b"
+				}
+			]
+		},
+		"strings": {
+			"patterns": [
+				{
+					"name": "string.quoted.double.cortex",
+					"begin": "\"",
+					"end": "\"",
+					"patterns": [
+						{
+							"name": "constant.character.escape.cortex",
+							"match": "\\\\."
+						}
+					]
+				},
+				{
+					"name": "string.quoted.single.cortex",
+					"begin": "'",
+					"end": "'",
+					"patterns": [
+						{
+							"name": "constant.character.escape.cortex",
+							"match": "\\\\."
+						}
+					]
+				},
+				{
+					"name": "string.quoted.backtick.cortex",
+					"begin": "`",
+					"end": "`"
+				}
+			]
+		},
+		"numbers": {
+			"patterns": [
+				{
+					"name": "constant.numeric.hex.cortex",
+					"match": "\\b0[xX][0-9a-fA-F]+\\b"
+				},
+				{
+					"name": "constant.numeric.binary.cortex",
+					"match": "\\b0[bB][01]+\\b"
+				},
+				{
+					"name": "constant.numeric.float.cortex",
+					"match": "\\b[0-9]+\\.[0-9]+([eE][+-]?[0-9]+)?[fFdD]?\\b"
+				},
+				{
+					"name": "constant.numeric.integer.cortex",
+					"match": "\\b[0-9]+[iIuU]?\\b"
+				}
+			]
+		},
+		"operators": {
+			"patterns": [
+				{
+					"name": "keyword.operator.arithmetic.cortex",
+					"match": "[+\\-*/%]"
+				},
+				{
+					"name": "keyword.operator.comparison.cortex",
+					"match": "(==|!=|<|>|<=|>=)"
+				},
+				{
+					"name": "keyword.operator.logical.cortex",
+					"match": "(&&|\\|\\||!)"
+				},
+				{
+					"name": "keyword.operator.assignment.cortex",
+					"match": "(=|\\+=|-=|\\*=|/=|%=)"
+				},
+				{
+					"name": "keyword.operator.bitwise.cortex",
+					"match": "(&|\\||\\^|~|<<|>>)"
+				},
+				{
+					"name": "keyword.operator.arrow.cortex",
+					"match": "(->|=>)"
+				},
+				{
+					"name": "keyword.operator.other.cortex",
+					"match": "(\\.|\\?|:|::)"
+				}
+			]
+		},
+		"functions": {
+			"patterns": [
+				{
+					"name": "entity.name.function.cortex",
+					"match": "\\b([a-z_][a-zA-Z0-9_]*)\\s*(?=\\()"
+				}
+			]
+		},
+		"identifiers": {
+			"patterns": [
+				{
+					"name": "variable.other.cortex",
+					"match": "\\b[a-z_][a-zA-Z0-9_]*\\b"
+				}
+			]
+		}
+	}
+}

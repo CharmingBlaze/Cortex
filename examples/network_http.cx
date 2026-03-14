@@ -1,0 +1,13 @@
+// Simple HTTP client: fetch a URL and print the response body.
+// Build: cortex -i network_http.cx -o network_http
+// Run: ./network_http   (or network_http.exe on Windows)
+void main() {
+    string url = "http://example.com";
+    string body = http_get(url);
+    if (body != "") {
+        writeline("Response from " + url + ":");
+        writeline(body);
+    } else {
+        writeline("Request failed or empty response");
+    }
+}

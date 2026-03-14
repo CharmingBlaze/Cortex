@@ -1,0 +1,22 @@
+// Cortex: switch, break, continue, and loop control
+enum Choice { One, Two, Three }
+
+void main() {
+    int x = 2;
+    switch (x) {
+        case 1: { show("one"); break; }
+        case 2: { show("two"); break; }
+        case 3: { show("three"); break; }
+        default: { show("other"); }
+    }
+
+    int i = 0;
+    while (true) {
+        i = i + 1;
+        if (i < 3) { continue; }
+        show("i = " + i);
+        if (i >= 5) { break; }
+    }
+
+    show("Done.");
+}

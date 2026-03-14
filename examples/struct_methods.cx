@@ -1,0 +1,18 @@
+// Struct methods: method syntax and definitions inside struct
+struct Player {
+    int x;
+    int y;
+    void move(int dx) {
+        x = x + dx;
+        y = y + dx;
+    }
+}
+
+void main() {
+    Player p;
+    p.x = 10;
+    p.y = 20;
+    p.move(5);
+    show("x: " + p.x);
+    show("y: " + p.y);
+}

@@ -1,0 +1,30 @@
+// Function overloading example - using explicit parameters
+void greet_simple(string name) {
+    println("Hello, Player " + name);
+}
+
+void greet_with_title(string name, string title) {
+    println("Hello, " + title + " " + name);
+}
+
+void greet_full(string name, string title, int times) {
+    for (int i = 0; i < times; i++) {
+        println("Hello, " + title + " " + name);
+    }
+}
+
+void main() {
+    // Simple greeting
+    greet_simple("Alice");
+    
+    // With title
+    greet_with_title("Bob", "Captain");
+    
+    // Full greeting
+    greet_full("Carol", "Dr.", 2);
+    
+    // Another full greeting
+    greet_full("Dave", "Mr.", 3);
+    
+    waitkey();
+}

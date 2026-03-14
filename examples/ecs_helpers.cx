@@ -1,0 +1,16 @@
+// ECS helpers: entity_create, add_component, get_component, has_component, entity_remove
+void main() {
+    int player = entity_create();
+    add_component(player, "health", 100);
+    add_component(player, "name", "Hero");
+    any h = get_component(player, "health");
+    any n = get_component(player, "name");
+    if (has_component(player, "health")) {
+        show("health: " + as_int(h));
+    }
+    if (has_component(player, "name")) {
+        show("name: " + as_string(n));
+    }
+    entity_remove(player);
+    show("done");
+}

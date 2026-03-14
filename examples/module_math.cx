@@ -1,0 +1,10 @@
+// Minimal module: symbols in this file are prefixed with math__ when compiled with others.
+module "math";
+
+int add(int a, int b) {
+    return a + b;
+}
+
+int mul(int a, int b) {
+    return a * b;
+}

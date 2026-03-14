@@ -1,0 +1,15 @@
+// Simple example - functions and basic operations
+
+void main() {
+    // Basic math operations
+    int x = 5 * 2;
+    println("Double of 5: " + x);
+    
+    int sum = 3 + 4;
+    println("Sum of 3 and 4: " + sum);
+    
+    int y = 10 + 20;
+    println("10 + 20 = " + y);
+    
+    waitkey();
+}

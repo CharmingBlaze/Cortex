@@ -1,0 +1,54 @@
+// gui_demo.cx - Simple GUI example using Cortex GUI API
+// 
+// This demonstrates the Cortex GUI API for creating desktop applications
+// with native widgets, dialogs, and event handling.
+
+// Callback for button click
+void on_button_click() {
+    gui_dialog_info(0, "Hello", "Button was clicked!");
+}
+
+// Callback for checkbox change
+void on_checkbox_change(bool checked) {
+    if (checked) {
+        gui_dialog_info(0, "Checkbox", "Checkbox is now checked!");
+    }
+}
+
+// Callback for confirm dialog
+void on_confirm_result(bool confirmed) {
+    if (confirmed) {
+        gui_dialog_info(0, "Result", "User confirmed the action!");
+    } else {
+        gui_dialog_info(0, "Result", "User cancelled the action.");
+    }
+}
+
+int main() {
+    // Create the main window
+    gui_window win = gui_window_create("Cortex GUI Demo", 400, 300);
+    
+    // Create widgets
+    gui_widget label = gui_label_create("Welcome to Cortex GUI!");
+    gui_widget button = gui_button_create("Click Me", on_button_click);
+    gui_widget checkbox = gui_checkbox_create("Enable Feature", null);
+    gui_widget entry = gui_entry_create("Type here...", null);
+    
+    // Create a vertical container and add widgets
+    gui_container vbox = gui_vbox_create();
+    gui_container_add(vbox, label);
+    gui_container_add(vbox, button);
+    gui_container_add(vbox, checkbox);
+    gui_container_add(vbox, entry);
+    
+    // Set window content
+    gui_window_set_content(win, vbox);
+    
+    // Center and show window
+    gui_window_center(win);
+    
+    // Run the GUI event loop
+    gui_run();
+    
+    return 0;
+}

@@ -1,0 +1,46 @@
+// SimpleC Dynamic Variables Demo
+// Simplified version using current compiler features
+
+void main() {
+    println("SimpleC Dynamic Variables Demo");
+    println("==============================");
+    
+    // Basic var usage with type inference
+    var x = 42;
+    var y = 3.14;
+    var name = "Alice";
+    var flag = true;
+    
+    println("x: " + x);
+    println("y: " + y);
+    println("name: " + name);
+    println("flag: " + flag);
+    
+    // Mixed type operations
+    var num = 42;
+    var res = num + 8.5;
+    println("42 + 8.5 = " + res);
+    
+    // Array of numbers (explicit type)
+    int numbers[5] = [10, 20, 30, 40, 50];
+    println("Numbers in array:");
+    for (int i = 0; i < 5; i++) {
+        println("  Element " + i + ": " + numbers[i]);
+    }
+    
+    // Squares (explicit type)
+    int squares[5] = [1, 4, 9, 16, 25];
+    println("Squares: " + squares[0] + ", " + squares[1] + ", " + squares[2] + ", " + squares[3] + ", " + squares[4]);
+    
+    // Filter even numbers
+    int nums[10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    println("Even numbers from 1-10:");
+    for (int i = 0; i < 10; i++) {
+        if (nums[i] % 2 == 0) {
+            println("  " + nums[i]);
+        }
+    }
+    
+    println("\nDemo completed!");
+    waitkey();
+}

@@ -1,0 +1,13 @@
+// Minimal test: do-while and if/else
+void main() {
+    int x = 0;
+    do {
+        x = x + 1;
+    } while (x < 3);
+
+    if (x >= 2) {
+        println("ok");
+    } else {
+        println("no");
+    }
+}

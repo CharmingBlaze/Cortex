@@ -1,0 +1,71 @@
+// Smart Dynamic Typing Demo - Cortex
+
+void main() {
+    println("=== Smart Dynamic Typing Demo ===");
+    
+    // Intelligent type inference
+    println("--- Intelligent Type Inference ---");
+    
+    float result = 10.0 + 3.14;    // Smart: infers float (int + float)
+    string text = "Value: " + as_string(42);  // Smart: infers string (concatenation)
+    bool flag = 5 > 3;         // Smart: infers bool (comparison)
+    
+    println("result (10 + 3.14): " + as_string(result));
+    println("text: " + text);
+    if (flag) {
+        println("flag (5 > 3): true");
+    } else {
+        println("flag (5 > 3): false");
+    }
+    
+    // Automatic type promotion
+    println("--- Automatic Type Promotion ---");
+    
+    int int_val = 42;
+    float float_val = int_val + 0.5; // Smart: int promoted to float
+    float mixed_result = int_val * 2.0;  // Smart: result is float
+    
+    println("int_val: " + as_string(int_val));
+    println("float_val (42 + 0.5): " + as_string(float_val));
+    println("mixed_result (42 * 2.0): " + as_string(mixed_result));
+    
+    // Smart string operations
+    println("--- Smart String Operations ---");
+    
+    string name = "World";
+    string greeting = "Hello " + name;           // String concatenation
+    string message = "Count: " + as_string(42);   // Auto number-to-string
+    string combined = greeting + " " + message;   // Smart concatenation
+    
+    println("name: " + name);
+    println("greeting: " + greeting);
+    println("message: " + message);
+    println("combined: " + combined);
+    
+    // Type-aware operations
+    println("--- Type-Aware Operations ---");
+    
+    // Mixed type arithmetic
+    int a = 10;        // int
+    float b = 3.5;     // float
+    float c = a + b;    // Smart: promotes to float
+    
+    println("a (int): " + as_string(a));
+    println("b (float): " + as_string(b));
+    println("c (a + b): " + as_string(c));
+    
+    // String + number
+    string str_num = "Answer: " + as_string(42);
+    println("str_num: " + str_num);
+    
+    // Boolean operations
+    bool is_positive = c > 0;
+    bool is_large = c > 100;
+    bool both_true = is_positive && is_large;
+    
+    if (is_positive) { println("is_positive: true"); } else { println("is_positive: false"); }
+    if (is_large) { println("is_large: true"); } else { println("is_large: false"); }
+    if (both_true) { println("both_true: true"); } else { println("both_true: false"); }
+    
+    println("=== Smart Dynamic Typing Demo Completed! ===");
+}

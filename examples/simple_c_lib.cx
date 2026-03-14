@@ -1,0 +1,14 @@
+// Simple C Library Integration Test
+
+#include <stdio.h>
+#include <math.h>
+#pragma link("m")
+
+void main() {
+    printf("Hello from C library!\n");
+    
+    double result = sin(1.5708);
+    printf("sin(1.5708) = %f\n", result);
+    
+    printf("C library integration works!\n");
+}

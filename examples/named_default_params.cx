@@ -1,0 +1,40 @@
+// Milestone 7: Named & Default Parameters Example
+// Demonstrates default parameter values and named arguments
+
+// Function with default parameters
+void greet(string name = "World", int times = 1) {
+    for (int i = 0; i < times; i++) {
+        println("Hello, " + name + "!");
+    }
+}
+
+// Function with multiple parameters for named arg testing
+void createUser(string username, string email = "no-email", int age = 0) {
+    println("User: " + username);
+    println("Email: " + email);
+    println("Age: " + as_string(age));
+}
+
+// Main test
+void main() {
+    // Test default parameters
+    println("=== Default Parameters ===");
+    greet();              // Uses defaults: "World", 1
+    greet("Alice");       // Uses default times: 1
+    greet("Bob", 3);      // No defaults used
+    
+    // Test named arguments
+    println("\n=== Named Arguments ===");
+    
+    // Positional only
+    createUser("john_doe");
+    
+    // Mixing positional and named
+    createUser("jane_doe", "jane@example.com", 25);
+    
+    // Using defaults with explicit first arg
+    createUser("test_user");  // email and age use defaults
+    
+    println("\nMilestone 7 tests complete!");
+    waitkey();
+}

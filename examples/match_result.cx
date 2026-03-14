@@ -1,0 +1,22 @@
+// Match on Result: case Ok(value) and case Err(msg)
+void main() {
+    result r = result_ok(make_any_int(10));
+    match (r) {
+        case Ok(v): {
+            show("value: " + as_int(v));
+        }
+        case Err(e): {
+            show("error: " + e);
+        }
+    }
+
+    result r2 = result_err("something failed");
+    match (r2) {
+        case Ok(v): {
+            show("value: " + as_int(v));
+        }
+        case Err(e): {
+            show("error: " + e);
+        }
+    }
+}

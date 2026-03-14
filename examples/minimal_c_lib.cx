@@ -1,0 +1,8 @@
+// Minimal C Library Test
+
+#include <stdio.h>
+
+void main() {
+    printf("Hello from C library!\n");
+    printf("C library integration works!\n");
+}

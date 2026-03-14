@@ -1,0 +1,43 @@
+// Milestone 6: parse_number and parse_int Example
+// Demonstrates string to number conversion with deterministic parsing
+
+void main() {
+    // Test parse_number - returns float
+    float f1 = parse_number("3.14159");
+    float f2 = parse_number("-42.5");
+    float f3 = parse_number("0.001");
+    float f4 = parse_number("invalid");  // returns 0.0 on failure
+
+    // Test parse_int - returns int
+    int i1 = parse_int("42");
+    int i2 = parse_int("-100");
+    int i3 = parse_int("0");
+    int i4 = parse_int("3.14");  // truncates to 3
+    int i5 = parse_int("not_a_number");  // returns 0 on failure
+
+    // Print results
+    println("parse_number tests:");
+    println("  3.14159 -> " + as_string(f1));
+    println("  -42.5 -> " + as_string(f2));
+    println("  0.001 -> " + as_string(f3));
+    println("  invalid -> " + as_string(f4));
+
+    println("parse_int tests:");
+    println("  42 -> " + as_string(i1));
+    println("  -100 -> " + as_string(i2));
+    println("  0 -> " + as_string(i3));
+    println("  3.14 -> " + as_string(i4) + " (truncated)");
+    println("  not_a_number -> " + as_string(i5));
+
+    // Edge cases
+    float edge1 = parse_number("");        // empty string
+    float edge2 = parse_number("   ");     // whitespace only
+    float edge3 = parse_number("1e10");    // scientific notation
+
+    println("Edge cases:");
+    println("  empty -> " + as_string(edge1));
+    println("  whitespace -> " + as_string(edge2));
+    println("  scientific -> " + as_string(edge3));
+
+    println("Milestone 6 tests complete!");
+}

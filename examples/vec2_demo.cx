@@ -1,0 +1,27 @@
+// 2D vector math demo — movement, distance, clamp.
+// Shows why Cortex is great for games: no pointers, built-in vec2.
+
+void main() {
+    vec2 player = make_vec2(0.0, 0.0);
+    vec2 goal = make_vec2(10.0, 10.0);
+    float speed = 2.0;
+
+    println("Move toward goal (10, 10) in steps.");
+    println("");
+
+    int steps = 0;
+    while (vec2_distance(player, goal) > 0.5) {
+        vec2 dir = vec2_sub(goal, player);
+        dir = normalize(dir);
+        player = vec2_add(player, vec2_scale(dir, speed));
+        player.x = clamp_float(player.x, 0.0, 10.0);
+        player.y = clamp_float(player.y, 0.0, 10.0);
+
+        steps = steps + 1;
+        println("Step " + steps + ": position (" + player.x + ", " + player.y + ")");
+        sleep_func(0.2);
+    }
+
+    println("");
+    println("Reached goal in " + steps + " steps.");
+}

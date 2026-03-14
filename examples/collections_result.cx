@@ -1,0 +1,28 @@
+// Collections (dynamic array + dict) and Result type demo
+void main() {
+    println("Collections Demo");
+    println("================");
+    
+    // Dynamic array
+    array a = array_create();
+    array_push(a, make_any_int(42));
+    array_push(a, make_any_string("hello"));
+    array_push(a, make_any_float(3.14));
+    println("array len: " + array_len(a));
+    array_free(a);
+    
+    // Dictionary
+    dict d = dict_create();
+    dict_set(d, "name", make_any_string("Cortex"));
+    dict_set(d, "score", make_any_int(100));
+    if (dict_has(d, "name")) {
+        println("has name key");
+    }
+    println("dict len: " + dict_len(d));
+    dict_free(d);
+    
+    println("");
+    println("Collections demo complete!");
+    println("Press any key to exit...");
+    waitkey();
+}

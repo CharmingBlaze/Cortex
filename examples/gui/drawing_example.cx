@@ -1,0 +1,137 @@
+// drawing_example.cx - Custom drawing and graphics
+//
+// This example demonstrates creating custom graphics using
+// rectangles, circles, and lines.
+
+#include <gui_runtime.h>
+
+// Colors
+#define RED 255, 0, 0, 255
+#define GREEN 0, 255, 0, 255
+#define BLUE 0, 0, 255, 255
+#define YELLOW 255, 255, 0, 255
+#define PURPLE 255, 0, 255, 255
+#define CYAN 0, 255, 255, 255
+#define BLACK 0, 0, 0, 255
+#define WHITE 255, 255, 255, 255
+#define GRAY 128, 128, 128, 255
+
+void main() {
+    gui_window w = gui_window_create("Drawing Demo", 600, 500);
+    
+    // Create a container for our graphics
+    gui_container canvas = gui_vbox_create();
+    
+    // Add a title label
+    gui_widget title = gui_label_create("Graphics Demo - Shapes and Colors");
+    gui_container_add(canvas, title);
+    
+    // Row of colored rectangles
+    gui_container row1 = gui_hbox_create();
+    
+    gui_widget rect1 = gui_rectangle_create(RED);
+    gui_resize(rect1, 50, 50);
+    gui_container_add(row1, rect1);
+    
+    gui_widget rect2 = gui_rectangle_create(GREEN);
+    gui_resize(rect2, 50, 50);
+    gui_container_add(row1, rect2);
+    
+    gui_widget rect3 = gui_rectangle_create(BLUE);
+    gui_resize(rect3, 50, 50);
+    gui_container_add(row1, rect3);
+    
+    gui_widget rect4 = gui_rectangle_create(YELLOW);
+    gui_resize(rect4, 50, 50);
+    gui_container_add(row1, rect4);
+    
+    gui_container_add(canvas, row1);
+    
+    // Row of circles
+    gui_container row2 = gui_hbox_create();
+    
+    gui_widget circle1 = gui_circle_create(PURPLE);
+    gui_resize(circle1, 60, 60);
+    gui_container_add(row2, circle1);
+    
+    gui_widget circle2 = gui_circle_create(CYAN);
+    gui_resize(circle2, 60, 60);
+    gui_container_add(row2, circle2);
+    
+    gui_widget circle3 = gui_circle_create(GRAY);
+    gui_resize(circle3, 60, 60);
+    gui_container_add(row2, circle3);
+    
+    gui_container_add(canvas, row2);
+    
+    // Lines
+    gui_container row3 = gui_hbox_create();
+    
+    gui_widget line1 = gui_line_create(0, 0, 100, 0);
+    gui_line_set_color(line1, RED);
+    gui_container_add(row3, line1);
+    
+    gui_widget line2 = gui_line_create(0, 0, 100, 50);
+    gui_line_set_color(line2, GREEN);
+    gui_container_add(row3, line2);
+    
+    gui_widget line3 = gui_line_create(0, 0, 0, 100);
+    gui_line_set_color(line3, BLUE);
+    gui_container_add(row3, line3);
+    
+    gui_container_add(canvas, row3);
+    
+    // Interactive drawing section
+    gui_widget separator = gui_label_create("--- Interactive Drawing ---");
+    gui_container_add(canvas, separator);
+    
+    // Progress bar for loading animation simulation
+    gui_widget progress_label = gui_label_create("Loading simulation:");
+    gui_container_add(canvas, progress_label);
+    
+    gui_widget progress = gui_progress_create();
+    gui_container_add(canvas, progress);
+    
+    // Animation button
+    gui_widget animate_btn = gui_button_create("Animate Progress", [progress](event e) {
+        // Simple animation by updating progress
+        for (int i = 0; i <= 100; i += 10) {
+            gui_progress_set_value(progress, i / 100.0);
+            gui_refresh(progress);
+            sleep_func(0.1);  // Small delay
+        }
+        gui_progress_set_value(progress, 0);
+    });
+    gui_container_add(canvas, animate_btn);
+    
+    // Color picker simulation with slider
+    gui_widget color_label = gui_label_create("Color Intensity:");
+    gui_container_add(canvas, color_label);
+    
+    gui_widget color_rect = gui_rectangle_create(128, 0, 128, 255);  // Purple
+    gui_resize(color_rect, 100, 50);
+    gui_container_add(canvas, color_rect);
+    
+    gui_widget color_slider = gui_slider_create(0.0, 255.0, 128.0, [color_rect](event e) {
+        double intensity = gui_event_get_double(e);
+        // Update rectangle color based on slider
+        uint8_t r = (uint8_t)(intensity * 0.5);  // Some red
+        uint8_t g = 0;
+        uint8_t b = (uint8_t)(255 - intensity * 0.5);  // Some blue
+        
+        // Create new rectangle with updated color
+        gui_widget new_rect = gui_rectangle_create(r, g, b, 255);
+        gui_resize(new_rect, 100, 50);
+        
+        // Note: In real implementation, we'd update the existing widget
+        // This is a simplified example
+    });
+    gui_container_add(canvas, color_slider);
+    
+    // Set content and show
+    gui_window_set_content(w, canvas);
+    gui_window_show(w);
+    gui_window_center(w);
+    
+    gui_run();
+}

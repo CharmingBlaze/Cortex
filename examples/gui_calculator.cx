@@ -1,0 +1,38 @@
+// gui_calculator.cx - A simple GUI calculator demo
+// Shows dialogs for basic calculations
+
+void main() {
+    println("Cortex GUI Calculator Demo");
+    println("=========================");
+    
+    // Create a window (invisible, just for parent handle)
+    var win = gui_window_create("Calculator", 300, 200);
+    gui_window_center(win);
+    
+    // Show welcome dialog
+    gui_dialog_info(win, "Calculator", "Welcome to Cortex GUI Calculator!\n\nThis demo shows native Windows dialogs.");
+    
+    // Simple calculation demo
+    int a = 10;
+    int b = 3;
+    
+    // Show addition result
+    int sum = a + b;
+    gui_dialog_info(win, "Addition", a + " + " + b + " = " + sum);
+    
+    // Show multiplication result
+    int prod = a * b;
+    gui_dialog_info(win, "Multiplication", a + " * " + b + " = " + prod);
+    
+    // Show division
+    int quot = a / b;
+    gui_dialog_info(win, "Division", a + " / " + b + " = " + quot);
+    
+    // Show subtraction
+    int diff = a - b;
+    gui_dialog_info(win, "Subtraction", a + " - " + b + " = " + diff);
+    
+    gui_dialog_info(win, "Done", "Calculator demo complete!\n\nThanks for trying Cortex!");
+    
+    println("GUI Calculator demo finished!");
+}

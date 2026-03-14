@@ -1,0 +1,50 @@
+// simple_gui.cx - Simple GUI demo that works with Cortex
+// Uses Cortex GUI built-ins - runtime headers are auto-included
+
+// Global widget handles
+gui_widget display_label;
+gui_widget entry;
+gui_widget checkbox;
+
+// Callback - no parameters, uses globals
+void on_click() {
+    gui_dialog_info(0, "Hello", "Button was clicked!");
+}
+
+void on_clear() {
+    gui_entry_set_text(entry, "");
+}
+
+void on_check() {
+    bool checked = gui_checkbox_get_state(checkbox);
+    if (checked) {
+        gui_label_set_text(display_label, "Feature ENABLED");
+    } else {
+        gui_label_set_text(display_label, "Feature DISABLED");
+    }
+}
+
+void main() {
+    // Create window
+    gui_window win = gui_window_create("Cortex GUI Demo", 400, 300);
+    gui_window_center(win);
+    
+    // Create widgets
+    display_label = gui_label_create("Welcome to Cortex GUI!");
+    gui_widget btn = gui_button_create("Click Me", on_click);
+    gui_widget btn_clear = gui_button_create("Clear", on_clear);
+    entry = gui_entry_create("Type here...", null);
+    checkbox = gui_checkbox_create("Enable Feature", on_check);
+    
+    // Layout
+    gui_container vbox = gui_vbox_create();
+    gui_container_add(vbox, display_label);
+    gui_container_add(vbox, btn);
+    gui_container_add(vbox, entry);
+    gui_container_add(vbox, btn_clear);
+    gui_container_add(vbox, checkbox);
+    
+    // Show window
+    gui_window_set_content(win, vbox);
+    gui_run();
+}

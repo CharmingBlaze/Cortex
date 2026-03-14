@@ -1,0 +1,4 @@
+void main() {
+    int x = (int)42;
+    println("cast works: " + as_string(x));
+}

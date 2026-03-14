@@ -1,0 +1,4 @@
+{
+  "features": { "async": false, "actors": false, "blockchain": false, "qol": true },
+  "backend": "tcc"
+}

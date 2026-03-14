@@ -1,0 +1,20 @@
+// Cortex modern features: repeat, say, show, assert, and game math
+void main() {
+    say("Say hello (no newline): ");
+    show("Show adds newline!");
+
+    repeat (3) {
+        show("Repeat is fun!");
+    }
+
+    float x = 3.7;
+    show("round(3.7) = " + round_float(x));
+    show("floor(3.7) = " + floor_float(x));
+    show("ceil(3.7) = " + ceil_float(x));
+    show("sign(-2.5) = " + sign_float(-2.5));
+    show("wrap(370, 0, 360) = " + wrap_float(370.0, 0.0, 360.0));
+
+    assert(1 + 1 == 2);
+    assert(2 > 1, "math still works!");
+    show("All assertions passed.");
+}

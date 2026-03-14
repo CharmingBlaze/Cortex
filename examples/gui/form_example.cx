@@ -1,0 +1,102 @@
+// form_example.cx - Form with input validation
+//
+// This example demonstrates text inputs, checkboxes, sliders,
+// and working with form data.
+
+#include <gui_runtime.h>
+#include <string.h>
+
+// Global references for updating UI
+gui_widget name_entry;
+gui_widget email_entry;
+gui_widget age_slider;
+gui_widget age_label;
+gui_widget subscribe_check;
+gui_widget submit_btn;
+
+void update_age_label(event e) {
+    double age = gui_slider_get_value(age_slider);
+    char label_text[32];
+    sprintf(label_text, "Age: %d", (int)age);
+    gui_label_set_text(age_label, label_text);
+}
+
+void submit_form(event e) {
+    // Get values
+    char* name = gui_entry_get_text(name_entry);
+    char* email = gui_entry_get_text(email_entry);
+    double age = gui_slider_get_value(age_slider);
+    bool subscribed = gui_checkbox_get_state(subscribe_check);
+    
+    // Simple validation
+    if (strlen(name) == 0 || strlen(email) == 0) {
+        gui_dialog_error(0, "Error", "Please fill in all fields!");
+    } else {
+        // Show success dialog
+        char message[256];
+        sprintf(message, 
+            "Name: %s\nEmail: %s\nAge: %d\nSubscribed: %s",
+            name, email, (int)age, subscribed ? "Yes" : "No"
+        );
+        gui_dialog_info(0, "Form Submitted", message);
+    }
+    
+    // Free allocated strings
+    gui_free_string(name);
+    gui_free_string(email);
+}
+
+void main() {
+    gui_window w = gui_window_create("Registration Form", 500, 400);
+    
+    // Create main vertical layout
+    gui_container main_box = gui_vbox_create();
+    
+    // Title
+    gui_widget title = gui_label_create("User Registration");
+    gui_container_add(main_box, title);
+    
+    // Name field
+    gui_widget name_label = gui_label_create("Name:");
+    gui_container_add(main_box, name_label);
+    
+    name_entry = gui_entry_create("Enter your name", NULL);
+    gui_container_add(main_box, name_entry);
+    
+    // Email field
+    gui_widget email_label = gui_label_create("Email:");
+    gui_container_add(main_box, email_label);
+    
+    email_entry = gui_entry_create("Enter your email", NULL);
+    gui_container_add(main_box, email_entry);
+    
+    // Age slider with label
+    gui_container age_box = gui_hbox_create();
+    
+    age_label = gui_label_create("Age: 25");
+    gui_container_add(age_box, age_label);
+    
+    age_slider = gui_slider_create(18.0, 100.0, 25.0, [](event e) {
+        update_age_label(e);
+    });
+    gui_container_add(age_box, age_slider);
+    
+    gui_container_add(main_box, age_box);
+    
+    // Subscribe checkbox
+    subscribe_check = gui_checkbox_create("Subscribe to newsletter", NULL);
+    gui_container_add(main_box, subscribe_check);
+    
+    // Submit button
+    submit_btn = gui_button_create("Submit", [](event e) {
+        submit_form(e);
+    });
+    gui_container_add(main_box, submit_btn);
+    
+    // Set content and show
+    gui_window_set_content(w, main_box);
+    gui_window_show(w);
+    gui_window_center(w);
+    
+    gui_run();
+}

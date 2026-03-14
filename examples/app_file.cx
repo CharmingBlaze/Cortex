@@ -1,0 +1,22 @@
+// Simple application: read a file, transform, write back.
+// Cortex makes file I/O and strings easy for apps.
+
+void main() {
+    string path = "hello.txt";
+    string content = read_file(path);
+
+    if (content == null) {
+        println("Could not read " + path + ". Writing a new file.");
+        content = "Hello from Cortex!\n";
+    } else {
+        println("Read " + path + ". Prepending a line.");
+        content = "--- Cortex edited this ---\n" + content;
+    }
+
+    int err = write_file("hello_out.txt", content);
+    if (err == 0) {
+        println("Wrote hello_out.txt.");
+    } else {
+        println("Failed to write file.");
+    }
+}

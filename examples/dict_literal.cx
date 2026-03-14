@@ -1,0 +1,8 @@
+// Dict literal example: { "key": value, ... }
+void main() {
+    dict d = { "name": "Cortex", "score": 100, "active": true };
+    show("name: " + as_string(dict_get(d, "name")));
+    show("score: " + as_int(dict_get(d, "score")));
+    show("active: " + as_bool(dict_get(d, "active")));
+    dict_free(d);
+}

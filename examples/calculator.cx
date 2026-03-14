@@ -1,0 +1,41 @@
+// Cortex Calculator Demo
+
+void main() {
+    println("╔══════════════════════════════╗");
+    println("║     CORTEX CALCULATOR        ║");
+    println("╚══════════════════════════════╝");
+    println("");
+    
+    // Basic arithmetic
+    int a = 10;
+    int b = 3;
+    
+    println("Testing with a = " + a + ", b = " + b);
+    println("───────────────────────────────");
+    println("Addition:       " + a + " + " + b + " = " + (a + b));
+    println("Subtraction:    " + a + " - " + b + " = " + (a - b));
+    println("Multiplication: " + a + " * " + b + " = " + (a * b));
+    println("Division:       " + a + " / " + b + " = " + (a / b));
+    println("Modulo:         " + a + " % " + b + " = " + (a % b));
+    println("");
+    
+    // Floating point
+    float x = 2.5;
+    println("Floating point: " + x + " squared = " + (x * x));
+    println("");
+    
+    // Boolean logic
+    bool is_positive = (a > 0);
+    bool is_equal = (a == b);
+    println("Boolean tests:");
+    println("  a > 0: " + is_positive);
+    println("  a == b: " + is_equal);
+    println("");
+    
+    println("═══════════════════════════════");
+    println("Calculator demo complete!");
+    println("═══════════════════════════════");
+    println("");
+    println("Press any key to exit...");
+    waitkey();
+}

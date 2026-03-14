@@ -1,0 +1,135 @@
+// dialog_example.cx - Dialogs and file operations
+//
+// This example demonstrates using dialogs for user interaction
+// and file operations.
+
+#include <gui_runtime.h>
+#include <string.h>
+
+gui_widget status_label;
+gui_widget selected_file_label;
+
+void show_info(event e) {
+    gui_dialog_info(0, "Information", "This is an informational message!");
+}
+
+void show_error(event e) {
+    gui_dialog_error(0, "Error", "An error occurred!");
+}
+
+void show_confirm(event e) {
+    gui_dialog_confirm(0, "Confirm", "Are you sure you want to proceed?", [](event e) {
+        bool confirmed = gui_event_get_bool(e);
+        if (confirmed) {
+            gui_label_set_text(status_label, "Status: Confirmed!");
+        } else {
+            gui_label_set_text(status_label, "Status: Cancelled");
+        }
+    });
+}
+
+void open_file(event e) {
+    gui_dialog_file_open(0, [](event e) {
+        const char* path = gui_event_get_string(e);
+        if (strlen(path) > 0) {
+            char label_text[512];
+            sprintf(label_text, "Selected: %s", path);
+            gui_label_set_text(selected_file_label, label_text);
+            gui_label_set_text(status_label, "Status: File opened");
+        } else {
+            gui_label_set_text(status_label, "Status: Open cancelled");
+        }
+    });
+}
+
+void save_file(event e) {
+    gui_dialog_file_save(0, [](event e) {
+        const char* path = gui_event_get_string(e);
+        if (strlen(path) > 0) {
+            char label_text[512];
+            sprintf(label_text, "Saved to: %s", path);
+            gui_label_set_text(selected_file_label, label_text);
+            gui_label_set_text(status_label, "Status: File saved");
+        } else {
+            gui_label_set_text(status_label, "Status: Save cancelled");
+        }
+    });
+}
+
+void quit_app(event e) {
+    gui_dialog_confirm(0, "Quit", "Are you sure you want to quit?", [](event e) {
+        if (gui_event_get_bool(e)) {
+            gui_quit();
+        }
+    });
+}
+
+void main() {
+    gui_window w = gui_window_create("Dialog Demo", 500, 400);
+    
+    gui_container box = gui_vbox_create();
+    
+    // Title
+    gui_widget title = gui_label_create("Dialog and File Operations Demo");
+    gui_container_add(box, title);
+    
+    // Simple dialogs section
+    gui_widget section1 = gui_label_create("--- Simple Dialogs ---");
+    gui_container_add(box, section1);
+    
+    gui_container btn_row1 = gui_hbox_create();
+    
+    gui_widget info_btn = gui_button_create("Show Info", [](event e) {
+        show_info(e);
+    });
+    gui_container_add(btn_row1, info_btn);
+    
+    gui_widget error_btn = gui_button_create("Show Error", [](event e) {
+        show_error(e);
+    });
+    gui_container_add(btn_row1, error_btn);
+    
+    gui_widget confirm_btn = gui_button_create("Show Confirm", [](event e) {
+        show_confirm(e);
+    });
+    gui_container_add(btn_row1, confirm_btn);
+    
+    gui_container_add(box, btn_row1);
+    
+    // File operations section
+    gui_widget section2 = gui_label_create("--- File Operations ---");
+    gui_container_add(box, section2);
+    
+    gui_container btn_row2 = gui_hbox_create();
+    
+    gui_widget open_btn = gui_button_create("Open File", [](event e) {
+        open_file(e);
+    });
+    gui_container_add(btn_row2, open_btn);
+    
+    gui_widget save_btn = gui_button_create("Save File", [](event e) {
+        save_file(e);
+    });
+    gui_container_add(btn_row2, save_btn);
+    
+    gui_container_add(box, btn_row2);
+    
+    // Status display
+    status_label = gui_label_create("Status: Ready");
+    gui_container_add(box, status_label);
+    
+    selected_file_label = gui_label_create("No file selected");
+    gui_container_add(box, selected_file_label);
+    
+    // Quit button
+    gui_widget quit_btn = gui_button_create("Quit", [](event e) {
+        quit_app(e);
+    });
+    gui_container_add(box, quit_btn);
+    
+    gui_window_set_content(w, box);
+    gui_window_show(w);
+    gui_window_center(w);
+    
+    gui_run();
+}

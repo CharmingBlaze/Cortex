@@ -1,0 +1,5 @@
+// minimal_test.cx - Minimal test
+
+void main() {
+    println("Hello World");
+}

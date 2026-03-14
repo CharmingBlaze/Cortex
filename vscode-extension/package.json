@@ -1,0 +1,35 @@
+{
+	"name": "cortex-language",
+	"displayName": "Cortex Language Support",
+	"description": "Syntax highlighting and language support for Cortex (.cx) programming language",
+	"version": "0.1.0",
+	"publisher": "cortex-lang",
+	"engines": {
+		"vscode": "^1.50.0"
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"contributes": {
+		"languages": [
+			{
+				"id": "cortex",
+				"aliases": ["Cortex", "cortex", "cx"],
+				"extensions": [".cx"],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "cortex",
+				"scopeName": "source.cortex",
+				"path": "./syntaxes/cortex.tmLanguage.json"
+			}
+		]
+	},
+	"icon": "icon.png",
+	"files": [
+		"syntaxes/cortex.tmLanguage.json",
+		"language-configuration.json"
+	]
+}
