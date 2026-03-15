@@ -215,6 +215,83 @@ void main() {
 
 ---
 
+## ⚡ Concurrency That Actually Makes Sense
+
+Cortex gives you **three powerful concurrency models** that work together seamlessly. No more choosing between callbacks, promises, or complex async/await chains.
+
+### 1. Coroutines — Cooperative Multitasking
+
+Perfect for game loops, animations, and state machines:
+
+```c
+coroutine void animate_player(Player* p) {
+    for (int i = 0; i < 10; i++) {
+        p->x += 5;
+        co_yield();  // Pause, resume next frame
+    }
+}
+```
+
+### 2. Threads — True Parallelism
+
+When you need real CPU parallelism:
+
+```c
+void heavy_computation(void* arg) {
+    // Runs on separate CPU core
+    for (int i = 0; i < 1000000; i++) {
+        // ... crunching numbers ...
+    }
+}
+
+void main() {
+    spawn heavy_computation(null);  // Fire and forget
+    // Or: spawn t = heavy_computation(null); thread_join(t);
+}
+```
+
+### 3. Channels — Thread-Safe Communication
+
+Go-style channels for clean thread communication:
+
+```c
+void producer(void* arg) {
+    cortex_channel ch = (cortex_channel)arg;
+    for (int i = 1; i <= 5; i++) {
+        channel_send(ch, &i);
+    }
+    channel_close(ch);
+}
+
+void consumer(void* arg) {
+    cortex_channel ch = (cortex_channel)arg;
+    int value;
+    while (channel_recv(ch, &value)) {
+        println("Got: ${value}");
+    }
+}
+
+void main() {
+    cortex_channel ch = channel_create(sizeof(int), 10);
+    spawn producer(ch);
+    spawn consumer(ch);
+}
+```
+
+### Why This Makes Cortex Special
+
+| Language | Coroutines | Threads | Channels | Simple Syntax |
+|----------|------------|---------|----------|---------------|
+| C | ❌ | ✓ | ❌ | ✓ |
+| C++ | ✓ (complex) | ✓ | ❌ | ❌ |
+| Rust | ✓ (async) | ✓ | ✓ | ❌ |
+| Go | ❌ | ✓ (goroutines) | ✓ | ✓ |
+| **Cortex** | ✓ | ✓ | ✓ | ✓ |
+
+**Cortex is the only language that gives you all three concurrency models with simple, clean syntax.** No callback hell. No complex futures. No lifetime annotations. Just straightforward code that does what you mean.
+
+---
+
 ## Native GUI System
 
 Build desktop apps with a clean, simple API. No external dependencies.
@@ -372,6 +449,12 @@ go build -o cortex.exe ./cmd/cortex
 - But with modern conveniences that make you productive
 
 C showed us that simplicity and power aren't mutually exclusive. Cortex takes that lesson further.
+
+---
+
+## The Team
+
+Cortex is developed by a team of computer scientists working from an **underground research base in the Himalayas**. Why? Because sometimes you need complete isolation from the noise of the world to build something truly elegant. Plus, the mountain air helps with debugging.
 
 ---
 
