@@ -651,11 +651,11 @@ func (g *CodeGenerator) VisitStructDecl(node *ast.StructDeclNode) {
 	if node.Module != "" {
 		cName = node.Module + "__" + node.Name
 	}
-	g.Write(fmt.Sprintf("typedef struct {\n"))
+	g.Write("typedef struct {\n")
 	g.Indent()
 	for _, field := range node.Fields {
 		fieldType := g.ConvertType(field.Type)
-		g.Write(fmt.Sprintf("%s %s;\n", fieldType, field.Name))
+		g.Write(fieldType + " " + field.Name + ";\n")
 	}
 	g.Dedent()
 	g.Write(fmt.Sprintf("} %s;\n", cName))
@@ -695,7 +695,7 @@ func (g *CodeGenerator) VisitEnumDecl(node *ast.EnumDeclNode) {
 	if node.Module != "" {
 		cName = node.Module + "__" + node.Name
 	}
-	g.Write(fmt.Sprintf("typedef enum {\n"))
+	g.Write("typedef enum {\n")
 	g.Indent()
 
 	for i, value := range node.Values {

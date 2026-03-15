@@ -6,14 +6,26 @@ All notable changes to Cortex will be documented in this file.
 
 ### Added
 
+#### Control Flow
+- **`elif`** - Sugar for `else if` chains (Python/Swift/Kotlin style)
+  ```c
+  if x == 5 { ... } elif x == 10 { ... } else { ... }
+  ```
+- **`unless`** - Inverse of `if`, runs when condition is false (Ruby-style)
+  ```c
+  unless x < 0 println("non-negative");
+  ```
+- **`if let`** - Pattern matching for optional values
+  ```c
+  if let name = maybe_name { println("Hello, ${name}!"); }
+  ```
+- **Optional parentheses in if** - `if x > 5 { }` or `if (x > 5) { }`
+- **Single-statement if bodies** - `if x > 0 println("positive");`
+- **`loop { }`** - Sugar for `while (true) { }`
+
 #### Operators
 - **Compound assignment operators**: `+=`, `-=`, `*=`, `/=`
 - **Increment/decrement operators**: `++`, `--` (prefix and postfix)
-
-#### Control Flow
-- **`loop { }`** - Sugar for `while (true) { }`
-- **Optional parentheses in if statements** - `if x > 0 { }` or `if (x > 0) { }`
-- **Single-statement if bodies** - `if x > 0 println("positive");`
 
 #### Variables
 - **`const` keyword** - Declare constants with type inference
