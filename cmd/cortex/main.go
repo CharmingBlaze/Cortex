@@ -30,6 +30,7 @@ func main() {
 	var help bool
 	var configPath string
 	var useLib string
+	var mkConfig string
 	var backend string
 	var includePaths stringList
 	var libraryPaths stringList
@@ -42,6 +43,7 @@ func main() {
 	flag.BoolVar(&help, "help", false, "Show help")
 	flag.StringVar(&configPath, "config", "", "Path to cortex config (optional)")
 	flag.StringVar(&useLib, "use", "", "Use a C library by name (loads configs/<name>.json if no -config); e.g. -use raylib")
+	flag.StringVar(&mkConfig, "mkconfig", "", "Create a config template for a library (e.g. -mkconfig raylib)")
 	flag.StringVar(&backend, "backend", "", "C backend: gcc, tcc, or auto (default: auto = try tcc then gcc)")
 	flag.Var(&includePaths, "I", "Include path for C headers (can be repeated)")
 	flag.Var(&libraryPaths, "L", "Library search path (can be repeated)")
@@ -49,24 +51,32 @@ func main() {
 	flag.BoolVar(&debug, "debug", false, "Enable debug output")
 	flag.Parse()
 
+	// Handle -mkconfig: create a config template and exit
+	if mkConfig != "" {
+		createConfigTemplate(mkConfig)
+		return
+	}
+
 	if help || len(inputFiles) == 0 {
 		fmt.Println("Cortex Compiler - A C-like language for games and applications")
 		fmt.Println("Usage:")
 		fmt.Println("  cortex -i <input_file> [-o <output_file>] [-config <config_file>]")
 		fmt.Println("  cortex -i main.cx -i lib.cx -o app")
-		fmt.Println("  cortex -i game.cx -o game -I /path/to/raylib/include -L /path/to/raylib/lib -l raylib")
+		fmt.Println("  cortex -i game.cx -o game -use raylib")
+		fmt.Println("  cortex -mkconfig raylib    # Create configs/raylib.json template")
 		fmt.Println("  cortex -help")
 		fmt.Println("")
 		fmt.Println("Options:")
-		fmt.Println("  -i        Input .cx source file (required; repeat for multi-file / package)")
-		fmt.Println("  -o        Output executable (default: <first_input_base>.exe)")
-		fmt.Println("  -run      Compile and run (temp exe, then delete); no gcc/cmake if tcc in tools/ or PATH")
-		fmt.Println("  -config   Optional JSON config (features, backend, include_paths, library_paths, libraries)")
-		fmt.Println("  -use      Use C library by name (e.g. -use raylib loads configs/raylib.json); combine with #use \"name\" in source")
-		fmt.Println("  -backend  C backend: gcc, tcc, or auto (no gcc/cmake: use tcc; put tcc in tools/ or PATH)")
-		fmt.Println("  -I        Add include path (repeat for multiple); for C libraries like raylib")
-		fmt.Println("  -L        Add library search path (repeat for multiple)")
-		fmt.Println("  -l        Link library (repeat for multiple); e.g. -l raylib -l m")
+		fmt.Println("  -i         Input .cx source file (required; repeat for multi-file / package)")
+		fmt.Println("  -o         Output executable (default: <first_input_base>.exe)")
+		fmt.Println("  -run       Compile and run (temp exe, then delete); no gcc/cmake if tcc in tools/ or PATH")
+		fmt.Println("  -config    Optional JSON config (features, backend, include_paths, library_paths, libraries)")
+		fmt.Println("  -use       Use C library by name (e.g. -use raylib loads configs/raylib.json)")
+		fmt.Println("  -mkconfig  Create a config template for a library (e.g. -mkconfig mylib)")
+		fmt.Println("  -backend   C backend: gcc, tcc, or auto (no gcc/cmake: use tcc; put tcc in tools/ or PATH)")
+		fmt.Println("  -I         Add include path (repeat for multiple); for C libraries like raylib")
+		fmt.Println("  -L         Add library search path (repeat for multiple)")
+		fmt.Println("  -l         Link library (repeat for multiple); e.g. -l raylib -l m")
 		return
 	}
 
@@ -133,4 +143,50 @@ func main() {
 func exists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// createConfigTemplate creates a JSON config template for a library
+func createConfigTemplate(libName string) {
+	// Ensure configs directory exists
+	configsDir := "configs"
+	if _, err := os.Stat(configsDir); os.IsNotExist(err) {
+		os.MkdirAll(configsDir, 0755)
+	}
+
+	configFile := filepath.Join(configsDir, libName+".json")
+
+	// Check if config already exists
+	if _, err := os.Stat(configFile); err == nil {
+		fmt.Printf("Config already exists: %s\n", configFile)
+		fmt.Println("Edit it to set your library paths.")
+		return
+	}
+
+	// Create template
+	template := fmt.Sprintf(`{
+  "features": { "qol": true },
+  "include_paths": [
+    "C:/%s/include",
+    "/usr/local/include",
+    "/usr/include"
+  ],
+  "library_paths": [
+    "C:/%s/lib",
+    "/usr/local/lib",
+    "/usr/lib"
+  ],
+  "libraries": ["%s"]
+}
+`, libName, libName, libName)
+
+	err := os.WriteFile(configFile, []byte(template), 0644)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create config: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Created: %s\n", configFile)
+	fmt.Println("")
+	fmt.Println("Edit the file to set your library paths, then use:")
+	fmt.Printf("  cortex -i game.cx -o game -use %s\n", libName)
 }

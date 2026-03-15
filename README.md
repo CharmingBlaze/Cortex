@@ -587,67 +587,52 @@ If you use a gated built-in (e.g. `sha256_hash`) with that feature disabled, the
 
 The compiler looks for the `runtime/` directory (containing `core.c` and `core.h`) in: the current working directory, next to the executable, or the path in the `CORTEX_ROOT` environment variable. Run from the project root or set `CORTEX_ROOT` when building from elsewhere.
 
-### Manual C Library Setup (No Auto-Fetch)
+### Using C Libraries
 
-**By default, auto-fetch is disabled.** You have full control over library installation. Here are three ways to use C libraries:
-
-#### Option 1: Manual CLI Flags (Simplest)
-
-If you have the library installed on your system:
+**Quick setup with -mkconfig:**
 
 ```bash
-# Compile with manual include/library paths
-cortex -i game.cx -o game \
-  -I C:/raylib/include \
-  -L C:/raylib/lib \
-  -l raylib
+# Create a config template for any library
+cortex -mkconfig raylib
+
+# Edit configs/raylib.json with your paths, then:
+cortex -i game.cx -o game -use raylib
 ```
 
-#### Option 2: Create a Config File (Recommended)
+**That's it!** The `-mkconfig` flag creates a JSON template you just edit with your library paths.
 
-Create `myproject.json` in your project directory:
+#### Option 1: Use -use flag (Recommended)
 
-```json
-{
-  "features": { "qol": true },
-  "include_paths": ["C:/raylib/include"],
-  "library_paths": ["C:/raylib/lib"],
-  "libraries": ["raylib"]
-}
-```
+After creating a config with `-mkconfig`:
 
-Then build:
 ```bash
-cortex -i game.cx -o game -config myproject.json
+cortex -i game.cx -o game -use raylib
 ```
 
-#### Option 3: Use System Package Manager
+#### Option 2: Direct CLI flags
+
+```bash
+cortex -i game.cx -o game -I C:/raylib/include -L C:/raylib/lib -l raylib
+```
+
+#### Option 3: System Package Manager
 
 **Windows (MSYS2):**
 ```bash
-# Install library manually
 pacman -S mingw-w64-x86_64-raylib
-
-# Build with system library
-cortex build
+cortex -i game.cx -o game -l raylib
 ```
 
-**Linux (apt/yum/pacman):**
+**Linux:**
 ```bash
-# Install library
 sudo apt install libraylib-dev
-
-# Build - Cortex will find it automatically
-cortex build
+cortex -i game.cx -o game -l raylib
 ```
 
-**macOS (Homebrew):**
+**macOS:**
 ```bash
-# Install library
 brew install raylib
-
-# Build
-cortex build
+cortex -i game.cx -o game -l raylib
 ```
 
 #### Manual Build System Mode

@@ -1,0 +1,14 @@
+{
+  "features": { "qol": true },
+  "include_paths": [
+    "C:/sdl2/include",
+    "/usr/local/include",
+    "/usr/include"
+  ],
+  "library_paths": [
+    "C:/sdl2/lib",
+    "/usr/local/lib",
+    "/usr/lib"
+  ],
+  "libraries": ["sdl2"]
+}
