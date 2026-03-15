@@ -1,5 +1,5 @@
 // Raylib Simple Pong - Two player paddle game
-// Build: cortex -i raylib/raylib_pong.cx -o pong -use raylib
+// Build: cortex run raylib_pong.cx
 #include <raylib.h>
 
 void main() {
@@ -28,18 +28,18 @@ void main() {
     
     while (!WindowShouldClose()) {
         // Player 1 controls (W/S)
-        if (IsKeyDown(KEY_W)) p1_y = p1_y - paddle_speed;
-        if (IsKeyDown(KEY_S)) p1_y = p1_y + paddle_speed;
+        if (IsKeyDown(KEY_W)) { p1_y = p1_y - paddle_speed; }
+        if (IsKeyDown(KEY_S)) { p1_y = p1_y + paddle_speed; }
         
         // Player 2 controls (Up/Down)
-        if (IsKeyDown(KEY_UP)) p2_y = p2_y - paddle_speed;
-        if (IsKeyDown(KEY_DOWN)) p2_y = p2_y + paddle_speed;
+        if (IsKeyDown(KEY_UP)) { p2_y = p2_y - paddle_speed; }
+        if (IsKeyDown(KEY_DOWN)) { p2_y = p2_y + paddle_speed; }
         
         // Clamp paddles to screen
-        if (p1_y < 0) p1_y = 0;
-        if (p1_y > height - paddle_height) p1_y = height - paddle_height;
-        if (p2_y < 0) p2_y = 0;
-        if (p2_y > height - paddle_height) p2_y = height - paddle_height;
+        if (p1_y < 0) { p1_y = 0; }
+        if (p1_y > height - paddle_height) { p1_y = height - paddle_height; }
+        if (p2_y < 0) { p2_y = 0; }
+        if (p2_y > height - paddle_height) { p2_y = height - paddle_height; }
         
         // Update ball
         ball_x = ball_x + ball_vx;

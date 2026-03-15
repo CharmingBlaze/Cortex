@@ -195,7 +195,13 @@ func bindCommand(args []string) {
 	var outputPath string
 	fs.StringVar(&headerPath, "i", "", "Input C header file")
 	fs.StringVar(&outputPath, "o", "", "Output Cortex binding file")
-	fs.Parse(args)
+
+	// Parse flags first (they can appear anywhere with ParseAll)
+	err := fs.Parse(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing flags: %v\n", err)
+		os.Exit(1)
+	}
 
 	if fs.NArg() == 0 {
 		fmt.Fprintln(os.Stderr, "Usage: cortex bind <libname> -i <header.h> [-o output.cx]")

@@ -1,0 +1,9 @@
+[project]
+name = "sdl2_examples"
+version = "0.1.0"
+entry = "examples/sdl2/sdl2_window.cx"
+
+[dependencies.sdl2]
+include_path = "third_party/sdl2/SDL2-2.30.0/x86_64-w64-mingw32/include/SDL2"
+lib_path = "third_party/sdl2/SDL2-2.30.0/x86_64-w64-mingw32/lib"
+libs = ["SDL2", "SDL2main"]
