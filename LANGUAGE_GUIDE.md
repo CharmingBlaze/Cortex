@@ -105,6 +105,227 @@ if (is_type(value, "int")) {
 
 Common helpers: `is_type(value, "int")`, `as_int(value)`, `as_float(value)`, `as_string(value)`.
 
+### Binding immutability: `const`
+
+**`const`** declares a variable that cannot be reassigned after initialization. This is **binding immutability** (like TypeScript/Swift), not deep immutability:
+
+```c
+const x = 10;           // Type inferred as int
+const int y = 20;       // Explicit type
+const var name = "Cortex";  // var type, still const binding
+
+x = 30;  // ERROR: cannot assign to const 'x'
+```
+
+**What const prevents:**
+- Reassigning the variable to a new value
+
+**What const allows:**
+- Modifying contents of arrays or dicts (the binding is const, not the data)
+
+```c
+const arr = [1, 2, 3];
+arr[0] = 99;        // Allowed - modifying array contents
+arr.push(4);        // Allowed - mutating the array
+arr = [4, 5, 6];    // ERROR - cannot reassign const binding
+
+const config = { "host": "localhost" };
+config["port"] = 8080;  // Allowed - adding to dict
+config = {};            // ERROR - cannot reassign
+```
+
+**When to use const:**
+- Configuration values that shouldn't change
+- Constants like math values, limits, thresholds
+- Preventing accidental reassignment in long functions
+- Making intent clear to other developers
+
+---
+
+## Type System
+
+Cortex uses a **hybrid type system**: static types for safety, dynamic types for flexibility.
+
+### Static typing
+
+When you declare a type explicitly, the compiler checks types at compile time:
+
+```c
+int x = 10;
+x = "hello";  // ERROR: type mismatch
+```
+
+Benefits:
+- Catch errors before running
+- Better IDE support and autocomplete
+- Clearer code intent
+
+### Dynamic typing with `var`
+
+`var` infers the type from the initializer:
+
+```c
+var x = 10;       // inferred as int
+var y = "hello";  // inferred as string
+var z = [1, 2];   // inferred as int[]
+```
+
+`var` variables can change type at runtime:
+
+```c
+var x = 10;
+x = "now a string";  // OK at runtime
+```
+
+### The `any` type
+
+`any` is explicitly dynamic. Use it when:
+- Storing values of different types in a collection
+- Working with external data (JSON, user input)
+- Gradual typing (migrating from dynamic to static)
+
+```c
+array a = array_create();
+array_push(a, 42);       // int
+array_push(a, "hello");  // string
+array_push(a, 3.14);     // float
+
+any val = array_get(a, 0);
+if (is_type(val, "int")) {
+    int n = as_int(val);
+}
+```
+
+### Type inference rules
+
+| Expression | Inferred type |
+|------------|---------------|
+| `var x = 42` | `int` |
+| `var x = 3.14` | `double` |
+| `var x = "hi"` | `string` |
+| `var x = true` | `bool` |
+| `var x = [1, 2, 3]` | `int[]` |
+| `var x = {"a": 1}` | `dict` |
+| `var x = make_vec2(1, 2)` | `vec2` |
+
+### Type checking
+
+The compiler checks:
+- Assignments: `int x = "string"` → error
+- Function arguments: `void f(int x); f("hi")` → error
+- Return values: `int f() { return "hi"; }` → error
+
+But `var` and `any` bypass compile-time checks:
+
+```c
+var x = 10;
+x = "string";  // OK (runtime)
+
+any y = 10;
+y = "string";  // OK (runtime)
+```
+
+### When to use each
+
+| Use | When |
+|-----|------|
+| Explicit type (`int`, `string`) | Known, fixed type; want compile-time safety |
+| `var` | Type obvious from context; want brevity |
+| `any` | Multiple possible types; external data |
+| `const` | Value shouldn't change |
+
+---
+
+## Memory Model
+
+Cortex handles memory automatically so you don't need to manage it manually.
+
+### How memory works
+
+**Stack allocation:**
+- Local variables are allocated on the stack
+- Automatically freed when function returns
+- Fast and deterministic
+
+```c
+void example() {
+    int x = 10;      // Stack allocated
+    string s = "hi"; // Stack allocated
+}  // x and s freed automatically
+```
+
+**Heap allocation:**
+- Dynamic collections (`array`, `dict`) are heap-allocated
+- Managed by Cortex runtime
+- Freed automatically when no longer reachable
+
+```c
+void example() {
+    array a = array_create();  // Heap allocated
+    array_push(a, 42);
+    // No need to free - handled by runtime
+}
+```
+
+### No pointers
+
+Cortex hides pointers from your code:
+
+| C | Cortex |
+|---|--------|
+| `int* p = &x;` | Not needed |
+| `malloc(sizeof(int))` | Automatic |
+| `free(p)` | Automatic |
+| `p->field` | `obj.field` |
+
+You can still work with C pointers via `extern` declarations when needed.
+
+### When cleanup happens
+
+1. **Scope exit**: Local variables freed when function returns
+2. **Defer**: Run cleanup code explicitly with `defer`
+3. **End of program**: All memory freed on exit
+
+```c
+void process() {
+    var file = open("data.txt");
+    defer { close(file); };  // Explicit cleanup
+    
+    var data = load(file);   // Automatic cleanup when done
+}
+```
+
+### Working with C memory
+
+When calling C functions via `extern`:
+
+- C memory is **not** managed by Cortex
+- Use `defer` to call C cleanup functions
+- Be careful with ownership: who frees?
+
+```c
+extern void* malloc(int size);
+extern void free(void* ptr);
+
+void example() {
+    void* buf = malloc(1024);
+    defer { free(buf); };  // Ensure cleanup
+    // Use buf...
+}
+```
+
+### Memory safety
+
+Cortex prevents common memory bugs:
+
+| Bug | C | Cortex |
+|-----|---|--------|
+| Use after free | Possible | Prevented |
+| Double free | Possible | Prevented |
+| Buffer overflow | Possible | Bounds checked |
+| Null pointer deref | Possible | Prevented |
+| Dangling pointer | Possible | Prevented |
+
 ---
 
 ## Input and Output
@@ -456,6 +677,113 @@ Use `as_int(v)`, `as_string(v)`, etc. on `v` depending on what the function retu
 
 ---
 
+## Pattern Matching
+
+**`match`** is a powerful way to inspect and destructure values. It's like a `switch` on steroids:
+
+### Type matching
+
+Check the runtime type of an `any` value:
+
+```c
+any value = 42;
+
+match (value) {
+    case int n: {
+        show("Got integer: " + n);
+    }
+    case string s: {
+        show("Got string: " + s);
+    }
+    case float f: {
+        show("Got float: " + f);
+    }
+    default: {
+        show("Got something else");
+    }
+}
+```
+
+The variable after the type (`n`, `s`, `f`) is bound to the value with that type.
+
+### Matching results
+
+Results have two cases: `Ok` for success, `Err` for failure:
+
+```c
+result r = parse_number("42");
+
+match (r) {
+    case Ok(v): {
+        int n = as_int(v);
+        show("Parsed: " + n);
+    }
+    case Err(e): {
+        show("Error: " + e);
+    }
+}
+```
+
+### Matching with conditions
+
+Add guards with `if`:
+
+```c
+match (value) {
+    case int n if n > 0: {
+        show("Positive: " + n);
+    }
+    case int n: {
+        show("Non-positive: " + n);
+    }
+}
+```
+
+### Fallthrough
+
+Cases don't fall through by default (unlike C `switch`). Each case needs its own body.
+
+---
+
+## Defer (cleanup on scope exit)
+
+**`defer`** runs code when the current block exits, whether by normal flow or early return:
+
+```c
+void process_file(string path) {
+    var file = open_file(path);
+    defer { close_file(file); };  // Guaranteed to run on exit
+    
+    // Work with file...
+    if (error) {
+        return;  // defer still runs!
+    }
+    // More work...
+}  // defer runs here too
+```
+
+**Key behaviors:**
+- Deferred code runs in **reverse order** of declaration (LIFO)
+- Runs on **any** exit: normal end, `return`, or even panic
+- Perfect for cleanup: closing files, freeing resources, releasing locks
+
+```c
+void main() {
+    show("start");
+    defer { show("first defer"); }
+    defer { show("second defer"); }
+    show("middle");
+}
+// Output: start, middle, second defer, first defer
+```
+
+**Defer vs try/finally:**
+- Defer is simpler and more flexible
+- Can have multiple defers in one block
+- No need for try block structure
+
+---
+
 ## Vectors (2D and 3D)
 
 For positions, movement, and simple physics:
@@ -501,6 +829,79 @@ var add = [](int a, int b) -> int { return a + b; };
 ```
 
 Typical use: pass to a function that expects a callback (e.g. event handlers, UI).
+
+---
+
+## Async and Coroutines
+
+Cortex supports **cooperative multitasking** with coroutines. Functions can pause execution and resume later, allowing multiple tasks to run concurrently without threads.
+
+### Creating coroutines
+
+Use `coroutine` keyword to define a coroutine function:
+
+```c
+coroutine void fetch_data(void* arg) {
+    show("Starting fetch...");
+    for (int i = 0; i < 3; i++) {
+        sleep(0.5);  // Simulate work
+        co_yield();   // Pause, let other code run
+    }
+    show("Fetch complete!");
+}
+```
+
+**Key points:**
+- `coroutine` marks a function that can pause
+- `co_yield()` pauses execution and returns control to caller
+- When resumed, execution continues after `co_yield()`
+
+### Running coroutines
+
+```c
+void main() {
+    // Create coroutine
+    var task = async_create(fetch_data, null);
+    
+    // Run until complete
+    while (async_is_running(task)) {
+        async_resume(task);
+        // Can do other work here
+    }
+    
+    // Or wait for completion
+    async_await(task);
+    show("Task finished!");
+}
+```
+
+### Coroutine API
+
+| Function | Description |
+|----------|-------------|
+| `async_create(fn, arg)` | Create a new coroutine from a coroutine function |
+| `async_resume(co)` | Resume a paused coroutine |
+| `async_await(co)` | Block until coroutine completes |
+| `async_is_running(co)` | Check if coroutine is still running |
+| `co_yield()` | Pause current coroutine (inside coroutine only) |
+
+### When to use coroutines
+
+- **I/O operations**: Fetch data, read files without blocking
+- **Game loops**: Spread work across frames
+- **Animations**: Pause and resume over time
+- **State machines**: Natural pause/resume points
+
+```c
+coroutine void animate_player(Player* p) {
+    for (int i = 0; i < 10; i++) {
+        p->x += 5;
+        co_yield();  // Move a bit each frame
+    }
+}
+```
+
+**Note**: Coroutines are cooperative - they only yield at `co_yield()`. Long-running code without yields will block other coroutines.
 
 ---
 
@@ -558,6 +959,66 @@ cortex -i game.cx -o game -use raylib
 
 So: **include the header**, write normal Cortex (and C API) calls, then pass paths/config so the compiler and linker can find the library. No `#pragma` needed for the library name.
 
+### Declaring C functions with `extern`
+
+When you need to call C functions that aren't in a standard header, use `extern`:
+
+```c
+// Declare a C function
+extern int my_c_function(int a, int b);
+
+// Declare with pointer types
+extern void* malloc(int size);
+extern void free(void* ptr);
+
+void main() {
+    int result = my_c_function(10, 20);
+    show("Result: " + result);
+}
+```
+
+**Type mapping between Cortex and C:**
+
+| Cortex type | C type |
+|-------------|--------|
+| `int` | `int` |
+| `float` | `float` |
+| `double` | `double` |
+| `string` | `char*` |
+| `bool` | `int` (0/1) |
+| `any` | `AnyValue` struct |
+| `void` | `void` |
+
+**Pointer types in extern:**
+- Use `void*` for generic pointers
+- Use `char*` for C strings
+- Use `Type*` for typed pointers (e.g., `int*`)
+- Cortex handles the conversion automatically
+
+### Embedding raw C code
+
+For code that can't be expressed in Cortex, embed raw C:
+
+```c
+@c int global_counter = 0;
+
+@c #define MAX_SIZE 100
+
+void main() {
+    @c printf("Direct C: %d\n", global_counter);
+}
+```
+
+The `@c` prefix passes the rest of the line directly to the generated C code.
+
+### Linking libraries
+
+Three ways to link:
+
+1. **Auto-link from include**: `#include <raylib.h>` → links `raylib`
+2. **Explicit pragma**: `#pragma link("mylib")`
+3. **Shorthand**: `#use "raylib"` → includes and links
+
 ---
 
 ## Preprocessor and config
@@ -586,16 +1047,171 @@ Use it for cleanup (e.g. closing files, freeing resources).
 
 ---
 
+## Standard Library Overview
+
+Cortex includes a standard library of built-in functions organized by category.
+
+### I/O Functions
+
+| Function | Description |
+|----------|-------------|
+| `print(s)` | Print without newline |
+| `println(s)` | Print with newline |
+| `show(s)` | Same as `println` |
+| `say(s)` | Same as `print` |
+| `input_line()` | Read a line from stdin |
+
+### String Functions
+
+| Function | Description |
+|----------|-------------|
+| `str_concat(a, b)` | Concatenate strings |
+| `str_length(s)` | Get string length |
+| `str_sub(s, start, len)` | Substring |
+| `str_find(s, substr)` | Find substring position |
+| `to_string(val)` | Convert value to string |
+
+### Math Functions
+
+| Function | Description |
+|----------|-------------|
+| `abs(n)` | Absolute value |
+| `min(a, b)` | Minimum of two values |
+| `max(a, b)` | Maximum of two values |
+| `sqrt(n)` | Square root |
+| `pow(base, exp)` | Power |
+| `sin(x)`, `cos(x)`, `tan(x)` | Trigonometry |
+| `floor(x)`, `ceil(x)`, `round(x)` | Rounding |
+
+### Random and Time
+
+| Function | Description |
+|----------|-------------|
+| `random_int(min, max)` | Random integer in range |
+| `random_float(min, max)` | Random float in range |
+| `get_time()` | Seconds since program start |
+| `sleep(seconds)` | Pause execution |
+| `wait(seconds)` | Same as `sleep` |
+
+### Type Checking and Conversion
+
+| Function | Description |
+|----------|-------------|
+| `is_type(val, "typename")` | Check runtime type |
+| `as_int(val)` | Convert to int |
+| `as_float(val)` | Convert to float |
+| `as_string(val)` | Convert to string |
+| `to_int(val)` | Parse string to int |
+| `to_float(val)` | Parse string to float |
+
+### Array Functions
+
+| Function | Description |
+|----------|-------------|
+| `array_create()` | Create empty dynamic array |
+| `array_push(a, val)` | Add element at end |
+| `array_get(a, i)` | Get element at index |
+| `array_set(a, i, val)` | Set element at index |
+| `array_len(a)` | Get length |
+| `array_free(a)` | Free array memory |
+
+### Dictionary Functions
+
+| Function | Description |
+|----------|-------------|
+| `dict_create()` | Create empty dictionary |
+| `dict_set(d, key, val)` | Set key-value pair |
+| `dict_get(d, key)` | Get value by key |
+| `dict_has(d, key)` | Check if key exists |
+| `dict_len(d)` | Get entry count |
+| `dict_free(d)` | Free dictionary memory |
+
+### Vector Functions
+
+| Function | Description |
+|----------|-------------|
+| `make_vec2(x, y)` | Create 2D vector |
+| `make_vec3(x, y, z)` | Create 3D vector |
+| `vec2_add(a, b)` | Add vectors |
+| `vec2_sub(a, b)` | Subtract vectors |
+| `vec2_length(v)` | Get magnitude |
+| `vec2_distance(a, b)` | Distance between points |
+| `normalize(v)` | Unit vector |
+
+---
+
+## CLI Commands
+
+The Cortex compiler is run from the command line:
+
+### Basic usage
+
+```bash
+# Compile a single file
+cortex -i program.cx -o program
+
+# Compile and run immediately
+cortex -i program.cx -run
+
+# Compile with optimization
+cortex -i program.cx -o program -O2
+```
+
+### Command-line options
+
+| Option | Description |
+|--------|-------------|
+| `-i <file>` | Input file(s) to compile |
+| `-o <name>` | Output executable name |
+| `-run` | Compile and run immediately |
+| `-O<level>` | Optimization level (0-3) |
+| `-config <file>` | Use config file for library paths |
+| `-use <lib>` | Link with a library |
+| `-features <list>` | Enable features (e.g., `gui,network`) |
+| `-verbose` | Show detailed output |
+| `-help` | Show help message |
+
+### Config files
+
+For complex projects, use a JSON config file:
+
+```json
+{
+  "include_paths": ["./include", "/usr/local/include"],
+  "library_paths": ["./lib", "/usr/local/lib"],
+  "libraries": ["raylib", "m"],
+  "features": ["gui", "network"]
+}
+```
+
+```bash
+cortex -i game.cx -config game.json -o game
+```
+
+### Multi-file projects
+
+```bash
+# Compile multiple files
+cortex -i main.cx utils.cx graphics.cx -o myapp
+
+# Or use a project structure with imports
+cortex -i main.cx -o myapp
+```
+
+---
+
 ## Quick reference
 
 | Topic           | Syntax / API |
 |----------------|--------------|
 | Entry point    | `void main() { }` |
 | Print line     | `println("text");` or `show("text");` |
-| Variables      | `int x = 5;` or `var x = 5;` |
+| Variables      | `int x = 5;`, `var x = 5;`, `any x = 5;` |
+| Const          | `const x = 10;` or `const int x = 10;` |
 | Conditionals   | `if (cond) { } else if (cond) { } else { }` |
 | Loops          | `for (int i=0; i<n; i++)`, `while (cond)`, `repeat (n)`, `for (x in arr)` |
 | Functions      | `int f(int a, int b) { return a+b; }` |
+| Multiple returns | `(int, int) f() { return (a, b); }` |
 | Struct         | `struct T { int x; }` then `T t; t.x = 1;` |
 | Struct method  | `void move(int dx) { x = x + dx; }` → `t.move(5);` |
 | Enum           | `enum E { A, B }` then `int e = A;` |
@@ -605,12 +1221,18 @@ Use it for cleanup (e.g. closing files, freeing resources).
 | Dict literal   | `dict d = { "k": v };` |
 | Dictionary     | `dict_create`, `dict_set`, `dict_get`, `dict_has`, `dict_free` |
 | Result         | `result_ok(val)`, `result_err("msg")`, `result_is_ok(r)`, `result_value(r)` |
+| Match          | `match (val) { case int n: ... case string s: ... default: ... }` |
 | Match result   | `match (r) { case Ok(v): ... case Err(e): ... }` |
+| Defer          | `defer { cleanup_code(); }` |
+| Coroutine      | `coroutine void f() { co_yield(); }` |
+| Async API      | `async_create(fn, arg)`, `async_resume(co)`, `async_await(co)` |
 | Vectors        | `make_vec2(x,y)`, `vec2_add`, `vec2_length`, `normalize` |
 | Random         | `random_int(min,max)`, `random_float(min,max)` |
 | Time           | `get_time()`, `sleep(sec)`, `wait(sec)` |
 | Tests          | `test "name" { assert_eq(a,b); }` then `test_run_all();` |
+| Extern         | `extern int c_func(int a);` |
 | C library      | `#include <lib.h>` and build with `-use lib` or config |
+| Raw C          | `@c int x = 0;` |
 
 ---
 
