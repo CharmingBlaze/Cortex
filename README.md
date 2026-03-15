@@ -6,6 +6,64 @@
 
 ---
 
+## Quick Start
+
+**Get running in 2 minutes — no Go required!**
+
+### 1. Download
+
+Grab the latest release for your platform:
+
+| Platform | Download |
+|----------|----------|
+| **Windows** | [cortex-windows-amd64.zip](https://github.com/CharmingBlaze/Cortex/releases/latest) |
+| **Linux** | [cortex-linux-amd64.tar.gz](https://github.com/CharmingBlaze/Cortex/releases/latest) |
+| **macOS (Intel)** | [cortex-darwin-amd64.tar.gz](https://github.com/CharmingBlaze/Cortex/releases/latest) |
+| **macOS (M1/M2)** | [cortex-darwin-arm64.tar.gz](https://github.com/CharmingBlaze/Cortex/releases/latest) |
+
+### 2. Install
+
+**Windows:**
+```powershell
+# Extract the zip, then run:
+install.bat
+# Restart your terminal
+```
+
+**Linux/macOS:**
+```bash
+tar -xzf cortex-*.tar.gz
+export PATH="$PWD/cortex-*/bin:$PATH"
+# Add to ~/.bashrc or ~/.zshrc for persistence
+```
+
+### 3. Run
+
+```bash
+# Create your first program
+echo 'void main() { println("Hello, Cortex!"); }' > hello.cx
+
+# Run it
+cortex run hello.cx
+# Output: Hello, Cortex!
+```
+
+**That's it!** You're now running Cortex. No Go installation needed — the binary is standalone.
+
+---
+
+## Requirements
+
+The only thing you need is a **C compiler**:
+
+| Platform | Install |
+|----------|---------|
+| **Windows** | TCC (bundled) or [MinGW](https://www.mingw-w64.org/) |
+| **Linux** | `sudo apt install gcc` (usually pre-installed) |
+| **macOS** | `xcode-select --install` |
+
+---
+
 ## Documentation
 
 | Guide | Description |
@@ -198,86 +256,6 @@ int calculate(int a, int b) {
 | `cortex bind <lib> -i <header.h>` | Generate Cortex bindings from C header |
 | `cortex -i file.cx -run` | Legacy: compile and run single file |
 | `cortex -i file.cx -o output -use raylib` | Legacy: compile with library |
-
----
-
-## Installation
-
-### Download Release
-
-Download the latest release for your platform:
-
-| Platform | Download |
-|----------|----------|
-| Windows (x64) | `cortex-x.x.x-windows-amd64.zip` |
-| Windows (x86) | `cortex-x.x.x-windows-386.zip` |
-| Linux (x64) | `cortex-x.x.x-linux-amd64.tar.gz` |
-| Linux (ARM64) | `cortex-x.x.x-linux-arm64.tar.gz` |
-| macOS (Intel) | `cortex-x.x.x-darwin-amd64.tar.gz` |
-| macOS (Apple Silicon) | `cortex-x.x.x-darwin-arm64.tar.gz` |
-
-### Windows Installation
-
-1. Download and extract the zip
-2. Run `install.bat` (adds Cortex to PATH)
-3. Restart your terminal
-4. Run `cortex --help`
-
-### Linux/macOS Installation
-
-```bash
-# Extract
-tar -xzf cortex-*.tar.gz
-
-# Add to PATH (add to ~/.bashrc or ~/.zshrc for persistence)
-export PATH="$PWD/cortex-*/bin:$PATH"
-
-# Verify
-cortex --help
-```
-
-### Requirements
-
-Cortex requires a C compiler:
-
-- **Windows**: TCC (bundled with full release) or MinGW/GCC
-- **Linux**: GCC (usually pre-installed)
-- **macOS**: Xcode Command Line Tools (`xcode-select --install`)
-
-### Build from Source
-
-```bash
-git clone https://github.com/CharmingBlaze/Cortex.git
-cd Cortex
-go build -o cortex ./cmd/cortex
-```
-
----
-
-## Creating Releases
-
-### Automated (GitHub Actions)
-
-Push a tag to trigger automatic release builds:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-Or use the GitHub Actions "Build Release" workflow with a version input.
-
-### Manual Build
-
-**Windows:**
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/build_windows_release.ps1 -Version "0.1.0"
-```
-
-**Cross-platform:**
-```bash
-bash scripts/build_release.sh 0.1.0
-```
 
 ---
 
@@ -643,14 +621,46 @@ Enable only what you need. Smaller binaries, faster compilation.
 
 ## Build from Source
 
+**Only needed if you want to contribute to Cortex itself.** Users don't need Go — just download a release.
+
 ```bash
-# Requirements: Go 1.21+, GCC or TCC
+# Requirements: Go 1.21+
 git clone https://github.com/CharmingBlaze/Cortex.git
 cd Cortex
-go build -o cortex.exe ./cmd/cortex
+go build -o cortex ./cmd/cortex
 
 # Test it works
-./cortex -i examples/hello.cx -run
+./cortex run examples/hello.cx
+```
+
+---
+
+## Creating Releases
+
+### Automated (GitHub Actions)
+
+Push a tag to trigger automatic cross-platform builds:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+This builds for all platforms:
+- Windows (x64, x86)
+- Linux (x64, ARM64)
+- macOS (Intel, Apple Silicon)
+
+### Manual Build
+
+**Windows:**
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build_windows_release.ps1 -Version "0.1.0"
+```
+
+**Linux/macOS:**
+```bash
+bash scripts/build_release.sh 0.1.0
 ```
 
 ---
