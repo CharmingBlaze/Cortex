@@ -1,0 +1,195 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 0.1.0)'
+        required: true
+        default: '0.1.0'
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          # Windows
+          - os: windows
+            arch: amd64
+            runner: windows-latest
+            extension: .exe
+          - os: windows
+            arch: 386
+            runner: windows-latest
+            extension: .exe
+          # Linux
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+            extension: ''
+          - os: linux
+            arch: arm64
+            runner: ubuntu-latest
+            extension: ''
+          # macOS
+          - os: darwin
+            arch: amd64
+            runner: macos-latest
+            extension: ''
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+            extension: ''
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build
+        shell: bash
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p build
+          go build -ldflags="-s -w -X main.Version=${{ steps.version.outputs.VERSION }}" -o build/cortex${{ matrix.extension }} ./cmd/cortex
+
+      - name: Create package
+        shell: bash
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          OS=${{ matrix.os }}
+          ARCH=${{ matrix.arch }}
+          EXT=${{ matrix.extension }}
+          PKG_DIR="cortex-${VERSION}-${OS}-${ARCH}"
+          
+          mkdir -p ${PKG_DIR}/bin
+          mkdir -p ${PKG_DIR}/runtime
+          mkdir -p ${PKG_DIR}/examples
+          mkdir -p ${PKG_DIR}/docs
+          
+          # Copy binary
+          cp build/cortex${EXT} ${PKG_DIR}/bin/
+          
+          # Copy runtime
+          cp -r runtime/*.c ${PKG_DIR}/runtime/ 2>/dev/null || true
+          cp -r runtime/*.h ${PKG_DIR}/runtime/ 2>/dev/null || true
+          
+          # Copy examples
+          cp -r examples/* ${PKG_DIR}/examples/ 2>/dev/null || true
+          
+          # Copy docs
+          cp README.md ${PKG_DIR}/
+          cp LANGUAGE_SPEC.md ${PKG_DIR}/docs/
+          cp LANGUAGE_GUIDE.md ${PKG_DIR}/docs/
+          cp LICENSE ${PKG_DIR}/
+          
+          # Create archive
+          if [ "${OS}" = "windows" ]; then
+            7z a -tzip "cortex-${VERSION}-${OS}-${ARCH}.zip" ${PKG_DIR}
+          else
+            tar -czvf "cortex-${VERSION}-${OS}-${ARCH}.tar.gz" ${PKG_DIR}
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cortex-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            cortex-*.zip
+            cortex-*.tar.gz
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -la artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: Cortex v${{ steps.version.outputs.VERSION }}
+          body: |
+            ## Cortex v${{ steps.version.outputs.VERSION }}
+            
+            ### Downloads
+            
+            | Platform | Architecture | Download |
+            |----------|--------------|----------|
+            | Windows | x64 | `cortex-${{ steps.version.outputs.VERSION }}-windows-amd64.zip` |
+            | Windows | x86 | `cortex-${{ steps.version.outputs.VERSION }}-windows-386.zip` |
+            | Linux | x64 | `cortex-${{ steps.version.outputs.VERSION }}-linux-amd64.tar.gz` |
+            | Linux | ARM64 | `cortex-${{ steps.version.outputs.VERSION }}-linux-arm64.tar.gz` |
+            | macOS | Intel | `cortex-${{ steps.version.outputs.VERSION }}-darwin-amd64.tar.gz` |
+            | macOS | Apple Silicon | `cortex-${{ steps.version.outputs.VERSION }}-darwin-arm64.tar.gz` |
+            
+            ### Installation
+            
+            **Windows:**
+            1. Download and extract the zip
+            2. Add the `bin` folder to your PATH
+            3. Run `cortex --help`
+            
+            **Linux/macOS:**
+            ```bash
+            tar -xzf cortex-*.tar.gz
+            export PATH="$PWD/cortex-*/bin:$PATH"
+            cortex --help
+            ```
+            
+            ### Requirements
+            - A C compiler (GCC, Clang, or TCC)
+            - Windows: MinGW or TCC
+            - Linux: GCC (usually pre-installed)
+            - macOS: Xcode Command Line Tools
+            
+            ### What's New
+            See [CHANGELOG.md](CHANGELOG.md) for changes.
+          files: |
+            artifacts/**/*
+          draft: false
+          prerelease: false

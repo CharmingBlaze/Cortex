@@ -188,6 +188,86 @@ int calculate(int a, int b) {
 
 ---
 
+## Installation
+
+### Download Release
+
+Download the latest release for your platform:
+
+| Platform | Download |
+|----------|----------|
+| Windows (x64) | `cortex-x.x.x-windows-amd64.zip` |
+| Windows (x86) | `cortex-x.x.x-windows-386.zip` |
+| Linux (x64) | `cortex-x.x.x-linux-amd64.tar.gz` |
+| Linux (ARM64) | `cortex-x.x.x-linux-arm64.tar.gz` |
+| macOS (Intel) | `cortex-x.x.x-darwin-amd64.tar.gz` |
+| macOS (Apple Silicon) | `cortex-x.x.x-darwin-arm64.tar.gz` |
+
+### Windows Installation
+
+1. Download and extract the zip
+2. Run `install.bat` (adds Cortex to PATH)
+3. Restart your terminal
+4. Run `cortex --help`
+
+### Linux/macOS Installation
+
+```bash
+# Extract
+tar -xzf cortex-*.tar.gz
+
+# Add to PATH (add to ~/.bashrc or ~/.zshrc for persistence)
+export PATH="$PWD/cortex-*/bin:$PATH"
+
+# Verify
+cortex --help
+```
+
+### Requirements
+
+Cortex requires a C compiler:
+
+- **Windows**: TCC (bundled with full release) or MinGW/GCC
+- **Linux**: GCC (usually pre-installed)
+- **macOS**: Xcode Command Line Tools (`xcode-select --install`)
+
+### Build from Source
+
+```bash
+git clone https://github.com/CharmingBlaze/Cortex.git
+cd Cortex
+go build -o cortex ./cmd/cortex
+```
+
+---
+
+## Creating Releases
+
+### Automated (GitHub Actions)
+
+Push a tag to trigger automatic release builds:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Or use the GitHub Actions "Build Release" workflow with a version input.
+
+### Manual Build
+
+**Windows:**
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build_windows_release.ps1 -Version "0.1.0"
+```
+
+**Cross-platform:**
+```bash
+bash scripts/build_release.sh 0.1.0
+```
+
+---
+
 ## What You Get
 
 ### Modern Syntax, C Performance
