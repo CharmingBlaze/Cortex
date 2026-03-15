@@ -297,6 +297,10 @@ func usesAsyncBuiltins(node ast.ASTNode) bool {
 		}
 		return false
 	case *ast.FunctionDeclNode:
+		// Coroutine functions need async runtime
+		if n.IsCoroutine {
+			return true
+		}
 		if n.Body != nil {
 			return usesAsyncBuiltins(n.Body)
 		}
@@ -313,6 +317,9 @@ func usesAsyncBuiltins(node ast.ASTNode) bool {
 			return asyncBuiltins[id.Name]
 		}
 		return false
+	case *ast.YieldStmtNode:
+		// Yield statements need async runtime
+		return true
 	case *ast.IfStmtNode:
 		return usesAsyncBuiltins(n.Condition) || (n.ThenBranch != nil && usesAsyncBuiltins(n.ThenBranch)) || (n.ElseBranch != nil && usesAsyncBuiltins(n.ElseBranch))
 	case *ast.WhileStmtNode:

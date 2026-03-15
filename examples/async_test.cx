@@ -1,0 +1,32 @@
+// Test async API - scheduler with multiple coroutines
+
+coroutine void task_a() {
+    show("Task A: step 1");
+    co_yield();
+    show("Task A: step 2");
+    co_yield();
+    show("Task A: done!");
+}
+
+coroutine void task_b() {
+    show("Task B: step 1");
+    co_yield();
+    show("Task B: step 2");
+    co_yield();
+    show("Task B: step 3");
+    co_yield();
+    show("Task B: done!");
+}
+
+void main() {
+    show("=== Async Scheduler Test ===");
+    
+    // Create multiple coroutines using the async API
+    int t1 = async_create(task_a, null);
+    int t2 = async_create(task_b, null);
+    
+    show("Running all tasks...");
+    async_run_all();
+    
+    show("=== All tasks complete ===");
+}

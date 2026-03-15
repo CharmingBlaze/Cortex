@@ -154,6 +154,22 @@ func (p *Parser) ParseDeclaration() (ast.ASTNode, error) {
 		return p.ParseExternDeclaration()
 	}
 
+	// Handle coroutine functions: coroutine returnType name(params) { body }
+	if p.Match(TokenCoroutine) {
+		returnType := p.ConsumeType("Expected return type after 'coroutine'")
+		for p.Match(TokenMultiply) {
+			returnType.Value += "*"
+		}
+		nameToken := p.Consume(TokenIdentifier, "Expected function name after return type")
+		// Parse as normal function but mark as coroutine
+		fn, err := p.ParseFunctionDeclaration(returnType, nameToken)
+		if err != nil {
+			return nil, err
+		}
+		fn.(*ast.FunctionDeclNode).IsCoroutine = true
+		return fn, nil
+	}
+
 	if p.Match(TokenStruct) {
 		return p.ParseStructDeclaration()
 	}

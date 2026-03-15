@@ -1,0 +1,18 @@
+// Test coroutine functionality
+
+coroutine void test_coroutine() {
+    show("Coroutine: step 1");
+    co_yield();
+    show("Coroutine: step 2");
+    co_yield();
+    show("Coroutine: step 3");
+}
+
+void main() {
+    show("Starting coroutine test...");
+    
+    // Test basic coroutine
+    test_coroutine();
+    
+    show("Coroutine test complete!");
+}

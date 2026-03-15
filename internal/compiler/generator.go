@@ -424,19 +424,70 @@ func (g *CodeGenerator) VisitFunctionDecl(node *ast.FunctionDeclNode) {
 	}
 	g.functionParams[node.Name] = node.Parameters
 
-	// For coroutines, we might need to adjust the function signature or add state management in the future
-	if node.IsCoroutine {
-		g.Write("// Coroutine function\n")
-	}
-	// For async functions, we might need to adjust the function signature or return type in the future
-	if node.IsAsync {
-		g.Write("// Async function\n")
-	}
 	// Use module-prefixed name for functions from modules
 	funcName := node.Name
 	if node.Module != "" {
 		funcName = node.Module + "__" + node.Name
 	}
+
+	// Coroutine functions need special handling - use stackful coroutines from async.c
+	if node.IsCoroutine {
+		// Generate a struct to hold coroutine arguments
+		frameFields := make([]string, len(node.Parameters))
+		for i, p := range node.Parameters {
+			frameFields[i] = fmt.Sprintf("%s %s", g.ConvertType(p.Type), p.Name)
+		}
+		frameDef := strings.Join(frameFields, "; ")
+		if len(frameFields) > 0 {
+			frameDef = frameDef + ";"
+		}
+		g.Write(fmt.Sprintf("typedef struct { %s } %s_frame;\n\n", frameDef, funcName))
+
+		// Generate the coroutine entry function (called by co_create)
+		g.Write(fmt.Sprintf("static void %s_entry(void* _arg) {\n", funcName))
+		g.Indent()
+		g.Write(fmt.Sprintf("%s_frame* _f = (%s_frame*)_arg;\n", funcName, funcName))
+		// Copy parameters to local variables (on coroutine's stack, preserved across yields)
+		for _, p := range node.Parameters {
+			cType := g.ConvertType(p.Type)
+			g.Write(fmt.Sprintf("%s %s = _f->%s;\n", cType, p.Name, p.Name))
+		}
+		// Generate body with proper semicolons
+		for _, stmt := range node.Body.Statements {
+			g.VisitNode(stmt)
+			// Add semicolon if the statement doesn't already have one
+			if !g.omitTrailingSemicolon {
+				g.Write(";")
+			}
+			g.Write("\n")
+		}
+		g.Dedent()
+		g.Write("}\n\n")
+
+		// Generate the wrapper function that users call
+		g.Write(fmt.Sprintf("%s %s(%s) {\n", cRet, funcName, paramStr))
+		g.Indent()
+		g.Write(fmt.Sprintf("%s_frame* _frame = malloc(sizeof(%s_frame));\n", funcName, funcName))
+		for _, p := range node.Parameters {
+			g.Write(fmt.Sprintf("_frame->%s = %s;\n", p.Name, p.Name))
+		}
+		g.Write(fmt.Sprintf("co_t _co = co_create(%s_entry, _frame, 0);\n", funcName))
+		g.Write("while (!co_finished(_co)) { co_resume(_co); }\n") // Run until complete
+		g.Write("co_free(_co);\n")
+		g.Write("free(_frame);\n")
+		if cRet != "void" {
+			g.Write("return 0;\n")
+		}
+		g.Dedent()
+		g.Write("}\n")
+		return
+	}
+
+	// For async functions, we might need to adjust the function signature or return type in the future
+	if node.IsAsync {
+		g.Write("// Async function\n")
+	}
+
 	g.Write(cRet + " " + funcName + "(" + paramStr + ") ")
 	g.VisitBlock(node.Body)
 	g.Write("\n")
@@ -1868,19 +1919,15 @@ func (g *CodeGenerator) ConvertType(cortexType string) string {
 }
 
 func (g *CodeGenerator) VisitYieldStmt(node *ast.YieldStmtNode) {
-	// For now, yield is a placeholder; actual implementation requires runtime support for coroutines
-	g.Write("// Yield statement (placeholder)")
-	if node.Value != nil {
-		g.Write("// Yielding value: ")
-		g.VisitNode(node.Value)
-		g.Write(";")
-	}
+	// Yield pauses the coroutine and returns control to the caller
+	g.Write("co_yield();")
 }
 
 func (g *CodeGenerator) VisitAwaitExpr(node *ast.AwaitExprNode) {
-	// For now, await is a placeholder; actual implementation requires runtime support for async operations
-	g.Write("// Await expression (placeholder)")
+	// await expr -> async_await(expr)
+	g.Write("async_await(")
 	g.VisitNode(node.Expr)
+	g.Write(")")
 }
 
 func (g *CodeGenerator) Write(text string) {
