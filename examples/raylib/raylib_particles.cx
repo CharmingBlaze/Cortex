@@ -32,15 +32,18 @@ void main() {
         emitter_y = GetMouseY();
         
         // Spawn particles when mouse pressed (MOUSE_LEFT_BUTTON = 0)
-        if (IsMouseButtonDown(0) && particle_count < 200) {
+        if (IsMouseButtonDown(0) == 1 && particle_count < 200) {
             px[particle_count] = emitter_x;
             py[particle_count] = emitter_y;
             // Random velocity using standard C
-            float angle = (float)(rand() % 360) * 0.01745329;
-            float speed = 2.0 + (float)(rand() % 40) / 10.0;
+            int rand_angle = rand() % 360;
+            float angle = (float)rand_angle * 0.01745329;
+            int rand_val = rand() % 40;
+            float speed = (float)(20 + rand_val) / 10.0;
             pvx[particle_count] = cos(angle) * speed;
             pvy[particle_count] = sin(angle) * speed - 2.0;
-            plife[particle_count] = 60.0 + (float)(rand() % 40);
+            int life_rand = rand() % 40;
+            plife[particle_count] = (float)(60 + life_rand);
             particle_count = particle_count + 1;
         }
         
@@ -79,11 +82,13 @@ void main() {
         while (i < particle_count) {
             float life_ratio = plife[i] / 100.0;
             Color c;
-            c.r = (int)(255 * life_ratio);
-            c.g = (int)(200 * life_ratio);
+            c.r = (int)(255.0 * life_ratio);
+            c.g = (int)(200.0 * life_ratio);
             c.b = 50;
             c.a = 255;
-            DrawCircle((int)px[i], (int)py[i], 3 + (int)(life_ratio * 3), c);
+            int radius_add = (int)(life_ratio * 3.0);
+            int radius = 3 + radius_add;
+            DrawCircle((int)px[i], (int)py[i], radius, c);
             i = i + 1;
         }
         
