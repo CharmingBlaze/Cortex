@@ -218,14 +218,14 @@ struct Player {
     int score;
     
     void take_damage(int amount) {
-        self->health -= amount;
-        if (self->health < 0) {
-            self->health = 0;
+        health -= amount;  // Implicit self, dot syntax
+        if (health < 0) {
+            health = 0;
         }
     }
     
     bool is_alive() {
-        return self->health > 0;
+        return health > 0;
     }
 }
 
@@ -246,15 +246,12 @@ enum Color {
 }
 
 void main() {
-    var c = Color::Red;
+    var c = Red;  // No Color:: prefix needed
     
-    switch (c) {
-        case Color::Red:
-            println("It's red!");
-        case Color::Green:
-            println("It's green!");
-        case Color::Blue:
-            println("It's blue!");
+    match (c) {
+        Red => println("It's red!"),
+        Green => println("It's green!"),
+        Blue => println("It's blue!"),
     }
 }
 ```
@@ -279,7 +276,7 @@ void process_file(string path) {
 void fetch_data(void* arg) {
     println("Fetching...");
     for (int i = 0; i < 3; i++) {
-        co_yield();  // Pause, let other code run
+        yield;  // Pause, let other code run
     }
     println("Done!");
 }
@@ -303,8 +300,8 @@ Perfect for game loops, animations, and state machines:
 ```c
 coroutine void animate_player(Player* p) {
     for (int i = 0; i < 10; i++) {
-        p->x += 5;
-        co_yield();  // Pause, resume next frame
+        p.x += 5;  // Dot syntax everywhere
+        yield;     // Simplified yield (no parens needed)
     }
 }
 ```

@@ -99,6 +99,7 @@ const (
 	TokenGreaterEqual
 	TokenAnd
 	TokenOr
+	TokenPipe
 	TokenNot
 	TokenIncrement
 	TokenDecrement
@@ -115,7 +116,9 @@ const (
 	TokenComma
 	TokenDot
 	TokenColon
+	TokenQuestion
 	TokenArrow
+	TokenFatArrow
 
 	// Special
 	TokenComment
@@ -257,6 +260,10 @@ func (l *Lexer) Tokenize(input string) ([]Token, error) {
 				l.position++
 				value = "->"
 				tokenType = TokenArrow
+			} else if char == '=' && l.PeekChar() == '>' {
+				l.position++
+				value = "=>"
+				tokenType = TokenFatArrow
 			} else if char == '&' && l.PeekChar() == '&' {
 				l.position++
 				value = "&&"
@@ -265,6 +272,9 @@ func (l *Lexer) Tokenize(input string) ([]Token, error) {
 				l.position++
 				value = "||"
 				tokenType = TokenOr
+			} else if char == '|' {
+				// Single | for union types
+				tokenType = TokenPipe
 			}
 
 			tokens = append(tokens, Token{Type: tokenType, Value: value, Line: l.line, Column: l.column})
@@ -560,6 +570,7 @@ func (l *Lexer) GetOperatorType(char byte) TokenType {
 		',': TokenComma,
 		'.': TokenDot,
 		':': TokenColon,
+		'?': TokenQuestion,
 	}
 
 	if tokenType, exists := operators[char]; exists {

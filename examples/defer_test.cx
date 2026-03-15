@@ -1,0 +1,13 @@
+// Test Go-style defer syntax
+
+void my_print(string msg) {
+    println(msg);
+}
+
+void main() {
+    // New Go-style defer - simple expression
+    defer println("Deferred 1");
+    defer my_print("Deferred 2");
+    
+    println("Main code");
+}

@@ -512,9 +512,22 @@ func (p *Parser) ParseEnumDeclaration() (ast.ASTNode, error) {
 	p.Consume(TokenLBrace, "Expected '{' after enum name")
 
 	var values []string
+	stringValues := make(map[string]string)
+
 	for !p.Check(TokenRBrace) && !p.IsAtEnd() {
 		valueToken := p.Consume(TokenIdentifier, "Expected enum value")
 		values = append(values, valueToken.Value)
+
+		// Check for explicit value: = "string" or = number
+		if p.Match(TokenAssign) {
+			if p.Check(TokenString) {
+				// String enum: Red = "red"
+				strTok := p.Advance()
+				stringValues[valueToken.Value] = strTok.Value
+			}
+			// For numeric values, we could parse them but for now just skip
+			// as auto-increment is the default
+		}
 
 		if !p.Check(TokenRBrace) {
 			p.Consume(TokenComma, "Expected ',' after enum value")
@@ -524,10 +537,11 @@ func (p *Parser) ParseEnumDeclaration() (ast.ASTNode, error) {
 	p.Consume(TokenRBrace, "Expected '}' after enum values")
 
 	return &ast.EnumDeclNode{
-		BaseNode: ast.BaseNode{Type: ast.NodeEnumDecl, Line: nameToken.Line, Column: nameToken.Column},
-		Name:     nameToken.Value,
-		Module:   p.currentModule,
-		Values:   values,
+		BaseNode:     ast.BaseNode{Type: ast.NodeEnumDecl, Line: nameToken.Line, Column: nameToken.Column},
+		Name:         nameToken.Value,
+		Module:       p.currentModule,
+		Values:       values,
+		StringValues: stringValues,
 	}, nil
 }
 
@@ -1122,13 +1136,39 @@ func (p *Parser) ParseForStatement() (ast.ASTNode, error) {
 }
 
 func (p *Parser) ParseDeferStatement() (ast.ASTNode, error) {
-	body, err := p.ParseBlock()
+	// Check if next is a block { ... } or a single statement
+	if p.Check(TokenLBrace) {
+		// Original syntax: defer { ... }
+		body, err := p.ParseBlock()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.DeferStmtNode{
+			BaseNode: ast.BaseNode{Type: ast.NodeDeferStmt, Line: p.Previous().Line, Column: p.Previous().Column},
+			Body:     body.(*ast.BlockNode),
+		}, nil
+	}
+
+	// Go-style syntax: defer expression;
+	// Parse a single expression and wrap it in a block
+	startTok := p.Previous()
+	expr, err := p.ParseExpression()
 	if err != nil {
 		return nil, err
 	}
+
+	// Consume the semicolon
+	p.Consume(TokenSemicolon, "Expected ';' after defer expression")
+
+	// Wrap the expression in a block - the expression will be emitted as a statement
+	body := &ast.BlockNode{
+		BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: startTok.Line, Column: startTok.Column},
+		Statements: []ast.ASTNode{expr},
+	}
+
 	return &ast.DeferStmtNode{
-		BaseNode: ast.BaseNode{Type: ast.NodeDeferStmt, Line: p.Previous().Line, Column: p.Previous().Column},
-		Body:     body.(*ast.BlockNode),
+		BaseNode: ast.BaseNode{Type: ast.NodeDeferStmt, Line: startTok.Line, Column: startTok.Column},
+		Body:     body,
 	}, nil
 }
 
@@ -1272,24 +1312,54 @@ func (p *Parser) ParseSpawnStatement() (ast.ASTNode, error) {
 		p.Consume(TokenAssign, "Expected '=' after spawn variable")
 	}
 
-	// Parse the function call
-	expr, err := p.ParseExpression()
-	if err != nil {
-		return nil, err
-	}
+	// Parse the function call (or just function name for no-arg functions)
+	var funcExpr ast.ASTNode
+	var args []ast.ASTNode
 
-	// Should be a call expression
-	call, ok := expr.(*ast.CallExprNode)
-	if !ok {
-		return nil, fmt.Errorf("line %d: expected function call after 'spawn'", line)
+	// Get function name
+	if p.Check(TokenIdentifier) {
+		funcName := p.Advance()
+		funcExpr = &ast.IdentifierNode{
+			BaseNode: ast.BaseNode{Type: ast.NodeIdentifier, Line: funcName.Line, Column: funcName.Column},
+			Name:     funcName.Value,
+		}
+
+		// Check for arguments - if no parens, call with no args
+		if p.Check(TokenLParen) {
+			p.Advance() // consume '('
+			for !p.Check(TokenRParen) && !p.IsAtEnd() {
+				arg, err := p.ParseExpression()
+				if err != nil {
+					return nil, err
+				}
+				args = append(args, arg)
+				if !p.Check(TokenRParen) {
+					p.Consume(TokenComma, "Expected ',' after argument")
+				}
+			}
+			p.Consume(TokenRParen, "Expected ')' after arguments")
+		}
+		// No parens = no arguments (simpler syntax)
+	} else {
+		// Parse as full expression
+		expr, err := p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		call, ok := expr.(*ast.CallExprNode)
+		if !ok {
+			return nil, fmt.Errorf("line %d: expected function call after 'spawn'", line)
+		}
+		funcExpr = call.Function
+		args = call.Args
 	}
 
 	p.Consume(TokenSemicolon, "Expected ';' after spawn statement")
 
 	return &ast.SpawnStmtNode{
 		BaseNode:  ast.BaseNode{Type: ast.NodeSpawnStmt, Line: line, Column: col},
-		Function:  call.Function,
-		Arguments: call.Args,
+		Function:  funcExpr,
+		Arguments: args,
 		ThreadVar: threadVar,
 	}, nil
 }
@@ -1881,6 +1951,83 @@ func (p *Parser) ParsePrimary() (ast.ASTNode, error) {
 	}
 
 	if p.Match(TokenLParen) {
+		// Check for arrow function: () => expr or (params) => expr
+		savedPos := p.position - 1 // position of the '('
+		isArrowFunc := false
+
+		// Look ahead to detect arrow function pattern
+		if p.Check(TokenRParen) {
+			// () => ... - empty params
+			p.Advance() // consume ')'
+			if p.Check(TokenFatArrow) {
+				isArrowFunc = true
+			} else {
+				// Not arrow func, restore to before '(' for expression parsing
+				p.position = savedPos
+			}
+		} else if p.Check(TokenIdentifier) {
+			// Check for (x, y) => pattern
+			paramNames := []string{}
+			for p.Check(TokenIdentifier) {
+				paramNames = append(paramNames, p.Peek().Value)
+				p.Advance()
+				if p.Check(TokenComma) {
+					p.Advance()
+				}
+			}
+			if p.Check(TokenRParen) {
+				p.Advance() // consume ')'
+				if p.Check(TokenFatArrow) {
+					isArrowFunc = true
+					// Create parameters from collected names
+					_ = paramNames // Will use these for typed params
+				} else {
+					// Not arrow func, restore position
+					p.position = savedPos
+				}
+			} else {
+				// Not arrow func, restore position
+				p.position = savedPos
+			}
+		} else {
+			// Not arrow func, restore position for expression parsing
+			p.position = savedPos
+		}
+
+		if isArrowFunc {
+			p.Advance() // consume '=>'
+
+			// Parse body - either single expression or block
+			var body *ast.BlockNode
+			if p.Check(TokenLBrace) {
+				bodyNode, err := p.ParseBlock()
+				if err != nil {
+					return nil, err
+				}
+				body = bodyNode.(*ast.BlockNode)
+			} else {
+				// Single expression body
+				exprBody, err := p.ParseExpression()
+				if err != nil {
+					return nil, err
+				}
+				body = &ast.BlockNode{
+					BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: exprBody.GetLine(), Column: exprBody.GetColumn()},
+					Statements: []ast.ASTNode{exprBody},
+				}
+			}
+
+			return &ast.LambdaNode{
+				BaseNode:   ast.BaseNode{Type: ast.NodeLambda, Line: p.Peek().Line, Column: p.Peek().Column},
+				Captures:   []string{},
+				Parameters: []*ast.ParameterNode{},
+				ReturnType: "",
+				Body:       body,
+			}, nil
+		}
+
+		// Regular parenthesized expression - re-consume the '('
+		p.Advance() // consume '(' again
 		expr, err := p.ParseExpression()
 		if err != nil {
 			return nil, err
@@ -1983,10 +2130,24 @@ func (p *Parser) ParseStructLiteral() (ast.ASTNode, error) {
 			return nil, fmt.Errorf("struct field name must be an identifier at line %d", p.Peek().Line)
 		}
 		nameTok := p.Advance()
-		p.Consume(TokenColon, "Expected ':' after struct field name")
-		val, err := p.ParseExpression()
-		if err != nil {
-			return nil, err
+
+		var val ast.ASTNode
+		var err error
+
+		// Check for shorthand: field name without colon means field: field (variable with same name)
+		if p.Check(TokenComma) || p.Check(TokenRBrace) {
+			// Shorthand: use identifier as both name and value
+			val = &ast.IdentifierNode{
+				BaseNode: ast.BaseNode{Type: ast.NodeIdentifier, Line: nameTok.Line, Column: nameTok.Column},
+				Name:     nameTok.Value,
+			}
+		} else {
+			// Regular: field: value
+			p.Consume(TokenColon, "Expected ':' after struct field name")
+			val, err = p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
 		}
 		fields = append(fields, ast.StructFieldInit{Name: nameTok.Value, Value: val})
 		if !p.Check(TokenRBrace) {
@@ -2072,11 +2233,38 @@ func (p *Parser) ConsumeType(errorMessage string) Token {
 	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
 	for _, tokenType := range typeTokens {
 		if p.Check(tokenType) {
-			return p.Advance()
+			tok := p.Advance()
+			// Check for optional type suffix: int? means optional int
+			if p.Check(TokenQuestion) {
+				p.Advance() // consume '?'
+				tok.Value = tok.Value + "?"
+			}
+			// Check for union type: int | float | string
+			for p.Check(TokenPipe) {
+				p.Advance() // consume '|'
+				tok.Value = tok.Value + " | "
+				// Get next type in union
+				nextTok := p.ConsumeType(errorMessage)
+				tok.Value = tok.Value + nextTok.Value
+			}
+			return tok
 		}
 	}
 
-	return p.Consume(TokenIdentifier, errorMessage)
+	tok := p.Consume(TokenIdentifier, errorMessage)
+	// Check for optional type suffix on identifier types (struct names)
+	if p.Check(TokenQuestion) {
+		p.Advance() // consume '?'
+		tok.Value = tok.Value + "?"
+	}
+	// Check for union type
+	for p.Check(TokenPipe) {
+		p.Advance() // consume '|'
+		tok.Value = tok.Value + " | "
+		nextTok := p.ConsumeType(errorMessage)
+		tok.Value = tok.Value + nextTok.Value
+	}
+	return tok
 }
 
 func (p *Parser) IsTypeToken(tokenType TokenType) bool {

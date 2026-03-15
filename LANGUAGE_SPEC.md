@@ -1,13 +1,49 @@
 # Cortex Language Specification
 
+## CORTEX LANGUAGE VISION
+
+### Overall Goal
+Cortex is designed to feel like the perfect blend of four worlds:
+
+**C — structure and performance**
+- Blocks, functions, types
+- Predictable execution
+- Low level control without the footguns
+
+**TypeScript — ergonomics and expressiveness**
+- Clean syntax
+- Implicit self
+- Optional types
+- Union types
+- Async/await
+
+**Go — simplicity and concurrency**
+- defer
+- channels
+- coroutines
+- simple thread spawning
+
+**Swift/Kotlin — readability and modern design**
+- Dot syntax
+- Constructors
+- Enums
+- Pattern matching
+
+This combination makes Cortex easy to learn, pleasant to write, and powerful enough for real systems programming.
+
+---
+
 ## Overview
-Cortex is a C-like programming language designed for game and application development. It maintains C syntax but removes pointers and adds modern features for easier development.
+Cortex is a modern systems programming language that combines C's performance with modern ergonomics. It removes pointers and manual memory management while adding TypeScript-style type features, Go-style concurrency, and Swift-style readability.
 
 ## Key Differences from C
-- **No pointers**: All memory management is automatic
-- **Built-in types**: Enhanced primitive types
-- **Game-friendly features**: Built-in support for common game operations
-- **Modern syntax**: Some quality-of-life improvements
+- **No pointers**: All memory management is automatic via managed handles
+- **Dot syntax everywhere**: Use `.` for all member access (no `->`)
+- **Modern type system**: Optional types (`int?`), union types (`int | float | string`)
+- **Implicit self**: No need to write `self.field` in struct methods
+- **Defer**: Go-style cleanup with `defer expr;`
+- **Async/await**: TypeScript-style async functions
+- **Channels**: Built-in concurrency with method syntax
 
 ## Types
 
@@ -24,9 +60,28 @@ Cortex is a C-like programming language designed for game and application develo
 ### Composite Types
 - `array[T]` - Dynamic array of type T
 - `struct` - User-defined structures
-- `enum` - Enumeration types
+- `enum` - Enumeration types (including string enums)
 - `var` - Smart dynamic variable with type inference
 - `any` - Universal type that can hold any value
+
+### Optional Types
+Optional types represent a value that may or may not exist:
+```c
+int? maybe_int;       // Either an int or null
+string? maybe_name;   // Either a string or null
+User? maybe_user;     // Either a User struct or null
+```
+
+### Union Types
+Union types allow a variable to hold one of several types:
+```c
+fn parse(string input) -> int | float | string;
+
+int | float | string result;
+result = 42;
+result = 3.14;
+result = "hello";
+```
 
 ## Control Structures
 
@@ -62,6 +117,11 @@ while (condition) {
 do {
     // code
 } while (condition);
+
+// Repeat loop (simple counted loop)
+repeat (10) {
+    // runs 10 times
+}
 ```
 
 ### Functions
@@ -76,492 +136,411 @@ int add(int a, int b) {
     return (10, 20);
 }
 
-// Lambda/anonymous function
-var multiply = [](int a, int b) -> int {
-    return a * b;
-};
+// Named and default parameters
+void greet(string name = "World", int count = 1) {
+    for (int i = 0; i < count; i++) {
+        println("Hello, " + name + "!");
+    }
+}
+
+greet();                    // Hello, World! (once)
+greet("Alice");             // Hello, Alice! (once)
+greet(count: 3);            // Hello, World! (3 times)
+greet("Bob", 2);            // Hello, Bob! (2 times)
 ```
 
-## Game-Specific Features
-
-### Built-in Functions
+### Arrow Functions
+Arrow functions provide concise syntax for callbacks and lambdas:
 ```c
-// Math functions
+// No parameters
+() => println("Clicked!")
+
+// Single expression body
+(x) => x * 2
+
+// Block body
+(x, y) => {
+    int sum = x + y;
+    return sum;
+}
+
+// Used as callbacks
+gui_button("Click", () => println("Clicked!"));
+```
+
+### Match Expressions
+Pattern matching for type-safe branching:
+```c
+match value {
+    int x => println("int: ${x}");
+    string s => println("string: ${s}");
+    _ => println("unknown");
+}
+
+// With guards
+match result {
+    case Ok(value) => println("Success: ${value}");
+    case Err(msg) => println("Error: ${msg}");
+}
+
+// On enums
+enum Color { Red, Green, Blue }
+
+match color {
+    Red => println("It's red!");
+    Green => println("It's green!");
+    Blue => println("It's blue!");
+}
+```
+
+## Structs
+
+### Struct Declaration
+```c
+struct Player {
+    string name;
+    int health;
+    int score;
+
+    // Method with implicit self
+    void damage(int amount) {
+        health -= amount;  // No self. needed
+        if (health < 0) {
+            health = 0;
+        }
+    }
+
+    int get_health() {
+        return health;  // Implicit self
+    }
+}
+```
+
+### Implicit Self
+Inside struct methods, `self` is implicitly available. Field access does not require `self.` unless needed for disambiguation:
+```c
+struct Counter {
+    int count;
+
+    void increment() {
+        count++;  // Same as self.count++
+    }
+
+    void set_count(int count) {
+        self.count = count;  // Disambiguation needed
+    }
+}
+```
+
+### Dot Syntax
+Use `.` for all member access - no `->` needed:
+```c
+Player p;
+p.name = "Hero";
+p.health = 100;
+p.damage(10);  // Method call
+```
+
+### Struct Constructors
+Every struct automatically gets two constructor styles:
+
+**Positional constructor:**
+```c
+let p = Player("Hero", 100, 0);
+```
+
+**Named field constructor:**
+```c
+let p = Player { name: "Hero", health: 100, score: 0 };
+```
+
+**Shorthand field syntax:**
+```c
+string name = "Hero";
+int health = 100;
+let p = Player { name, health };  // Same as { name: name, health: health }
+```
+
+## Enums
+
+### Simple Enums
+```c
+enum Color { Red, Green, Blue }
+
+int c = Red;  // No Color:: prefix needed
+
+switch (c) {
+    case Red: println("red"); break;
+    case Green: println("green"); break;
+    case Blue: println("blue"); break;
+}
+```
+
+### String Enums
+```c
+enum Status {
+    Ok = "ok",
+    Error = "error",
+    Pending = "pending"
+}
+
+Status s = Ok;
+println(s);  // prints "ok"
+```
+
+## Defer
+
+Go-style defer for guaranteed cleanup:
+```c
+// Single expression defer
+defer close_file(file);
+
+// Deferred expressions run in LIFO order
+void process() {
+    defer println("Cleanup 1");
+    defer println("Cleanup 2");
+    println("Processing");
+}
+// Output: Processing, Cleanup 2, Cleanup 1
+```
+
+## Async/Await
+
+TypeScript-style async functions:
+```c
+async fn fetch() {
+    println("Fetching...");
+    await sleep(1000);
+    println("Done!");
+}
+
+fn main() {
+    await fetch();
+}
+```
+
+## Coroutines
+
+Coroutines with simplified yield:
+```c
+coroutine generator() {
+    int i = 0;
+    while (i < 10) {
+        yield;  // No co_yield() needed
+        i++;
+    }
+}
+```
+
+## Thread Spawning
+
+Simple thread spawning without null arguments:
+```c
+// Old style (deprecated)
+spawn heavy_computation(null);
+
+// New style
+let t = spawn heavy_computation();
+await t;
+
+// With assignment
+spawn worker(ch);
+```
+
+## Channels
+
+Channels with method syntax:
+```c
+let ch = channel<int>(10);
+
+// Send
+ch.send(42);
+
+// Receive
+let value = ch.recv();
+
+// In a spawn
+spawn producer(ch);
+spawn consumer(ch);
+```
+
+## Cleanup Annotations
+
+Automatic memory safety for C interop:
+```c
+extern void* malloc(int size) cleanup(free);
+extern void free(void* ptr);
+
+extern Texture* load_texture(string path) cleanup(destroy_texture);
+extern void destroy_texture(Texture* t);
+
+fn main() {
+    let buf = malloc(1024);  // Auto-cleaned on scope exit
+    let tex = load_texture("hero.png");  // Auto-cleaned
+}  // free(buf) and destroy_texture(tex) called automatically
+```
+
+## C Interop
+
+Cortex works seamlessly with C libraries:
+
+### Including C Headers
+```c
+#include <stdio.h>
+#include <math.h>
+#pragma link("m")
+```
+
+### External Function Declarations
+```c
+extern int printf(string fmt, ...);
+extern double sqrt(double x);
+```
+
+### Managed C Handles
+When a C function returns a pointer, Cortex wraps it in a managed handle that automatically frees itself:
+```c
+extern void* malloc(int size) cleanup(free);
+
+fn main() {
+    let buf = malloc(1024);  // Managed handle
+    // No manual free needed - automatic cleanup
+}
+```
+
+### Borrowed Pointers
+If a C function returns a pointer that should not be freed, omit the cleanup annotation:
+```c
+extern const char* getenv(string name);  // Borrowed, not freed
+```
+
+### Callbacks
+Cortex functions can be passed to C as callbacks:
+```c
+extern void register_callback(fn(int) cb);
+
+fn on_event(int code) {
+    println("Event: ${code}");
+}
+
+register_callback(on_event);
+```
+
+## Built-in Functions
+
+### Math Functions
+```c
 float sqrt(float x);
 float sin(float x);
 float cos(float x);
 float abs(float x);
+```
 
-// Vector operations
+### Vector Operations
+```c
 vec2 make_vec2(float x, float y);
 vec3 make_vec3(float x, float y, float z);
 float dot(vec2 a, vec2 b);
 vec2 normalize(vec2 v);
+```
 
-// Random numbers
+### Random Numbers
+```c
 int random_int(int min, int max);
 float random_float(float min, float max);
+```
 
-// Time
+### Time
+```c
 float get_time();
 void sleep(float seconds);
 ```
 
 ### Input/Output
 ```c
-// Console I/O
 void print(string message);
 void println(string message);
 string input();
-
-// File I/O
 string read_file(string path);
 void write_file(string path, string content);
 ```
 
-### Smart Dynamic Variables
+### Type Functions
+```c
+string type_of(any value);
+bool is_type(any value, string type_name);
+int as_int(any value);
+float as_float(any value);
+string as_string(any value);
+bool as_bool(any value);
+```
 
-SimpleC supports smart dynamic variables with automatic type inference:
+## Smart Dynamic Variables
 
 ### Type Inference with `var`
 ```c
-// Type is automatically inferred from the initializer
 var x = 42;           // x becomes int
 var y = 3.14;         // y becomes float
 var name = "Hello";   // name becomes string
 var flag = true;      // flag becomes bool
 var pos = make_vec2(1.0, 2.0); // pos becomes vec2
-
-// Variables can change type (dynamic behavior)
-var dynamic = 10;     // Initially int
-dynamic = "now string"; // Now string
-dynamic = 3.14;       // Now float
 ```
 
-### Universal Type `any`
-```c
-// Explicitly declare variables that can hold any type
-any value = 42;
-value = "hello";
-value = make_vec2(1.0, 2.0);
-
-// Type checking
-if (is_type(value, "int")) {
-    println("Value is an integer: " + as_int(value));
-} else if (is_type(value, "string")) {
-    println("Value is a string: " + as_string(value));
-}
-```
-
-### Smart Variable Features
-```c
-// Auto-initialization
-var counter;          // Automatically initialized to 0 for numbers, false for bool, "" for string
-
-// Type-safe operations
-var a = 10;
-var b = 20;
-var sum = a + b;      // Works because both are numbers
-
-// Mixed type operations (automatic conversion)
-var num = 42;
-var str = "The answer is " + num; // Automatic conversion to string
-
-// Array with dynamic elements
-var items = [1, "hello", true, 3.14]; // Mixed type array
-```
-
-### Built-in Type Functions
-```c
-string type_of(any value);     // Get type name as string
-bool is_type(any value, string type_name); // Type checking
-int as_int(any value);         // Cast to int (with validation)
-float as_float(any value);     // Cast to float
-string as_string(any value);   // Cast to string
-bool as_bool(any value);       // Cast to bool
-```
-
-### Advanced Smart Features
-
-#### Intelligent Type Inference
-```c
-// Context-aware type inference
-var result = 10 + 3.14;    // result becomes float (int + float)
-var text = "Value: " + 42;  // text becomes string (concatenation)
-var flag = 5 > 3;         // flag becomes bool (comparison)
-var size = strlen("hello"); // size becomes size_t (function return type)
-```
-
-#### Automatic Type Promotion
-```c
-var int_val = 42;
-var float_val = int_val + 0.5; // int automatically promoted to float
-var result = int_val * 2.0;     // result is float
-
-// Safe numeric operations
-var small = 127;
-var large = small + 1;       // Still fits in int
-var overflow = 2147483647 + 1; // Smart overflow detection
-```
-
-#### Smart String Operations
+### String Interpolation
 ```c
 var name = "World";
-var greeting = "Hello " + name;           // String concatenation
-var message = "Count: " + 42;              // Auto number-to-string
-var formatted = "Value: ${name} is ${42}"; // String interpolation
+var msg = "Hello, ${name}!";  // String interpolation
+var count = 42;
+var info = "Count: ${count}";
 ```
-
-#### Type-Aware Collections
-```c
-// Smart arrays with type inference
-var numbers = [1, 2, 3, 4, 5];           // Inferred as int[]
-var strings = ["a", "b", "c"];            // Inferred as string[]
-var mixed = [1, "hello", true];           // any[] for mixed types
-
-// Type-safe array operations
-var nums = [1, 2, 3];
-var sum = nums.sum();                     // Type-aware: returns int
-var count = nums.length();                // Always returns int
-
-// Smart filtering
-var evens = nums.filter(x => x % 2 == 0);  // Returns int[]
-var texts = strings.filter(s => s.length > 2); // Returns string[]
-```
-
-#### Pattern Matching on Types
-```c
-any process_data(any data) {
-    match data {
-        case int n when n > 0:
-            return "Positive integer: " + n;
-        case int n when n < 0:
-            return "Negative integer: " + n;
-        case string s:
-            return "String: " + s;
-        case vec2 v:
-            return "Vector: (" + v.x + ", " + v.y + ")";
-        case null:
-            return "Null value";
-        default:
-            return "Unknown type: " + type_of(data);
-    }
-}
-```
-
-## Features C Developers Always Wanted
-
-Cortex brings many long-requested improvements over traditional C while keeping the familiar feel:
-
-1. **Modules & Imports** – Replace header juggling with `module math.core;` and `import math.vector;`.
-2. **Generics & Templates** – Write `vector<int>` or `optional<string>` natively, no macros needed.
-3. **Pattern Matching** – Expressive `match` blocks with guards on enums and structs.
-4. **Defer Blocks** – `defer { fclose(file); }` guarantees cleanup on every exit path.
-5. **Optional & Result Types** – `optional<T>` and `result<T, E>` eliminate null-pointer guessing.
-6. **Async/Await** – Built-in async functions with `await` for ergonomic concurrency.
-7. **Immutable by Default** – `let` declares read-only bindings; `var` is used when mutation is intended.
-8. **Safe Concurrency** – Actors, channels, and race detection tools are part of the runtime.
-9. **First-Class Testing** – `test "vector push" { ... }` blocks integrate with `cortex --test`.
-10. **Package & Build Profiles** – `cortex.toml` manages dependencies, versions, and build flags.
-
-All of these features coexist with Cortex’s smart dynamic typing, automatic memory management, and seamless C interop, so C developers gain modern productivity without abandoning their existing ecosystem.
-
-### Additional Quality-of-Life Enhancements
-
-| Feature | What it solves | Cortex syntax |
-| --- | --- | --- |
-| **Auto Imports** | No more header guard boilerplate | `import net.http;` automatically resolves modules/files |
-| **Attributes** | Declarative metadata for functions/types | `@[inline, test_only]` |
-| **Pipeline Operator** | Cleaner data transformations | `data |> filter(active) |> map(toDTO)` |
-| **Compile-Time Evaluation** | Safer constants and lookup tables | `const table = comptime build_table();` |
-| **String Interpolation** | Readable formatting without `printf` gymnastics | `let msg = `"${player.name} HP=${player.hp}"`;` |
-| **Named & Default Params** | No more placeholder arguments | `spawn_enemy(hp: 100, speed: 4.5);` |
-| **First-Class Tests** | Zero-config unit tests | `test "math clamps" { assert(clamp(5,0,3) == 3); }` |
-| **CLI Flags DSL** | Built-in argument parsing | `flags { bool verbose; string output = "out.bin"; }` |
-| **Hot Reload Hooks** | Patch code in live apps | `hot_reload { reload_shaders(); }` |
-| **Doc Comments** | Markdown docs emitted automatically | `/// Renders a frame` |
-
-These QoL features are lightweight (no runtime tax) and compile down to familiar C constructs, so teams can adopt them incrementally.
-
-#### Smart Function Overloading
-```c
-// Functions that adapt based on input types
-string describe(any value) {
-    if (is_type(value, "int")) {
-        return "Integer: " + value;
-    } else if (is_type(value, "float")) {
-        return "Float: " + value;
-    } else if (is_type(value, "string")) {
-        return "String: " + value;
-    }
-    return "Unknown type";
-}
-
-// Generic-like functions
-any add(any a, any b) {
-    if (is_type(a, "number") && is_type(b, "number")) {
-        return as_float(a) + as_float(b); // Promote to float
-    }
-    if (is_type(a, "string") || is_type(b, "string")) {
-        return as_string(a) + as_string(b); // String concatenation
-    }
-    return null; // Incompatible types
-}
-```
-
-#### Smart Error Handling
-```c
-// Safe type conversion with error handling
-int safe_int(any value) {
-    if (is_type(value, "int")) {
-        return as_int(value);
-    } else if (is_type(value, "float")) {
-        int result = (int)as_float(value);
-        if (as_float(value) != result) {
-            println("Warning: Precision loss in float to int conversion");
-        }
-        return result;
-    } else if (is_type(value, "string")) {
-        int result = parse_int(as_string(value));
-        if (result == null) {
-            println("Error: Cannot convert string to int");
-        }
-        return result;
-    }
-    return 0; // Default fallback
-}
-```
-
-#### Intelligent Memory Management
-```c
-// Smart resource cleanup
-var file = fopen("data.txt", "r");
-try {
-    var content = read_file(file);
-    process(content);
-} finally {
-    if (file != null) {
-        fclose(file); // Automatically called
-    }
-}
-
-// Smart pointer simulation
-var smart_ptr = create_smart_ptr(malloc(100));
-// Automatically frees when out of scope
-```
-
-## External C Library Support
-
-Cortex supports seamless integration with any C library through the `extern` keyword and library directives.
-
-### Including C Headers
-
-```c
-// Include standard C libraries
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <string.h>
-
-// Include custom C headers
-#include "my_library.h"
-```
-
-### External Function Declarations
-
-```c
-// Declare external C functions
-extern int printf(char* format, ...);
-extern void* malloc(size_t size);
-extern void free(void* ptr);
-extern double sin(double x);
-
-// Declare functions from custom libraries
-extern int my_custom_function(int param);
-extern void process_data(char* data);
-```
-
-### Library Linking
-
-```c
-// Link with specific libraries using #pragma directives
-#pragma link("m")        // Link with math library
-#pragma link("pthread")  // Link with pthread library
-#pragma link("sqlite3")  // Link with SQLite library
-#pragma link("mylib")    // Link with custom library
-
-// Or use library declarations
-library "m" {
-    extern double cos(double x);
-    extern double sqrt(double x);
-}
-
-library "sqlite3" {
-    extern int sqlite3_open(char* filename, void** db);
-    extern int sqlite3_exec(void* db, char* sql, void* callback, void* arg, char** errmsg);
-}
-```
-
-### Using C Libraries
-
-```c
-#include <stdio.h>
-#include <math.h>
-#pragma link("m")
-
-void main() {
-    // Use standard C library functions
-    printf("Hello from C library!\n");
-    
-    // Use math library functions
-    double result = sin(3.14159 / 2);
-    printf("sin(pi/2) = %f\n", result);
-    
-    // Use memory allocation
-    char* buffer = (char*)malloc(100);
-    if (buffer != null) {
-        strcpy(buffer, "Cortex + C Libraries!");
-        printf("Buffer: %s\n", buffer);
-        free(buffer);
-    }
-}
-```
-
-### Advanced Library Integration
-
-```c
-// OpenGL integration
-#include <GL/gl.h>
-#pragma link("GL")
-
-void render_triangle() {
-    glBegin(GL_TRIANGLES);
-    glVertex3f(-1.0f, -1.0f, 0.0f);
-    glVertex3f(1.0f, -1.0f, 0.0f);
-    glVertex3f(0.0f, 1.0f, 0.0f);
-    glEnd();
-}
-
-// SDL integration
-#include <SDL2/SDL.h>
-#pragma link("SDL2")
-
-void init_sdl() {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        printf("SDL initialization failed!\n");
-        return;
-    }
-    
-    SDL_Window* window = SDL_CreateWindow(
-        "Cortex + SDL", 
-        SDL_WINDOWPOS_CENTERED, 
-        SDL_WINDOWPOS_CENTERED, 
-        800, 600, 
-        SDL_WINDOW_SHOWN
-    );
-    
-    // ... use SDL functions
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-}
-```
-
-### Library Configuration
-
-```c
-// Compiler configuration for libraries
-config {
-    compiler: "gcc",
-    flags: ["-O2", "-Wall"],
-    libraries: ["m", "pthread", "sqlite3"],
-    include_paths: ["/usr/local/include"],
-    library_paths: ["/usr/local/lib"]
-}
-
-// Platform-specific library loading
-#ifdef WINDOWS
-    #pragma link("opengl32")
-    #pragma link("ws2_32")
-#elif MACOS
-    #pragma link("-framework OpenGL")
-    #pragma link("-framework CoreFoundation")
-#elif LINUX
-    #pragma link("GL")
-    #pragma link("pthread")
-#endif
-```
-
-### Custom Library Wrappers
-
-```c
-// Create Cortex-friendly wrappers for C libraries
-wrapper "sqlite" {
-    #include <sqlite3.h>
-    #pragma link("sqlite3")
-    
-    struct Database {
-        void* handle;
-    }
-    
-    Database* sqlite_open(string filename) {
-        Database* db = (Database*)malloc(sizeof(Database));
-        if (sqlite3_open(filename, &db->handle) == 0) {
-            return db;
-        }
-        free(db);
-        return null;
-    }
-    
-    void sqlite_exec(Database* db, string sql) {
-        sqlite3_exec(db->handle, sql, null, null, null);
-    }
-    
-    void sqlite_close(Database* db) {
-        if (db != null) {
-            sqlite3_close(db->handle);
-            free(db);
-        }
-    }
-}
-```
-
-## Memory Management
-All memory is automatically managed. No manual allocation/deallocation needed.
 
 ## Example Program
 ```c
 struct Player {
-    vec2 position;
-    int health;
     string name;
+    int health;
+    int score;
+
+    void damage(int amount) {
+        health -= amount;
+        if (health < 0) health = 0;
+    }
 }
 
-void main() {
-    // Smart dynamic variable with type inference
-    var player = Player {
-        position: make_vec2(0.0, 0.0),
-        health: 100,
-        name: "Hero"
-    };
+enum Status { Ok, Error, Pending }
+
+async fn load_game() {
+    println("Loading...");
+    await sleep(1000);
+    println("Ready!");
+}
+
+fn main() {
+    // Struct with named constructor
+    let p = Player { name: "Hero", health: 100, score: 0 };
     
-    println("Player created: " + player.name);
+    // Or positional
+    let p2 = Player("Hero2", 100, 0);
     
-    // Dynamic variable that can change types
-    var gameState = "menu";
-    println("Game state: " + gameState);
+    // Method call with implicit self
+    p.damage(10);
+    println("${p.name} has ${p.health} HP");
     
-    gameState = "playing";  // Still a string
-    println("Game state: " + gameState);
-    
-    // Universal type for truly dynamic values
-    any score = 0;
-    score = 1500;
-    score = "highscore";
-    
-    for (int i = 0; i < 10; i++) {
-        player.position.x += random_float(-1.0, 1.0);
-        player.position.y += random_float(-1.0, 1.0);
-        println("Position: (" + player.position.x + ", " + player.position.y + ")");
+    // Enum access
+    Status s = Ok;
+    match s {
+        Ok => println("OK!"),
+        Error => println("Error!"),
+        Pending => println("Pending..."),
     }
+    
+    // Async
+    await load_game();
+    
+    // Channel
+    let ch = channel<int>(10);
+    ch.send(42);
+    let value = ch.recv();
+    println("Received: ${value}");
 }
 ```

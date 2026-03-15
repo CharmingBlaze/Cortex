@@ -538,9 +538,10 @@ func (n *StructDeclNode) String() string {
 // EnumDeclNode represents an enum declaration.
 type EnumDeclNode struct {
 	BaseNode
-	Name   string
-	Module string
-	Values []string
+	Name         string
+	Module       string
+	Values       []string
+	StringValues map[string]string // For string enums: name -> string value
 }
 
 func (n *EnumDeclNode) String() string {

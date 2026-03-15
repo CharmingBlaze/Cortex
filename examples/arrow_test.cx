@@ -1,0 +1,11 @@
+// Test arrow function syntax
+
+void main() {
+    // Store arrow function in a variable (lambda syntax)
+    var callback = () => println("Clicked!");
+    
+    // Call it
+    callback();
+    
+    println("Done");
+}

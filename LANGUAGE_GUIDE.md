@@ -1473,6 +1473,395 @@ cortex -i main.cx -o myapp
 
 ---
 
+## C Interop
+
+Cortex provides seamless integration with C libraries, allowing you to leverage the entire C ecosystem while writing modern, safe code.
+
+### The Philosophy
+
+Cortex doesn't reinvent the wheel—it gives you C's performance and library ecosystem with modern ergonomics:
+
+- **Use any C library** — Include headers, call functions, link libraries
+- **Automatic memory safety** — Cleanup annotations prevent leaks
+- **No FFI boilerplate** — Just declare and call
+- **Zero runtime overhead** — Compiles to clean C
+
+### Including C Headers
+
+Use standard C `#include` syntax:
+
+```c
+// Standard library
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+
+// Third-party libraries
+#include <raylib.h>
+#include <sqlite3.h>
+#include <curl/curl.h>
+
+// Your own headers
+#include "mylib.h"
+```
+
+Cortex passes these includes directly to the C compiler.
+
+### Declaring External Functions
+
+Use `extern` to declare C functions:
+
+```c
+// Basic declaration
+extern int printf(string format, ...);
+extern double sqrt(double x);
+
+// With pointer types
+extern void* malloc(int size);
+extern void free(void* ptr);
+
+// With cleanup annotation
+extern void* my_alloc(int size) cleanup(free);
+```
+
+**Type mapping:**
+
+| Cortex type | C type |
+|-------------|--------|
+| `int` | `int` |
+| `float` | `float` |
+| `double` | `double` |
+| `string` | `char*` |
+| `bool` | `int` (0/1) |
+| `void` | `void` |
+| `any` | `AnyValue` struct |
+
+### Automatic Memory Management with Cleanup
+
+The `cleanup` annotation automatically frees resources when they go out of scope:
+
+```c
+extern void* malloc(int size) cleanup(free);
+extern void free(void* ptr);
+
+extern FILE* fopen(string path, string mode) cleanup(fclose);
+extern void fclose(FILE* f);
+
+void main() {
+    var buf = malloc(1024);      // Auto-freed!
+    var file = fopen("data.txt", "r");  // Auto-closed!
+    
+    // Use buf and file...
+    
+}  // free(buf) and fclose(file) called automatically
+```
+
+**How it works:**
+1. Cortex wraps the returned pointer in a managed handle
+2. Uses GCC's `__attribute__((cleanup))` 
+3. Calls the cleanup function when the variable leaves scope
+
+**Benefits:**
+- No memory leaks
+- No use-after-free
+- No double-free
+- No forgotten cleanup
+
+### Managed vs Borrowed Pointers
+
+**Managed pointers** (with cleanup):
+```c
+extern void* malloc(int size) cleanup(free);
+var buf = malloc(1024);  // Cortex owns, auto-freed
+```
+
+**Borrowed pointers** (no cleanup):
+```c
+extern const char* getenv(string name);  // No cleanup - borrowed from C
+var home = getenv("HOME");  // Don't free this!
+```
+
+**Rules of thumb:**
+- If C documentation says "caller must free", use `cleanup`
+- If pointer comes from internal storage, omit `cleanup`
+- When in doubt, check the library docs
+
+### Working with C Structs
+
+For simple C structs, use Cortex structs with matching layout:
+
+```c
+// C: typedef struct { float x, y; } Vector2;
+struct Vector2 {
+    float x;
+    float y;
+}
+
+// C: Vector2 Vector2Add(Vector2 a, Vector2 b);
+extern Vector2 Vector2Add(Vector2 a, Vector2 b);
+
+void main() {
+    Vector2 v1 = { .x = 10.0, .y = 20.0 };
+    Vector2 v2 = { .x = 5.0, .y = 3.0 };
+    Vector2 sum = Vector2Add(v1, v2);
+}
+```
+
+For complex C structs (unions, bitfields, etc.), use `void*` and accessor functions:
+
+```c
+extern void* sqlite3_open(string path);
+extern int sqlite3_exec(void* db, string sql, void* callback, void* arg, string* err);
+extern void sqlite3_close(void* db);
+
+void main() {
+    void* db = sqlite3_open("my.db");
+    defer { sqlite3_close(db); };
+    
+    sqlite3_exec(db, "CREATE TABLE test(id INT)", null, null, null);
+}
+```
+
+### Callbacks and Function Pointers
+
+Pass Cortex functions to C as callbacks:
+
+```c
+// C: void register_handler(void (*handler)(int event));
+extern void register_handler(void (*handler)(int event));
+
+void my_handler(int event) {
+    println("Event received: ${event}");
+}
+
+void main() {
+    register_handler(my_handler);
+}
+```
+
+For lambdas/closures, use the `[]` syntax:
+
+```c
+extern void sort_array(int* arr, int n, int (*compare)(int a, int b));
+
+void main() {
+    int[] nums = [3, 1, 4, 1, 5, 9];
+    
+    // Pass a comparison function
+    sort_array(nums.data, nums.length, [](int a, int b) -> int {
+        return a - b;  // Ascending order
+    });
+}
+```
+
+### Linking Libraries
+
+Three ways to link:
+
+**1. Auto-link from include:**
+```c
+#include <raylib.h>  // Automatically links -lraylib
+```
+
+**2. Explicit pragma:**
+```c
+#pragma link("mylib")
+#pragma link("pthread")
+```
+
+**3. Command line:**
+```bash
+cortex -i main.cx -o app -use raylib -use pthread
+```
+
+### Platform-Specific Code
+
+Use preprocessor conditionals for platform differences:
+
+```c
+#ifdef WINDOWS
+    #pragma link("ws2_32")
+    extern int WSAGetLastError();
+#elif LINUX
+    #pragma link("pthread")
+    extern int errno;
+#elif MACOS
+    #pragma link("-framework Foundation")
+#endif
+```
+
+### Embedding Raw C
+
+For code that can't be expressed in Cortex:
+
+```c
+// Global C code
+@c #define VERSION "1.0"
+@c static int global_state = 0;
+
+// Inline C code
+void main() {
+    @c printf("Direct C: %d\n", global_state);
+    
+    // Mix Cortex and C
+    int x = 42;
+    @c printf("x from Cortex: %d\n", x);
+}
+```
+
+### Common C Libraries
+
+**Standard library:**
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+void main() {
+    printf("Hello from C!\n");
+    var buf = malloc(1024);
+    strcpy(buf, "Cortex");
+}
+```
+
+**Math library:**
+```c
+#include <math.h>
+#pragma link("m")
+
+void main() {
+    double x = sin(3.14159 / 2);
+    double y = pow(2.0, 10.0);
+    printf("sin(pi/2) = %f, 2^10 = %f\n", x, y);
+}
+```
+
+**raylib (game development):**
+```c
+#include <raylib.h>
+
+void main() {
+    InitWindow(800, 450, "Cortex Game");
+    SetTargetFPS(60);
+    
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        DrawText("Hello from Cortex!", 190, 200, 20, DARKGRAY);
+        EndDrawing();
+    }
+    
+    CloseWindow();
+}
+```
+
+**SQLite:**
+```c
+#include <sqlite3.h>
+#pragma link("sqlite3")
+
+extern int sqlite3_open(string path, void** db) cleanup(sqlite3_close);
+extern void sqlite3_close(void* db);
+
+void main() {
+    void* db;
+    sqlite3_open("my.db", &db);  // Auto-closed!
+    
+    // Use database...
+}
+```
+
+### Best Practices
+
+**1. Always use cleanup annotations:**
+```c
+// Good - automatic cleanup
+extern void* malloc(int size) cleanup(free);
+var buf = malloc(1024);
+
+// Bad - manual cleanup, error-prone
+extern void* malloc(int size);
+var buf = malloc(1024);
+defer { free(buf); };  // Easy to forget
+```
+
+**2. Check return values:**
+```c
+extern FILE* fopen(string path, string mode) cleanup(fclose);
+
+void main() {
+    var file = fopen("data.txt", "r");
+    if (file == null) {
+        println("Failed to open file!");
+        return;
+    }
+    // Use file...
+}
+```
+
+**3. Use defer for non-cleanup resources:**
+```c
+extern void lock_mutex(void* m);
+extern void unlock_mutex(void* m);
+
+void main() {
+    lock_mutex(my_mutex);
+    defer { unlock_mutex(my_mutex); };
+    
+    // Critical section...
+}
+```
+
+**4. Wrap C APIs in Cortex functions:**
+```c
+// Low-level C API
+extern void* sqlite3_open(string path);
+extern int sqlite3_exec(void* db, string sql, void* cb, void* arg, string* err);
+extern void sqlite3_close(void* db);
+
+// High-level Cortex wrapper
+struct Database {
+    void* handle;
+    
+    void exec(string sql) {
+        sqlite3_exec(handle, sql, null, null, null);
+    }
+}
+
+Database open_db(string path) {
+    Database db;
+    sqlite3_open(path, &db.handle);
+    return db;
+}
+
+void close_db(Database db) {
+    sqlite3_close(db.handle);
+}
+
+void main() {
+    var db = open_db("my.db");
+    defer { close_db(db); };
+    
+    db.exec("CREATE TABLE test(id INT)");
+}
+```
+
+### C Interop Quick Reference
+
+| Task | Syntax |
+|------|--------|
+| Include header | `#include <lib.h>` |
+| Declare function | `extern int func(int x);` |
+| With cleanup | `extern void* func() cleanup(free);` |
+| Link library | `#pragma link("lib")` or `-use lib` |
+| Raw C code | `@c int x = 0;` |
+| Pass callback | `register_handler(my_func);` |
+| C struct | Match layout in Cortex struct |
+| C pointer | Use `void*` or typed pointer |
+
+---
+
 ## Quick reference
 
 | Topic           | Syntax / API |

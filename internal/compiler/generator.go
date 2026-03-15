@@ -1462,6 +1462,59 @@ func (g *CodeGenerator) VisitCastExpr(node *ast.CastExprNode) {
 func (g *CodeGenerator) VisitCallExpr(node *ast.CallExprNode) {
 	// Check if this is a method call: obj.method(args)
 	if member, ok := node.Function.(*ast.MemberAccessNode); ok {
+		// Check for channel methods: ch.send(val), ch.recv(), ch.close(), etc.
+		switch member.Member {
+		case "send":
+			// ch.send(val) -> channel_send(ch, &val)
+			g.Write("channel_send(")
+			g.VisitNode(member.Object)
+			if len(node.Args) > 0 {
+				g.Write(", &")
+				g.VisitNode(node.Args[0])
+			}
+			g.Write(")")
+			return
+		case "recv":
+			// ch.recv(&out) -> channel_recv(ch, &out)
+			g.Write("channel_recv(")
+			g.VisitNode(member.Object)
+			if len(node.Args) > 0 {
+				g.Write(", ")
+				g.VisitNode(node.Args[0])
+			}
+			g.Write(")")
+			return
+		case "try_send":
+			g.Write("channel_try_send(")
+			g.VisitNode(member.Object)
+			if len(node.Args) > 0 {
+				g.Write(", &")
+				g.VisitNode(node.Args[0])
+			}
+			g.Write(")")
+			return
+		case "try_recv":
+			g.Write("channel_try_recv(")
+			g.VisitNode(member.Object)
+			if len(node.Args) > 0 {
+				g.Write(", ")
+				g.VisitNode(node.Args[0])
+			}
+			g.Write(")")
+			return
+		case "close":
+			// ch.close() -> channel_close(ch)
+			g.Write("channel_close(")
+			g.VisitNode(member.Object)
+			g.Write(")")
+			return
+		case "is_closed":
+			g.Write("channel_is_closed(")
+			g.VisitNode(member.Object)
+			g.Write(")")
+			return
+		}
+
 		objType := g.GetExpressionType(member.Object)
 		// Check if objType is a struct with this method
 		if methods, exists := g.structMethods[objType]; exists {
@@ -1929,6 +1982,14 @@ func (g *CodeGenerator) VisitIndexExpr(node *ast.IndexExprNode) {
 }
 
 func (g *CodeGenerator) VisitMemberAccess(node *ast.MemberAccessNode) {
+	// Check if this is a channel method call: ch.send() or ch.recv()
+	if node.Member == "send" || node.Member == "recv" || node.Member == "close" || node.Member == "try_send" || node.Member == "try_recv" || node.Member == "is_closed" {
+		// This is being called as a method - the parent will be a CallExprNode
+		// We handle this in VisitCallExpr when the function is a MemberAccessNode
+		g.VisitNode(node.Object)
+		g.Write(fmt.Sprintf(".%s", node.Member))
+		return
+	}
 	g.VisitNode(node.Object)
 	g.Write(fmt.Sprintf(".%s", node.Member))
 }
