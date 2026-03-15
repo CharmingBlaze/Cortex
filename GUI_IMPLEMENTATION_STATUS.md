@@ -97,14 +97,22 @@ brew install gtk4
 
 ## Build Instructions
 
-### Windows (no dependencies)
+### Windows (GTK4 bundled)
 ```bash
+# Compile your GUI app
 ./cortex -i examples/gui/hello_gui.cx -o hello_gui.exe
-./hello_gui.exe
+
+# Bundle GTK4 for distribution (creates dist/ folder)
+powershell -ExecutionPolicy Bypass -File bundle_gtk.ps1 -AppExe hello_gui.exe
+
+# The dist/ folder contains everything needed - no MSYS2 required!
 ```
 
 ### Linux/macOS (GTK4 required)
 ```bash
+sudo apt install libgtk-4-dev    # Linux
+brew install gtk4                 # macOS
+
 ./cortex -i examples/gui/hello_gui.cx -o hello_gui
 ./hello_gui
 ```
@@ -113,10 +121,14 @@ brew install gtk4
 
 ### Cross-Platform Design
 - Single API in `gui_runtime.h`
-- Platform-specific implementations:
-  - Windows: `gui_native.c` (WinAPI, zero dependencies)
-  - Linux/macOS: `gui_gtk4/` (GTK4)
-- Compiler automatically selects correct backend
+- GTK4 backend on all platforms for consistent look
+- Windows: Bundle GTK4 with `bundle_gtk.ps1` for zero-dependency distribution
+- Linux/macOS: Use system GTK4
+
+### Bundled Distribution (Windows)
+- 47 MB bundle includes all GTK4 DLLs, icons, and schemas
+- No MSYS2 or GTK4 installation required on target machines
+- Just copy the `dist/` folder and run
 
 ### Auto-Layout System (Windows)
 - Automatic widget positioning with configurable margins and spacing

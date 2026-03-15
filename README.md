@@ -484,7 +484,7 @@ void main() {
 
 ## Native GUI System
 
-Build desktop apps with a clean, simple API. Zero dependencies on Windows.
+Build desktop apps with a clean, simple API using GTK4 for a modern, consistent look.
 
 ```c
 #include <gui_runtime.h>
@@ -520,13 +520,25 @@ void main() {
 
 **Layouts:** VBox, HBox, auto-layout with configurable spacing and margins.
 
-**Cross-platform:** Native WinAPI on Windows (zero dependencies), GTK4 on Linux/macOS.
+**Cross-platform:** GTK4 on all platforms for consistent modern styling.
 
-| Platform | Backend | Dependencies |
-|----------|---------|--------------|
-| Windows | Native WinAPI | None |
-| Linux | GTK4 | libgtk-4-dev |
-| macOS | GTK4 | gtk4 (homebrew) |
+| Platform | Distribution |
+|----------|--------------|
+| Windows | Bundle GTK4 (47 MB) - no installation required |
+| Linux | System GTK4 (`sudo apt install libgtk-4-dev`) |
+| macOS | System GTK4 (`brew install gtk4`) |
+
+### Windows Distribution
+
+```bash
+# Compile your app
+./cortex -i myapp.cx -o myapp.exe
+
+# Bundle GTK4 for distribution
+powershell -ExecutionPolicy Bypass -File bundle_gtk.ps1 -AppExe myapp.exe
+
+# The dist/ folder is portable - copy to any Windows machine!
+```
 
 ---
 
