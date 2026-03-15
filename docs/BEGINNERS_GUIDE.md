@@ -846,4 +846,4 @@ cortex run main.cx --keep-c
 3. Create your own project with `cortex new`
 4. Bind a C library you want to use
 
-Happy coding! 🚀
+
