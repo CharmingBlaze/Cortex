@@ -6,19 +6,96 @@
 
 ---
 
-## Why Cortex?
+## What is Cortex?
 
-You love C. We get it. C is elegant, fast, and everywhere. But let's be honest — manual memory management, pointer bugs, and header file juggling aren't why you write code.
+Cortex is a **systems programming language** that gives you C's power with modern ergonomics. It compiles to C, runs at native speed, and integrates seamlessly with any C library — but feels like a modern language.
 
-**Cortex is C evolved.** Same syntax you know. Same performance. But with modern features that make you productive instead of fighting the language.
+```c
+// This is Cortex - familiar C syntax, modern features
+void main() {
+    var message = "Hello, World!";        // Type inference
+    var numbers = [1, 2, 3, 4, 5];        // Array literals
+    for (var n in numbers) {              // For-each loops
+        println("Number: ${n}");          // String interpolation
+    }
+}
+```
 
-| C | Cortex |
-|---|--------|
-| `int* arr = malloc(10 * sizeof(int));` | `var arr = [1, 2, 3, 4, 5];` |
-| `char* s = malloc(100); sprintf(s, "Hello %s", name);` | `var s = "Hello ${name}";` |
-| `void process(int* data, int len);` | `void process(var data);` |
-| Pointer arithmetic, null checks, buffer overflows | Bounds checking, auto memory management |
-| `if (strcmp(a, b) == 0)` | `if (a == b)` |
+## Why Does Cortex Exist?
+
+Because **you shouldn't have to choose between performance and productivity**.
+
+| You Want | C Gives You | Rust Gives You | Cortex Gives You |
+|----------|-------------|----------------|------------------|
+| C-like syntax | ✓ | ✗ | ✓ |
+| Native performance | ✓ | ✓ | ✓ |
+| No manual memory management | ✗ | ✓ | ✓ |
+| Simple to learn | ✓ | ✗ | ✓ |
+| Fast compilation | ✓ | ✗ | ✓ |
+| Easy C interop | ✓ | ✗ | ✓ |
+| Modern features | ✗ | ✓ | ✓ |
+
+**Cortex is for developers who:**
+- Love C's simplicity but hate its footguns
+- Want native performance without fighting the borrow checker
+- Need to integrate with existing C libraries
+- Believe a language can be both powerful *and* pleasant
+
+## What Problems Does Cortex Solve?
+
+### 1. Memory Safety Without Complexity
+```c
+// C: Manual memory management - easy to leak, double-free, use-after-free
+void* buf = malloc(1024);
+// ... forgot to free? leak. free twice? crash.
+
+// Cortex: Automatic cleanup with annotations
+extern void* my_alloc(int size) cleanup(free);
+var buf = my_alloc(1024);  // Automatically freed on scope exit!
+```
+
+### 2. Modern Syntax, Zero Learning Curve
+```c
+// C: Verbose, error-prone
+char* s = malloc(100);
+sprintf(s, "Hello %s, you have %d messages", name, count);
+
+// Cortex: Clean, intuitive
+var s = "Hello ${name}, you have ${count} messages";
+```
+
+### 3. Three Concurrency Models, One Language
+```c
+// Coroutines for game loops
+coroutine void animate() { co_yield(); }
+
+// Threads for parallelism  
+spawn worker(null);
+
+// Channels for communication
+channel_send(ch, &value);
+```
+
+### 4. Seamless C Interop
+```c
+#include <raylib.h>  // That's it - use any C library directly
+
+void main() {
+    InitWindow(800, 600, "Game");
+    // Full access to C ecosystem
+}
+```
+
+### 5. Automatic Memory Management
+```c
+// Annotate extern functions with their cleanup
+extern void* my_alloc(int size) cleanup(free);
+
+void main() {
+    var buf = my_alloc(1024);  // Automatically freed on scope exit!
+    // No free() needed - Cortex handles it
+}
+```
 
 ---
 

@@ -75,6 +75,47 @@ int count;
 count = 0;
 ```
 
+### Constants with `const`
+
+**`const`** declares immutable values that cannot be changed:
+
+```c
+const int MAX_SIZE = 100;
+const string APP_NAME = "Cortex";
+const float PI = 3.14159;
+
+MAX_SIZE = 200;  // Error: cannot reassign const
+```
+
+Use `const` for:
+- Configuration values
+- Magic numbers with meaningful names
+- Values that should never change
+
+### Extern declarations
+
+**`extern`** declares functions from C libraries:
+
+```c
+// Declare C functions you want to call
+extern void* malloc(int size);
+extern void free(void* ptr);
+extern int printf(string format, ...);
+
+void main() {
+    var buf = malloc(1024);
+    printf("Buffer allocated\n");
+    free(buf);
+}
+```
+
+Combine with `cleanup` for automatic memory management:
+
+```c
+extern void* my_alloc(int size) cleanup(free);
+var buf = my_alloc(1024);  // Auto-freed on scope exit!
+```
+
 ### Smart dynamic variable: `var`
 
 With **`var`**, the compiler infers the type from the value. You can even change the type when you reassign:
@@ -1095,6 +1136,71 @@ var db = sqlite3_open("my.db");  // Auto-closed!
 - **No use-after-free** - Pointer is nullified after cleanup
 - **No double-free** - Cleanup runs exactly once
 - **Simple** - Just add `cleanup(func)` to extern declaration
+
+---
+
+## Modules and Imports
+
+Cortex supports organizing code into modules that can be imported:
+
+### Import syntax
+
+```c
+// Import a single file
+import "utils";
+
+// Import from a subdirectory
+import "math/vector";
+
+// Import a module directory (loads mod.cx)
+import "graphics";
+```
+
+### Module structure
+
+```
+project/
+├── main.cx          # Entry point
+├── utils.cx         # Imported as import "utils"
+├── math/
+│   └── vector.cx    # Imported as import "math/vector"
+└── graphics/
+    └── mod.cx       # Imported as import "graphics"
+```
+
+### What gets shared
+
+All top-level declarations (functions, structs, enums, consts) are automatically available to importing files:
+
+```c
+// utils.cx
+const int MAX_ITEMS = 100;
+
+struct Item {
+    string name;
+    int value;
+};
+
+void process_item(Item* i) {
+    println("Processing: ${i->name}");
+}
+
+// main.cx
+import "utils";
+
+void main() {
+    var item = Item{ name: "Test", value: 42 };
+    process_item(&item);
+    println("Max: ${MAX_ITEMS}");
+}
+```
+
+### Compiling with imports
+
+```bash
+# Cortex automatically resolves and compiles imported files
+cortex -i main.cx -o myapp
+```
 
 ---
 
