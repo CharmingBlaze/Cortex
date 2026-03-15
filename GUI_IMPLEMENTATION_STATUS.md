@@ -1,9 +1,7 @@
 # Cortex GUI System Implementation Status
 
 ## Overview
-A complete, cross-platform GUI system for Cortex with:
-- **GTK4 backend** for Linux/macOS
-- **Native Windows backend** using WinAPI for Windows
+A complete, cross-platform GUI system for Cortex using GTK4 on all platforms (Windows, Linux, macOS).
 
 ## Completed Components
 
@@ -15,15 +13,9 @@ A complete, cross-platform GUI system for Cortex with:
 - **gui_dialogs.c**: Alerts, confirm, file picker, folder picker
 - **Makefile**: Build configuration for static/shared library
 
-### 2. Native Windows Backend (`runtime/gui_native.c`)
-- Pure WinAPI implementation for Windows
-- No external dependencies (uses built-in Windows controls)
-- Auto-layout system with proper spacing and margins
-- All standard widgets supported
-- Non-blocking event loop for integration with raylib/SDL/OpenGL
-
-### 3. C Runtime API
+### 2. C Runtime API
 - **runtime/gui_runtime.h**: Simplified public C API header with opaque handle types
+- **runtime/gui_runtime.c**: Runtime wrapper for GTK4
 - Auto-managed main window and main container (vbox)
 - Convenience macros for one-liner widget creation
 - Layout controls: `gui_spacing()`, `gui_set_margin()`, `gui_set_spacing()`
@@ -79,26 +71,40 @@ A complete, cross-platform GUI system for Cortex with:
 
 | Platform | Backend | Dependencies |
 |----------|---------|--------------|
-| Windows | Native WinAPI | None (built-in) |
+| Windows | GTK4 | MSYS2 or vcpkg |
 | Linux | GTK4 | libgtk-4-dev |
 | macOS | GTK4 | gtk4 (homebrew) |
 
-## Build Instructions
+## Installing GTK4
 
-### Windows
-No prerequisites - uses built-in Windows controls:
+### Windows (MSYS2)
 ```bash
-./cortex -i examples/gui/hello_gui.cx -o hello_gui.exe
-./hello_gui.exe
+# Install MSYS2 from https://www.msys2.org/
+# Then in MSYS2 terminal:
+pacman -S mingw-w64-x86_64-gtk4
+pacman -S mingw-w64-x86_64-pkg-config
 ```
 
-### Linux/macOS (GTK4)
+### Windows (vcpkg)
 ```bash
-# Install GTK4
-# Linux: sudo apt install libgtk-4-dev
-# macOS: brew install gtk4
+vcpkg install gtk4:x64-windows
+```
 
-make -C internal/gui_gtk4
+### Linux
+```bash
+sudo apt install libgtk-4-dev
+```
+
+### macOS
+```bash
+brew install gtk4
+```
+
+## Build Instructions
+
+### All Platforms (GTK4 required)
+```bash
+# After installing GTK4 (see above)
 ./cortex -i examples/gui/hello_gui.cx -o hello_gui
 ./hello_gui
 ```
@@ -107,24 +113,16 @@ make -C internal/gui_gtk4
 
 ### Cross-Platform Design
 - Single API in `gui_runtime.h`
-- Platform-specific implementations:
-  - Windows: `gui_native.c` (WinAPI)
-  - Linux/macOS: `gui_gtk4/` (GTK4)
-- Compiler automatically selects correct backend
-
-### Auto-Layout System (Windows)
-- Automatic widget positioning with configurable margins and spacing
-- Horizontal box (`gui_hbox`) for button rows
-- `gui_end_row()` to finish horizontal layout
-- Section headers with bold text for visual organization
+- GTK4 backend on all platforms (Windows, Linux, macOS)
+- Consistent look and behavior across all platforms
 
 ### Handle Management
-- Internal registry maps int64 handles to widgets
+- Internal registry maps int64 handles to GTK widgets
 - Thread-safe handle allocation and retrieval
 
 ### Event System
 - Callback registry mapping handles to event handlers
-- Platform signals routed through to Cortex callbacks
+- GTK signals routed through to Cortex callbacks
 
 ### Memory Safety
 - No raw pointers exposed to Cortex
@@ -141,24 +139,22 @@ make -C internal/gui_gtk4
 | internal/gui_gtk4/gui_containers.c | 70 | Layout containers |
 | internal/gui_gtk4/gui_dialogs.c | 190 | Dialog functions |
 | runtime/gui_runtime.h | 200 | Public C API header |
-| runtime/gui_native.c | 1500+ | Native Windows backend |
+| runtime/gui_runtime.c | 100 | Runtime wrapper |
 | docs/GUI_SYSTEM.md | 490 | Documentation |
 
 ## Recent Updates
 
-### Native Windows GUI (Latest)
-- ✅ Full WinAPI implementation for Windows
-- ✅ Auto-layout system with proper spacing
-- ✅ All standard widgets (labels, buttons, entries, checkboxes, radio, sliders, progress, spin, list, etc.)
-- ✅ Horizontal box layout for button rows
-- ✅ Section headers with bold styling
-- ✅ Configurable margins and spacing
+### GTK4 on All Platforms (Latest)
+- ✅ Unified GTK4 backend for Windows, Linux, macOS
+- ✅ Consistent look and behavior across all platforms
+- ✅ All standard widgets (labels, buttons, entries, checkboxes, radio, sliders, progress, etc.)
+- ✅ Layout containers (VBox, HBox, Grid, Scroll, Tabs)
+- ✅ Dialog support (alerts, file pickers, confirms)
 - ✅ Non-blocking event loop for game engine integration
 
 ## Conclusion
 
-The Cortex GUI system is now a clean, native C implementation with:
-- GTK4 for Linux/macOS providing native platform appearance
-- Native WinAPI for Windows with zero external dependencies
-- Unified API across all platforms
-- Auto-layout for professional-looking interfaces
+The Cortex GUI system uses GTK4 on all platforms for:
+- Consistent cross-platform appearance
+- Modern widget set with full features
+- Unified API across Windows, Linux, macOS
