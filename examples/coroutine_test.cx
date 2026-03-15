@@ -2,9 +2,9 @@
 
 coroutine void test_coroutine() {
     show("Coroutine: step 1");
-    co_yield();
+    yield;
     show("Coroutine: step 2");
-    co_yield();
+    yield;
     show("Coroutine: step 3");
 }
 

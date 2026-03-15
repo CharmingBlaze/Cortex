@@ -1,0 +1,140 @@
+// Raylib Platformer - Simple 2D platformer with physics
+// Build: cortex -i raylib/raylib_platformer.cx -o platformer -use raylib
+#include <raylib.h>
+
+struct Player {
+    float x;
+    float y;
+    float vx;
+    float vy;
+    bool grounded;
+}
+
+void main() {
+    int width = 800;
+    int height = 450;
+    InitWindow(width, height, "Cortex Platformer");
+    SetTargetFPS(60);
+    
+    // Player
+    Player p;
+    p.x = 100.0;
+    p.y = 200.0;
+    p.vx = 0.0;
+    p.vy = 0.0;
+    p.grounded = false;
+    
+    int player_w = 32;
+    int player_h = 48;
+    float gravity = 0.5;
+    float jump_force = -10.0;
+    float move_speed = 5.0;
+    
+    // Platforms
+    struct { int x; int y; int w; int h; } platforms[5];
+    platforms[0] = { 0, height - 40, width, 40 };      // Ground
+    platforms[1] = { 150, 320, 150, 20 };
+    platforms[2] = { 400, 250, 150, 20 };
+    platforms[3] = { 200, 180, 150, 20 };
+    platforms[4] = { 500, 120, 150, 20 };
+    
+    // Camera (simple follow)
+    float camera_x = 0.0;
+    
+    // Coins
+    int coins[5][2] = {
+        {200, 290},
+        {450, 220},
+        {250, 150},
+        {550, 90},
+        {700, 350}
+    };
+    int coins_collected = 0;
+    
+    while (!WindowShouldClose()) {
+        // Input
+        if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
+            p.vx = -move_speed;
+        } else if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
+            p.vx = move_speed;
+        } else {
+            p.vx = 0.0;
+        }
+        
+        if ((IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) && p.grounded) {
+            p.vy = jump_force;
+            p.grounded = false;
+        }
+        
+        // Physics
+        p.vy = p.vy + gravity;
+        p.x = p.x + p.vx;
+        p.y = p.y + p.vy;
+        
+        // Platform collision
+        p.grounded = false;
+        for (int i = 0; i < 5; i++) {
+            // Check if player is colliding with platform
+            if (p.x + player_w > platforms[i].x && 
+                p.x < platforms[i].x + platforms[i].w &&
+                p.y + player_h > platforms[i].y && 
+                p.y < platforms[i].y + platforms[i].h) {
+                
+                // Landing on top
+                if (p.vy > 0 && p.y + player_h - p.vy <= platforms[i].y) {
+                    p.y = platforms[i].y - player_h;
+                    p.vy = 0.0;
+                    p.grounded = true;
+                }
+            }
+        }
+        
+        // Coin collection
+        for (int i = 0; i < 5; i++) {
+            if (coins[i][0] != -1) {
+                float cx = coins[i][0];
+                float cy = coins[i][1];
+                if (p.x + player_w > cx - 10 && p.x < cx + 10 &&
+                    p.y + player_h > cy - 10 && p.y < cy + 10) {
+                    coins[i][0] = -1;  // Collected
+                    coins_collected = coins_collected + 1;
+                }
+            }
+        }
+        
+        // Camera follow
+        camera_x = p.x - width / 3;
+        if (camera_x < 0) camera_x = 0.0;
+        
+        // Draw
+        BeginDrawing();
+        ClearBackground(SKYBLUE);
+        
+        // Draw platforms
+        for (int i = 0; i < 5; i++) {
+            DrawRectangle(platforms[i].x - camera_x, platforms[i].y, platforms[i].w, platforms[i].h, DARKGREEN);
+        }
+        
+        // Draw coins
+        for (int i = 0; i < 5; i++) {
+            if (coins[i][0] != -1) {
+                DrawCircle(coins[i][0] - camera_x, coins[i][1], 10, GOLD);
+            }
+        }
+        
+        // Draw player
+        DrawRectangle(p.x - camera_x, p.y, player_w, player_h, RED);
+        
+        // Draw UI
+        DrawText("Coins: ${coins_collected}/5", 10, 10, 24, BLACK);
+        DrawText("Arrow Keys / WASD to move, Space to jump", 10, 40, 18, DARKGRAY);
+        
+        if (coins_collected == 5) {
+            DrawText("YOU WIN!", width / 2 - 60, height / 2, 40, GOLD);
+        }
+        
+        EndDrawing();
+    }
+    
+    CloseWindow();
+}

@@ -2,19 +2,19 @@
 
 coroutine void task_a() {
     show("Task A: step 1");
-    co_yield();
+    yield;
     show("Task A: step 2");
-    co_yield();
+    yield;
     show("Task A: done!");
 }
 
 coroutine void task_b() {
     show("Task B: step 1");
-    co_yield();
+    yield;
     show("Task B: step 2");
-    co_yield();
+    yield;
     show("Task B: step 3");
-    co_yield();
+    yield;
     show("Task B: done!");
 }
 

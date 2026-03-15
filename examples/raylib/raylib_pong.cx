@@ -1,0 +1,107 @@
+// Raylib Simple Pong - Two player paddle game
+// Build: cortex -i raylib/raylib_pong.cx -o pong -use raylib
+#include <raylib.h>
+
+void main() {
+    int width = 800;
+    int height = 450;
+    InitWindow(width, height, "Cortex Pong");
+    SetTargetFPS(60);
+    
+    // Paddle positions
+    float p1_y = height / 2.0 - 40.0;
+    float p2_y = height / 2.0 - 40.0;
+    int paddle_height = 80;
+    int paddle_width = 10;
+    int paddle_speed = 5;
+    
+    // Ball
+    float ball_x = width / 2.0;
+    float ball_y = height / 2.0;
+    float ball_vx = 4.0;
+    float ball_vy = 3.0;
+    float ball_radius = 8.0;
+    
+    // Scores
+    int score1 = 0;
+    int score2 = 0;
+    
+    while (!WindowShouldClose()) {
+        // Player 1 controls (W/S)
+        if (IsKeyDown(KEY_W)) p1_y = p1_y - paddle_speed;
+        if (IsKeyDown(KEY_S)) p1_y = p1_y + paddle_speed;
+        
+        // Player 2 controls (Up/Down)
+        if (IsKeyDown(KEY_UP)) p2_y = p2_y - paddle_speed;
+        if (IsKeyDown(KEY_DOWN)) p2_y = p2_y + paddle_speed;
+        
+        // Clamp paddles to screen
+        if (p1_y < 0) p1_y = 0;
+        if (p1_y > height - paddle_height) p1_y = height - paddle_height;
+        if (p2_y < 0) p2_y = 0;
+        if (p2_y > height - paddle_height) p2_y = height - paddle_height;
+        
+        // Update ball
+        ball_x = ball_x + ball_vx;
+        ball_y = ball_y + ball_vy;
+        
+        // Ball collision with top/bottom
+        if (ball_y - ball_radius < 0 || ball_y + ball_radius > height) {
+            ball_vy = -ball_vy;
+        }
+        
+        // Ball collision with paddles
+        // Player 1 paddle (left)
+        if (ball_x - ball_radius < paddle_width + 20 && 
+            ball_y > p1_y && ball_y < p1_y + paddle_height) {
+            ball_vx = -ball_vx;
+            ball_x = paddle_width + 20 + ball_radius;
+        }
+        
+        // Player 2 paddle (right)
+        if (ball_x + ball_radius > width - paddle_width - 20 && 
+            ball_y > p2_y && ball_y < p2_y + paddle_height) {
+            ball_vx = -ball_vx;
+            ball_x = width - paddle_width - 20 - ball_radius;
+        }
+        
+        // Scoring
+        if (ball_x < 0) {
+            score2 = score2 + 1;
+            ball_x = width / 2.0;
+            ball_y = height / 2.0;
+            ball_vx = 4.0;
+        }
+        if (ball_x > width) {
+            score1 = score1 + 1;
+            ball_x = width / 2.0;
+            ball_y = height / 2.0;
+            ball_vx = -4.0;
+        }
+        
+        // Draw
+        BeginDrawing();
+        ClearBackground(BLACK);
+        
+        // Draw paddles
+        DrawRectangle(20, p1_y, paddle_width, paddle_height, WHITE);
+        DrawRectangle(width - paddle_width - 20, p2_y, paddle_width, paddle_height, WHITE);
+        
+        // Draw ball
+        DrawCircle(ball_x, ball_y, ball_radius, WHITE);
+        
+        // Draw center line
+        for (int i = 0; i < height; i = i + 20) {
+            DrawRectangle(width / 2 - 2, i, 4, 10, WHITE);
+        }
+        
+        // Draw scores
+        DrawText("${score1}", width / 4, 20, 40, WHITE);
+        DrawText("${score2}", 3 * width / 4, 20, 40, WHITE);
+        
+        DrawText("W/S - Player 1 | Up/Down - Player 2", 10, height - 25, 18, GRAY);
+        EndDrawing();
+    }
+    
+    CloseWindow();
+}

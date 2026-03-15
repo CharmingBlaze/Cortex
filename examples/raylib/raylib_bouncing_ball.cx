@@ -1,0 +1,41 @@
+// Raylib Bouncing Ball - Simple animation demo
+// Build: cortex -i raylib/raylib_bouncing_ball.cx -o bounce -use raylib
+#include <raylib.h>
+
+void main() {
+    int width = 800;
+    int height = 450;
+    InitWindow(width, height, "Cortex - Bouncing Ball");
+    SetTargetFPS(60);
+    
+    // Ball state
+    float x = width / 2.0;
+    float y = height / 2.0;
+    float vx = 4.0;
+    float vy = 3.0;
+    float radius = 20.0;
+    
+    while (!WindowShouldClose()) {
+        // Update
+        x = x + vx;
+        y = y + vy;
+        
+        // Bounce off walls
+        if (x + radius > width || x - radius < 0) {
+            vx = -vx;
+        }
+        if (y + radius > height || y - radius < 0) {
+            vy = -vy;
+        }
+        
+        // Draw
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        DrawCircle(x, y, radius, MAROON);
+        DrawText("Bouncing Ball Demo", 10, 10, 20, DARKGRAY);
+        DrawText("Press ESC to exit", 10, 35, 18, LIGHTGRAY);
+        EndDrawing();
+    }
+    
+    CloseWindow();
+}

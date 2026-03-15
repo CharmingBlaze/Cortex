@@ -1,0 +1,80 @@
+// Raylib Particle System - Visual effects demo
+// Build: cortex -i raylib/raylib_particles.cx -o particles -use raylib
+#include <raylib.h>
+
+struct Particle {
+    float x;
+    float y;
+    float vx;
+    float vy;
+    float life;
+    Color color;
+}
+
+void main() {
+    int width = 800;
+    int height = 450;
+    InitWindow(width, height, "Cortex Particle System");
+    SetTargetFPS(60);
+    
+    // Particle array
+    Particle particles[100];
+    int particle_count = 0;
+    
+    // Emitter position
+    float emitter_x = width / 2.0;
+    float emitter_y = height / 2.0;
+    
+    while (!WindowShouldClose()) {
+        // Move emitter with mouse
+        emitter_x = GetMouseX();
+        emitter_y = GetMouseY();
+        
+        // Spawn particles when mouse pressed
+        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && particle_count < 100) {
+            Particle p;
+            p.x = emitter_x;
+            p.y = emitter_y;
+            p.vx = (random_float(0.0, 1.0) - 0.5) * 4.0;
+            p.vy = (random_float(0.0, 1.0) - 0.5) * 4.0 - 2.0;
+            p.life = 60.0;
+            p.color = ColorFromHSV(random_float(0.0, 360.0), 0.8, 1.0);
+            particles[particle_count] = p;
+            particle_count = particle_count + 1;
+        }
+        
+        // Update particles
+        for (int i = 0; i < particle_count; i++) {
+            particles[i].x = particles[i].x + particles[i].vx;
+            particles[i].y = particles[i].y + particles[i].vy;
+            particles[i].vy = particles[i].vy + 0.05;  // gravity
+            particles[i].life = particles[i].life - 1.0;
+        }
+        
+        // Remove dead particles
+        int write_idx = 0;
+        for (int i = 0; i < particle_count; i++) {
+            if (particles[i].life > 0) {
+                particles[write_idx] = particles[i];
+                write_idx = write_idx + 1;
+            }
+        }
+        particle_count = write_idx;
+        
+        // Draw
+        BeginDrawing();
+        ClearBackground(BLACK);
+        
+        // Draw particles
+        for (int i = 0; i < particle_count; i++) {
+            float alpha = particles[i].life / 60.0;
+            DrawCircle(particles[i].x, particles[i].y, 4, particles[i].color);
+        }
+        
+        DrawText("Click to spawn particles!", 10, 10, 20, WHITE);
+        DrawText("Particles: ${particle_count}", 10, 35, 18, GRAY);
+        EndDrawing();
+    }
+    
+    CloseWindow();
+}
