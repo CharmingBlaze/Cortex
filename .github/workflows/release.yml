@@ -96,6 +96,17 @@ jobs:
             mv zig-${ZIG_TARGET}-${ZIG_VERSION} zig-bundle
           fi
 
+      - name: Setup MSYS2 (Windows only)
+        if: matrix.os == 'windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gtk4
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pkg-config
+
       - name: Build
         shell: bash
         env:
@@ -105,6 +116,89 @@ jobs:
         run: |
           mkdir -p build
           go build -ldflags="-s -w -X main.Version=${{ steps.version.outputs.VERSION }}" -o build/cortex${{ matrix.extension }} ./cmd/cortex
+
+      - name: Bundle GTK4 (Windows only)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          # Build a simple GUI app for testing
+          $env:PATH = "C:\msys64\mingw64\bin;$env:PATH"
+          
+          # Copy bundling script
+          cp bundle_gtk.ps1 build/
+          
+          # Create GTK4 bundle directory
+          $bundleDir = "gtk4-bundle"
+          New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
+          
+          # Copy required GTK4 DLLs
+          $msysBin = "C:\msys64\mingw64\bin"
+          $gtkDlls = @(
+            "libgtk-4-1.dll",
+            "libgdk_pixbuf-2.0-0.dll",
+            "libpango-1.0-0.dll",
+            "libpangocairo-1.0-0.dll",
+            "libpangowin32-1.0-0.dll",
+            "libpangoft2-1.0-0.dll",
+            "libcairo-2.dll",
+            "libcairo-gobject-2.dll",
+            "libgio-2.0-0.dll",
+            "libglib-2.0-0.dll",
+            "libgobject-2.0-0.dll",
+            "libharfbuzz-0.dll",
+            "libgraphene-1.0-0.dll",
+            "libintl-8.dll",
+            "libffi-8.dll",
+            "libpixman-1-0.dll",
+            "libpng16-16.dll",
+            "libfreetype-6.dll",
+            "libbz2-1.dll",
+            "libbrotlidec.dll",
+            "libbrotlicommon.dll",
+            "libzstd.dll",
+            "libexpat-1.dll",
+            "libfontconfig-1.dll",
+            "libiconv-2.dll",
+            "libwinpthread-1.dll",
+            "libgcc_s_seh-1.dll",
+            "libstdc++-6.dll",
+            "zlib1.dll",
+            "libcrypto-3-x64.dll",
+            "libssl-3-x64.dll",
+            "libtiff-6.dll",
+            "libjpeg-8.dll",
+            "libwebp-7.dll",
+            "libjbig-0.dll",
+            "libLerc.dll",
+            "libdeflate.dll",
+            "libfribidi-0.dll"
+          )
+          
+          foreach ($dll in $gtkDlls) {
+            $src = Join-Path $msysBin $dll
+            if (Test-Path $src) {
+              Copy-Item $src -Destination $bundleDir -Force
+            }
+          }
+          
+          # Copy GDK-Pixbuf loaders
+          $loadersDir = "$bundleDir/lib/gdk-pixbuf-2.0/2.10.0/loaders"
+          New-Item -ItemType Directory -Path $loadersDir -Force | Out-Null
+          Copy-Item "C:\msys64\mingw64\lib\gdk-pixbuf-2.0\2.10.0\loaders\*.dll" -Destination $loadersDir -Force -ErrorAction SilentlyContinue
+          Copy-Item "C:\msys64\mingw64\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache" -Destination "$bundleDir/lib/gdk-pixbuf-2.0/2.10.0/" -Force -ErrorAction SilentlyContinue
+          
+          # Copy icons
+          $iconsDir = "$bundleDir/share/icons/Adwaita"
+          New-Item -ItemType Directory -Path $iconsDir -Force | Out-Null
+          Copy-Item -Path "C:\msys64\mingw64\share\icons\Adwaita\symbolic" -Destination $iconsDir -Recurse -Force -ErrorAction SilentlyContinue
+          Copy-Item -Path "C:\msys64\mingw64\share\icons\Adwaita\index.theme" -Destination $iconsDir -Force -ErrorAction SilentlyContinue
+          
+          # Copy GLib schemas
+          $schemasDir = "$bundleDir/share/glib-2.0/schemas"
+          New-Item -ItemType Directory -Path $schemasDir -Force | Out-Null
+          Copy-Item -Path "C:\msys64\mingw64\share\glib-2.0\schemas\gschemas.compiled" -Destination $schemasDir -Force -ErrorAction SilentlyContinue
+          
+          Write-Host "GTK4 bundle created successfully"
 
       - name: Create package
         shell: bash
@@ -139,6 +233,33 @@ jobs:
           cp LANGUAGE_SPEC.md ${PKG_DIR}/docs/
           cp LANGUAGE_GUIDE.md ${PKG_DIR}/docs/
           cp LICENSE ${PKG_DIR}/
+          
+          # Copy GTK4 bundle for Windows
+          if [ "${OS}" = "windows" ]; then
+            mkdir -p ${PKG_DIR}/gtk4
+            cp -r gtk4-bundle/* ${PKG_DIR}/gtk4/
+            cp bundle_gtk.ps1 ${PKG_DIR}/bin/
+            cp bundle_gtk.ps1 ${PKG_DIR}/
+            
+            # Create README for GTK4
+            cat > ${PKG_DIR}/gtk4/README.txt << 'EOF'
+          GTK4 Runtime Bundle
+          ===================
+          
+          This folder contains all GTK4 DLLs and resources needed to run
+          Cortex GUI applications on Windows without installing GTK4.
+          
+          Usage:
+          1. Compile your GUI app: cortex -i myapp.cx -o myapp.exe
+          2. Copy myapp.exe and the entire gtk4/ folder together
+          3. Run myapp.exe - it will automatically find the GTK4 DLLs
+          
+          To create a distributable bundle for your app:
+          Run: powershell -ExecutionPolicy Bypass -File bundle_gtk.ps1 -AppExe myapp.exe
+          
+          This creates a dist/ folder with everything needed.
+          EOF
+          fi
           
           # Create archive
           if [ "${OS}" = "windows" ]; then
@@ -196,7 +317,7 @@ jobs:
             | Platform | Architecture | Download |
             |----------|--------------|----------|
             | Windows | x64 | `cortex-${{ steps.version.outputs.VERSION }}-windows-amd64.zip` |
-            | Windows | x86 | `cortex-${{ steps.version.outputs.VERSION }}-windows-386.zip` |
+            | Windows | ARM64 | `cortex-${{ steps.version.outputs.VERSION }}-windows-arm64.zip` |
             | Linux | x64 | `cortex-${{ steps.version.outputs.VERSION }}-linux-amd64.tar.gz` |
             | Linux | ARM64 | `cortex-${{ steps.version.outputs.VERSION }}-linux-arm64.tar.gz` |
             | macOS | Intel | `cortex-${{ steps.version.outputs.VERSION }}-darwin-amd64.tar.gz` |
@@ -209,6 +330,11 @@ jobs:
             2. Add the `bin` folder to your PATH
             3. Run `cortex --help`
             
+            **GTK4 GUI Apps (Windows):**
+            - The `gtk4/` folder contains all GTK4 runtime files
+            - No need to install GTK4 separately
+            - To distribute your GUI app: `powershell -ExecutionPolicy Bypass -File bundle_gtk.ps1 -AppExe myapp.exe`
+            
             **Linux/macOS:**
             ```bash
             tar -xzf cortex-*.tar.gz
@@ -218,9 +344,10 @@ jobs:
             
             ### Requirements
             - A C compiler (GCC, Clang, or TCC)
-            - Windows: MinGW or TCC
+            - Windows: MinGW included in package, or TCC
             - Linux: GCC (usually pre-installed)
             - macOS: Xcode Command Line Tools
+            - For GUI apps on Linux/macOS: `sudo apt install libgtk-4-dev` or `brew install gtk4`
             
             ### What's New
             See [CHANGELOG.md](CHANGELOG.md) for changes.
