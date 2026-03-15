@@ -798,7 +798,6 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 	}
 	runtimeSource := filepath.Join(runtimeDir, "core.c")
 	gameSource := filepath.Join(runtimeDir, "game.c")
-	guiRuntimeSource := filepath.Join(runtimeDir, "gui_runtime.c")
 	includeDir := filepath.Dir(runtimeDir)
 
 	args := []string{}
@@ -829,33 +828,35 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 	if usesGui {
 		// Add runtime directory to include path for gui_runtime.h
 		args = append(args, "-I", runtimeDir)
-		// Use native Windows GUI on Windows, GTK4 on other platforms
+		// Use GTK4 on all platforms
 		if isWindows() {
-			guiNativeSource := filepath.Join(runtimeDir, "gui_native.c")
-			if _, err := os.Stat(guiNativeSource); err == nil {
-				args = append(args, guiNativeSource)
-			}
-			// Link Windows GUI libraries
-			args = append(args, "-lgdi32", "-luser32", "-lcomctl32", "-lcomdlg32", "-lshell32")
-		} else {
-			// Include gui_runtime.c for non-Windows
-			if _, err := os.Stat(guiRuntimeSource); err == nil {
-				args = append(args, guiRuntimeSource)
-			}
-			// Add GTK4 GUI implementation for non-Windows
-			guiGtkDir := filepath.Join(runtimeDir, "..", "internal", "gui_gtk4")
-			gtkSources := []string{"gui_core.c", "gui_widgets.c", "gui_containers.c", "gui_dialogs.c"}
-			for _, src := range gtkSources {
-				srcPath := filepath.Join(guiGtkDir, src)
-				if _, err := os.Stat(srcPath); err == nil {
-					args = append(args, srcPath)
-				}
-			}
-			// Link GTK4 libraries
-			args = append(args, "-lgtk-4", "-lgdk-4", "-lpangocairo-1.0", "-lpango-1.0",
-				"-lharfbuzz", "-lcairo", "-lcairo-gobject", "-lgdk_pixbuf-2.0", "-lgio-2.0",
-				"-lgobject-2.0", "-lglib-2.0", "-lgraphene-1.0")
+			// MSYS2 GTK4 paths on Windows
+			msysInclude := "C:/msys64/mingw64/include"
+			msysLib := "C:/msys64/mingw64/lib"
+			args = append(args, "-I", msysInclude+"/gtk-4.0")
+			args = append(args, "-I", msysInclude+"/pango-1.0")
+			args = append(args, "-I", msysInclude+"/cairo")
+			args = append(args, "-I", msysInclude+"/gdk-pixbuf-2.0")
+			args = append(args, "-I", msysInclude+"/graphene-1.0")
+			args = append(args, "-I", msysLib+"/graphene-1.0/include")
+			args = append(args, "-I", msysInclude+"/glib-2.0")
+			args = append(args, "-I", msysLib+"/glib-2.0/include")
+			args = append(args, "-I", msysInclude+"/harfbuzz")
+			args = append(args, "-L", msysLib)
 		}
+		// Add GTK4 GUI implementation for all platforms
+		guiGtkDir := filepath.Join(runtimeDir, "..", "internal", "gui_gtk4")
+		gtkSources := []string{"gui_core.c", "gui_widgets.c", "gui_containers.c", "gui_dialogs.c"}
+		for _, src := range gtkSources {
+			srcPath := filepath.Join(guiGtkDir, src)
+			if _, err := os.Stat(srcPath); err == nil {
+				args = append(args, srcPath)
+			}
+		}
+		// Link GTK4 libraries (from pkg-config --libs gtk4)
+		args = append(args, "-lgtk-4", "-lpangocairo-1.0", "-lpangowin32-1.0", "-lpango-1.0",
+			"-lgdk_pixbuf-2.0", "-lcairo-gobject", "-lcairo", "-lharfbuzz", "-lvulkan-1",
+			"-lgraphene-1.0", "-lgio-2.0", "-lgobject-2.0", "-lglib-2.0", "-lintl")
 	}
 	if usesAsync {
 		asyncSource := filepath.Join(runtimeDir, "async.c")

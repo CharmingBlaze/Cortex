@@ -11,9 +11,9 @@
 
 GUIRegistry g_gui_registry = {0};
 
-// Additional state for simplified API
-static GtkWidget *g_main_window = NULL;
-static GtkWidget *g_main_vbox = NULL;
+// Additional state for simplified API (accessible from other modules)
+GtkWidget *g_main_window = NULL;
+GtkWidget *g_main_vbox = NULL;
 static bool g_initialized = false;
 
 // ============================================================================

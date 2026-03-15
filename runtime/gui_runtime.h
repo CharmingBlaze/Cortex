@@ -1,4 +1,4 @@
-// gui_runtime.h - Cortex GUI Runtime API (GTK4-based)
+// gui_runtime.h - Cortex GUI Runtime API
 //
 // A simple, intuitive GUI library. Build apps in minutes, not hours.
 //
@@ -32,27 +32,43 @@ typedef int64_t gui_widget;
 typedef int64_t gui_container;
 
 #define GUI_NULL 0
+#define GUI_INVALID_HANDLE (-1)
 
 // ============================================================================
 // Events - Callback signature
 // ============================================================================
 
+// Event types
+typedef enum {
+    GUI_CLICK = 0,
+    GUI_CHANGE = 1,
+    GUI_SELECT = 2,
+    GUI_CHECK = 3,
+    GUI_SUBMIT = 4
+} gui_event_type;
+
+// Aliases for compatibility
+#define GUI_EVENT_CLICK GUI_CLICK
+#define GUI_EVENT_CHANGE GUI_CHANGE
+#define GUI_EVENT_SELECT GUI_SELECT
+#define GUI_EVENT_CHECK GUI_CHECK
+#define GUI_EVENT_SUBMIT GUI_SUBMIT
+
 typedef struct {
-    int type;           // Event type (click, change, etc.)
-    int64_t source;     // Widget that triggered the event
-    double value;       // Numeric value (slider, check)
-    char* text;         // Text value (entry, select)
-    bool checked;       // Boolean value (checkbox)
+    gui_event_type type;  // Event type (click, change, etc.)
+    int64_t source;       // Widget that triggered the event
+    double value;         // Numeric value (slider, check)
+    char* text;           // Text value (entry, select)
+    bool checked;         // Boolean value (checkbox)
+    void* data;           // Generic data pointer
+    // Additional fields for GTK4 compatibility
+    int key;              // Key code for key events
+    float x, y;           // Mouse coordinates
+    bool bool_val;        // Boolean value alias
 } gui_event;
 
 typedef void (*gui_callback)(gui_event e);
-
-// Event types
-#define GUI_CLICK   0
-#define GUI_CHANGE  1
-#define GUI_SELECT  2
-#define GUI_CHECK   3
-#define GUI_SUBMIT  4
+typedef void (*gui_event_callback)(gui_event e);  // Alias for compatibility
 
 // ============================================================================
 // Application Lifecycle - Super Simple

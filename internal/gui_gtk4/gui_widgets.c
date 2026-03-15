@@ -257,6 +257,48 @@ void gui_spinner_stop(gui_widget w) {
 }
 
 // ============================================================================
+// Radio Button Widget
+// ============================================================================
+
+// In GTK4, radio buttons are created by linking check buttons via set_group
+// We store the first button of each group to link subsequent buttons
+static GtkWidget *radio_group_leaders[16] = {NULL};  // Support up to 16 radio groups
+
+gui_widget gui_radio(const char* label, int group) {
+    GtkWidget *radio;
+    if (group < 0 || group >= 16) group = 0;
+    
+    radio = gtk_check_button_new_with_label(label);
+    
+    if (radio_group_leaders[group] != NULL) {
+        // Link to the first button in this group
+        gtk_check_button_set_group(GTK_CHECK_BUTTON(radio), 
+                                   GTK_CHECK_BUTTON(radio_group_leaders[group]));
+    } else {
+        // First button in group - save as leader
+        radio_group_leaders[group] = radio;
+    }
+    
+    return gui_register_widget(radio, WIDGET_TYPE_CHECK);
+}
+
+void gui_radio_reset_group(int group) {
+    if (group >= 0 && group < 16) {
+        radio_group_leaders[group] = NULL;
+    }
+}
+
+// ============================================================================
+// Spin Button Widget
+// ============================================================================
+
+gui_widget gui_spin(double min, double max, double step) {
+    GtkWidget *spin = gtk_spin_button_new_with_range(min, max, step);
+    gtk_widget_set_hexpand(spin, TRUE);
+    return gui_register_widget(spin, WIDGET_TYPE_ENTRY);
+}
+
+// ============================================================================
 // Widget State Functions
 // ============================================================================
 
