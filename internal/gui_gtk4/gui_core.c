@@ -4,6 +4,7 @@
 // Simplified API with auto-managed main window.
 
 #include "gui_gtk4_internal.h"
+#include <stdio.h>
 
 // ============================================================================
 // Global State

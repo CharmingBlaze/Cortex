@@ -1,0 +1,12 @@
+#include <gui_runtime.h>
+
+void on_click(gui_event e) {
+    gui_alert_info("Hello from GTK4!");
+}
+
+fn main() {
+    gui_start("GTK4 Test", 400, 300);
+    gui_add(gui_label("Hello, GTK4 on Windows!"));
+    gui_add(gui_button("Click Me", on_click));
+    gui_run();
+}
