@@ -26,9 +26,8 @@ Cortex is a **systems programming language** that compiles to C. Think of it as 
 - **C-like syntax** that feels familiar
 - **Modern features** like type inference, defer, and channels
 - **No manual memory management** - automatic cleanup
-- **Native performance** - compiles to optimized C code
 - **Easy C interop** - use any C library directly
-- **Zero external dependencies** - Zig CC bundled in releases
+
 
 ### Why Cortex Instead of C?
 
@@ -39,13 +38,13 @@ Cortex is a **systems programming language** that compiles to C. Think of it as 
 | No string interpolation | `"Hello ${name}!"` |
 | Complex build systems | Simple `cortex run` and `cortex build` |
 | Hard to use libraries | `#include` and `cortex bind` |
-| Need to install GCC/Clang | Zig CC bundled - no external compiler needed |
+
 
 ---
 
 ## Installation
 
-**No external dependencies required!** Cortex releases include Zig CC, a complete C compiler.
+I havent tested MAC or Linux yet. Please let me know if you encounter any issues.
 
 ### Windows
 
@@ -98,20 +97,6 @@ cortex --version
 ### Requirements
 
 **None!** Cortex releases include Zig CC, a complete C compiler. Just download and run.
-
-If you want to use a different C compiler, Cortex will auto-detect:
-- **Bundled Zig CC** (included in releases) - used automatically
-- **System Zig** - if installed separately
-- **TCC** - if available
-- **GCC/Clang** - fallback options
-
-| Platform | Bundled Compiler | Alternative |
-|----------|------------------|-------------|
-| Windows | Zig CC (included) | MinGW, TCC |
-| Linux | Zig CC (included) | GCC |
-| macOS | Zig CC (included) | Xcode Clang |
-
----
 
 ## Your First Program
 
@@ -184,15 +169,9 @@ cortex run
 
 1. Cortex reads your `.cx` file
 2. Compiles it to C code
-3. Invokes the C compiler (TCC/GCC)
+3. Invokes the C compiler (Zig CC/TCC/GCC)
 4. Runs the resulting executable
 5. Cleans up temporary files
-
-You can see the generated C code:
-```bash
-cortex run hello.cx --keep-c
-# Creates hello.c you can inspect
-```
 
 ---
 
@@ -206,9 +185,6 @@ cortex build hello.cx
 
 # Specify output name
 cortex build hello.cx -o myprogram
-
-# With optimizations
-cortex build hello.cx -o myprogram --release
 ```
 
 ### Build a Project
@@ -223,9 +199,11 @@ cortex build -o myapp
 
 ### Build with Libraries
 
+Use the legacy flag-based mode for library linking:
+
 ```bash
 # Link with raylib
-cortex build game.cx -o game --use raylib
+cortex -i game.cx -o game.exe -use raylib
 
 # Or in cortex.toml:
 [dependencies.raylib]

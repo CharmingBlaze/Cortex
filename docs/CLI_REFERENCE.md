@@ -10,8 +10,7 @@ Complete reference for all Cortex command-line interface commands.
 | `cortex run` | Compile and run | `cortex run main.cx` |
 | `cortex build` | Build executable | `cortex build main.cx -o app` |
 | `cortex bind` | Generate bindings | `cortex bind raylib -i raylib.h` |
-| `cortex --version` | Show version | `cortex --version` |
-| `cortex --help` | Show help | `cortex --help` |
+| `cortex -help` | Show help | `cortex -help` |
 
 ---
 
@@ -91,8 +90,7 @@ cortex run <file.cx> --keep-c
 
 | Option | Description |
 |--------|-------------|
-| `--keep-c` | Don't delete generated .c file |
-| `--` | Pass remaining arguments to program |
+| `-debug` | Enable debug output |
 
 ### Examples
 
@@ -101,25 +99,21 @@ cortex run <file.cx> --keep-c
 cortex run hello.cx
 # Output: Hello, World!
 
-# Run with program arguments
-cortex run main.cx -- --debug --level=1
+# Run with debug output
+cortex run main.cx -debug
 
 # Run project
 cd myproject
 cortex run
-
-# Keep generated C for debugging
-cortex run main.cx --keep-c
-# Creates: main.c (you can inspect it)
 ```
 
 ### What Happens
 
 1. Cortex parses your `.cx` file
 2. Generates C code in a temporary file
-3. Invokes C compiler (TCC/GCC/Clang)
+3. Invokes C compiler (Zig CC/TCC/GCC/Clang)
 4. Runs the resulting executable
-5. Cleans up (unless `--keep-c`)
+5. Cleans up temp files
 
 ---
 
@@ -148,11 +142,7 @@ cortex build <file.cx> -o <output> --release
 | Option | Description |
 |--------|-------------|
 | `-o <name>` | Output executable name |
-| `--release` | Optimize for release |
-| `--use <lib>` | Link with library |
-| `-I <path>` | Add include path |
-| `-L <path>` | Add library path |
-| `-l <lib>` | Link library |
+| `-debug` | Enable debug output |
 
 ### Examples
 
@@ -165,17 +155,8 @@ cortex build hello.cx
 cortex build main.cx -o mygame
 # Creates: mygame.exe or mygame
 
-# With raylib
-cortex build game.cx -o game --use raylib
-
-# Add include paths
-cortex build main.cx -I ./include -I /usr/local/include
-
-# Link libraries
-cortex build main.cx -l ssl -l crypto
-
-# Release build (optimized, smaller)
-cortex build main.cx -o game --release
+# With debug output
+cortex build main.cx -debug
 ```
 
 ### Build Process
@@ -247,36 +228,25 @@ void main() {
 
 ## Global Options
 
-### `--version`
-
-Show Cortex version:
-
-```bash
-cortex --version
-# Output: Cortex v0.1.0
-```
-
-### `--help`
+### `-help`
 
 Show help:
 
 ```bash
-cortex --help
-cortex run --help
-cortex build --help
+cortex -help
 ```
 
-### `--verbose`
+### `-debug`
 
 Show detailed output:
 
 ```bash
-cortex run main.cx --verbose
+cortex run main.cx -debug
 ```
 
 ---
 
-## Legacy Commands
+## Legacy Commands (Flag-based)
 
 Old-style commands still work for backward compatibility:
 
@@ -289,6 +259,15 @@ cortex -i main.cx -o output.exe
 
 # Build with library
 cortex -i main.cx -o output.exe -use raylib
+
+# Add include paths
+cortex -i main.cx -I ./include -I /usr/local/include
+
+# Add library paths
+cortex -i main.cx -L ./lib -L /usr/local/lib
+
+# Link libraries
+cortex -i main.cx -l raylib -l opengl32
 ```
 
 ---
@@ -298,7 +277,7 @@ cortex -i main.cx -o output.exe -use raylib
 | Variable | Purpose |
 |----------|---------|
 | `CORTEX_PATH` | Additional search path for libraries |
-| `TCC_PATH` | Path to TCC compiler (Windows) |
+| `ZIG_PATH` | Path to Zig compiler (if not bundled) |
 | `CC` | C compiler to use (default: auto-detect) |
 
 ### Examples
@@ -308,8 +287,8 @@ cortex -i main.cx -o output.exe -use raylib
 export CC=clang
 cortex build main.cx
 
-# Set TCC path (Windows)
-set TCC_PATH=C:\tcc
+# Set Zig path (if using system Zig)
+export ZIG_PATH=/usr/local/bin/zig
 cortex run main.cx
 ```
 
@@ -374,15 +353,14 @@ cortex build      # Uses all dependencies
 cortex run main.cx
 
 # Use build only for final executable
-cortex build main.cx -o release --release
+cortex build main.cx -o mygame
 ```
 
 ### Debug Generated C Code
 
 ```bash
-# Keep C code to see what Cortex generates
-cortex run main.cx --keep-c
-cat main.c
+# Use -debug flag to see what Cortex generates
+cortex run main.cx -debug
 ```
 
 ### Build for Different Platforms
@@ -390,22 +368,20 @@ cat main.c
 Cortex generates C code, so you can cross-compile:
 
 ```bash
-# Generate C code
-cortex run main.cx --keep-c
-
-# Cross-compile with GCC
+# Generate C code manually by inspecting temp files
+# Then cross-compile with GCC
 x86_64-w64-mingw32-gcc main.c -o main.exe
 arm-linux-gnueabihf-gcc main.c -o main.arm
 ```
 
-### Library Search Paths
+### Using Libraries
 
 ```bash
-# Add multiple include paths
-cortex build main.cx -I ./include -I /usr/local/include
+# Use -use flag for library configs
+cortex -i main.cx -o game.exe -use raylib
 
-# Add library paths
-cortex build main.cx -L ./lib -L /usr/local/lib
+# Or add include/library paths manually
+cortex -i main.cx -I ./include -L ./lib -l mylib
 ```
 
 ---
@@ -446,8 +422,8 @@ libs = ["mylib"]
 # Development
 cortex run game.cx
 
-# Test release build
-cortex build game.cx -o game --release
+# Build final executable
+cortex build game.cx -o game
 ./game
 
 # Distribute

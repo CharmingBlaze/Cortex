@@ -1,0 +1,4 @@
+// Cortex Project
+void main() {
+    println("Hello from Cortex!");
+}

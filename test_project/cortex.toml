@@ -1,0 +1,8 @@
+[project]
+name = "test_project"
+version = "0.1.0"
+entry = "main.cx"
+
+[dependencies]
+# Add libraries here, e.g.:
+# raylib = { path = "third_party/raylib" }
