@@ -61,7 +61,9 @@ type CodeGenerator struct {
 	usesGui                bool                    // if true, emit #include "runtime/gui_runtime.h"
 	usesAsync              bool                    // if true, emit #include "runtime/async.h"
 	usesThread             bool                    // if true, emit #include "runtime/thread.h"
+	usesManaged            bool                    // if true, emit #include "runtime/managed.h"
 	includedHeaders        map[string]bool         // track headers to prevent duplicates
+	cleanupFunctions       map[string]string       // function name -> cleanup function name
 }
 
 func BoolToInt(v bool) int {
@@ -91,6 +93,9 @@ func (g *CodeGenerator) SetUsesAsync(v bool) { g.usesAsync = v }
 
 // SetUsesThread sets whether to emit #include "runtime/thread.h" (set by compiler when AST uses thread APIs).
 func (g *CodeGenerator) SetUsesThread(v bool) { g.usesThread = v }
+
+// SetUsesManaged sets whether to emit #include "runtime/managed.h" (set by compiler when AST uses cleanup annotations).
+func (g *CodeGenerator) SetUsesManaged(v bool) { g.usesManaged = v }
 
 func (g *CodeGenerator) Generate(node ast.ASTNode) (string, error) {
 	g.output.Reset()
@@ -315,6 +320,9 @@ func (g *CodeGenerator) VisitProgram(node *ast.ProgramNode) {
 	if g.usesThread {
 		g.Write("#include \"runtime/thread.h\"\n")
 	}
+	if g.usesManaged {
+		g.Write("#include \"runtime/managed.h\"\n")
+	}
 	g.Write("#include \"runtime/game.h\"\n\n")
 
 	// Generate declarations
@@ -417,6 +425,15 @@ func (g *CodeGenerator) VisitExternDecl(node *ast.ExternDeclNode) {
 	}
 
 	g.Write(");\n")
+
+	// Store cleanup function mapping for auto-defer
+	if node.CleanupFunc != "" {
+		if g.cleanupFunctions == nil {
+			g.cleanupFunctions = make(map[string]string)
+		}
+		g.cleanupFunctions[node.Name] = node.CleanupFunc
+		g.usesManaged = true
+	}
 }
 
 func (g *CodeGenerator) VisitFunctionDecl(node *ast.FunctionDeclNode) {
@@ -581,11 +598,44 @@ func (g *CodeGenerator) VisitVariableDecl(node *ast.VariableDeclNode) {
 			g.Write(fmt.Sprintf("cortex_array* %s", cName))
 		}
 	} else {
-		g.Write(fmt.Sprintf("%s %s", varType, cName))
+		// Check if this is a cleanup-annotated call - use managed handle
+		needsManaged := false
+		var cleanupFunc string
+		if node.Initializer != nil {
+			if call, ok := node.Initializer.(*ast.CallExprNode); ok {
+				if id, ok := call.Function.(*ast.IdentifierNode); ok {
+					if cf, exists := g.cleanupFunctions[id.Name]; exists {
+						needsManaged = true
+						cleanupFunc = cf
+					}
+				}
+			}
+		}
+
+		if needsManaged {
+			// Use managed handle with cleanup attribute
+			g.Write(fmt.Sprintf("__attribute__((cleanup(cortex_managed_cleanup))) cortex_managed __managed_%s = { ", cName))
+			g.VisitNode(node.Initializer)
+			g.Write(fmt.Sprintf(", (void(*)(void*))%s }; ", cleanupFunc))
+			g.Write(fmt.Sprintf("%s %s = (%s)__managed_%s.ptr", varType, cName, varType, cName))
+		} else {
+			g.Write(fmt.Sprintf("%s %s", varType, cName))
+		}
 	}
-	if node.Initializer != nil {
-		g.Write(" = ")
-		g.VisitNode(node.Initializer)
+	if node.Initializer != nil && !strings.Contains(node.Type, "[]") {
+		// Check if already handled by managed
+		needsManaged := false
+		if call, ok := node.Initializer.(*ast.CallExprNode); ok {
+			if id, ok := call.Function.(*ast.IdentifierNode); ok {
+				if _, exists := g.cleanupFunctions[id.Name]; exists {
+					needsManaged = true
+				}
+			}
+		}
+		if !needsManaged {
+			g.Write(" = ")
+			g.VisitNode(node.Initializer)
+		}
 	}
 	if !g.omitTrailingSemicolon {
 		g.Write(";")

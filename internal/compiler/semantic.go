@@ -20,13 +20,14 @@ const (
 )
 
 type Symbol struct {
-	Name       string // Cortex name for resolution (e.g. "add")
-	EmitName   string // C symbol to emit (e.g. "math__add"); if set, codegen uses this
-	Type       string
-	SymbolType SymbolType
-	Node       ast.ASTNode
-	Scope      *Scope
-	Value      interface{} // For constants/enums: the constant value
+	Name        string // Cortex name for resolution (e.g. "add")
+	EmitName    string // C symbol to emit (e.g. "math__add"); if set, codegen uses this
+	Type        string
+	SymbolType  SymbolType
+	Node        ast.ASTNode
+	Scope       *Scope
+	Value       interface{} // For constants/enums: the constant value
+	CleanupFunc string      // For extern functions: the cleanup function to call automatically
 }
 
 type Scope struct {
@@ -1036,14 +1037,18 @@ func (a *SemanticAnalyzer) VisitWrapper(node *ast.WrapperNode) {
 func (a *SemanticAnalyzer) VisitExternDecl(node *ast.ExternDeclNode) {
 	// Allow extern to redeclare builtins (e.g. malloc, free); otherwise add to global scope
 	if existing := a.globalScope.Resolve(node.Name); existing != nil {
-		// Redeclaration: keep the existing symbol (builtin); codegen will emit the user's extern declaration
+		// Redeclaration: update with cleanup info if provided
+		if node.CleanupFunc != "" {
+			existing.CleanupFunc = node.CleanupFunc
+		}
 		return
 	}
 	funcSymbol := &Symbol{
-		Name:       node.Name,
-		Type:       node.ReturnType,
-		SymbolType: SymbolFunction,
-		Node:       node,
+		Name:        node.Name,
+		Type:        node.ReturnType,
+		SymbolType:  SymbolFunction,
+		Node:        node,
+		CleanupFunc: node.CleanupFunc,
 	}
 	if err := a.globalScope.Define(funcSymbol); err != nil {
 		a.AddError(err)

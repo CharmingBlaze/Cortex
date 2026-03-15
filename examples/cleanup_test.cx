@@ -1,0 +1,27 @@
+// Test cleanup annotation for automatic memory management
+// Uses a custom allocator to demonstrate the feature
+
+#include <stdlib.h>
+
+// Custom allocator that wraps malloc
+void* my_alloc(int size) {
+    return malloc((size_t)size);
+}
+
+// Mark my_alloc as needing cleanup with free
+extern void* my_alloc(int size) cleanup(free);
+extern void free(void* ptr);
+
+void main() {
+    show("=== Cleanup Annotation Test ===");
+    
+    // my_alloc is automatically freed when buf goes out of scope
+    // Cortex wraps the pointer in a managed handle
+    var buf = my_alloc(1024);
+    
+    show("Buffer allocated");
+    show("Will be auto-freed on scope exit");
+    
+    // No need to call free() - the cleanup annotation handles it!
+    show("=== Test complete ===");
+}

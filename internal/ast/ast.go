@@ -476,12 +476,16 @@ func (n *WrapperNode) String() string {
 // ExternDeclNode represents an extern declaration.
 type ExternDeclNode struct {
 	BaseNode
-	Name       string
-	ReturnType string
-	Parameters []*ParameterNode
+	Name        string
+	ReturnType  string
+	Parameters  []*ParameterNode
+	CleanupFunc string // Optional cleanup function for automatic memory management
 }
 
 func (n *ExternDeclNode) String() string {
+	if n.CleanupFunc != "" {
+		return fmt.Sprintf("ExternDecl{Name: %s, ReturnType: %s, Cleanup: %s}", n.Name, n.ReturnType, n.CleanupFunc)
+	}
 	return fmt.Sprintf("ExternDecl{Name: %s, ReturnType: %s}", n.Name, n.ReturnType)
 }
 

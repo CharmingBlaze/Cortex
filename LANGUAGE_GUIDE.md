@@ -1024,6 +1024,80 @@ void main() {
 
 ---
 
+## Automatic Memory Management with Cleanup
+
+Cortex provides **automatic memory management** for extern functions using the `cleanup` annotation. No manual `free()` calls needed!
+
+### The Problem
+
+In C, you must manually free memory:
+
+```c
+void* buf = malloc(1024);
+// ... use buf ...
+free(buf);  // Don't forget!
+```
+
+Forget to free? Memory leak. Free twice? Crash. Free too early? Undefined behavior.
+
+### The Cortex Solution
+
+Annotate extern functions with their cleanup function:
+
+```c
+extern void* my_alloc(int size) cleanup(free);
+extern void free(void* ptr);
+
+void main() {
+    var buf = my_alloc(1024);  // Automatically freed on scope exit!
+    show("Using buffer...");
+    // No free() needed - Cortex handles it
+}
+```
+
+### How It Works
+
+When you declare `extern void* my_alloc(int size) cleanup(free)`:
+
+1. Cortex wraps the returned pointer in a **managed handle**
+2. Uses GCC's `__attribute__((cleanup))` for automatic cleanup
+3. When the variable goes out of scope, `free()` is called automatically
+
+### Safe and Simple
+
+```c
+extern FILE* fopen(string path, string mode) cleanup(fclose);
+extern void fclose(FILE* f);
+
+void main() {
+    var file = fopen("data.txt", "r");  // Auto-closed!
+    // ... read file ...
+    // fclose called automatically
+}
+
+extern void* sqlite3_open(string path) cleanup(sqlite3_close);
+var db = sqlite3_open("my.db");  // Auto-closed!
+```
+
+### When to Use
+
+| Function Type | Example | Cleanup |
+|---------------|---------|---------|
+| Memory allocation | `malloc`, `calloc` | `free` |
+| File handles | `fopen` | `fclose` |
+| Database connections | `sqlite3_open` | `sqlite3_close` |
+| Network sockets | `socket` | `close` |
+| Custom resources | Any allocator | Any cleanup function |
+
+### Benefits
+
+- **No memory leaks** - Cleanup is guaranteed
+- **No use-after-free** - Pointer is nullified after cleanup
+- **No double-free** - Cleanup runs exactly once
+- **Simple** - Just add `cleanup(func)` to extern declaration
+
+---
+
 ## Using C libraries
 
 Cortex can call C code. Use the same **`#include`** as in C; the compiler infers linking from the header name (e.g. `#include <raylib.h>` → link `raylib`).

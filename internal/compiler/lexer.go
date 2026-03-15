@@ -82,6 +82,7 @@ const (
 	TokenPackage
 	TokenImport
 	TokenModule
+	TokenCleanup
 
 	// Operators
 	TokenAssign
@@ -502,6 +503,7 @@ func (l *Lexer) GetKeywordType(identifier string) TokenType {
 		"package":   TokenPackage,
 		"import":    TokenImport,
 		"module":    TokenModule,
+		"cleanup":   TokenCleanup,
 		"if":        TokenIf,
 		"else":      TokenElse,
 		"for":       TokenFor,

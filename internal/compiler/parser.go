@@ -422,13 +422,24 @@ func (p *Parser) ParseExternDeclaration() (ast.ASTNode, error) {
 	}
 
 	p.Consume(TokenRParen, "Expected ')' after parameters")
+
+	// Check for cleanup annotation: cleanup(funcName)
+	var cleanupFunc string
+	if p.Match(TokenCleanup) {
+		p.Consume(TokenLParen, "Expected '(' after cleanup")
+		cleanupTok := p.Consume(TokenIdentifier, "Expected cleanup function name")
+		cleanupFunc = cleanupTok.Value
+		p.Consume(TokenRParen, "Expected ')' after cleanup function name")
+	}
+
 	p.Consume(TokenSemicolon, "Expected ';' after extern declaration")
 
 	return &ast.ExternDeclNode{
-		BaseNode:   ast.BaseNode{Type: ast.NodeExternDecl, Line: name.Line, Column: name.Column},
-		Name:       name.Value,
-		ReturnType: returnType.Value,
-		Parameters: parameters,
+		BaseNode:    ast.BaseNode{Type: ast.NodeExternDecl, Line: name.Line, Column: name.Column},
+		Name:        name.Value,
+		ReturnType:  returnType.Value,
+		Parameters:  parameters,
+		CleanupFunc: cleanupFunc,
 	}, nil
 }
 

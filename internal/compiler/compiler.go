@@ -381,18 +381,11 @@ func usesThreadBuiltins(node ast.ASTNode) bool {
 			}
 		}
 		return false
-	case *ast.CallExprNode:
-		if id, ok := n.Function.(*ast.IdentifierNode); ok {
-			return threadBuiltins[id.Name]
-		}
-		return false
 	case *ast.SpawnStmtNode:
 		// Spawn statements need thread runtime
 		return true
 	case *ast.IfStmtNode:
 		return usesThreadBuiltins(n.Condition) || (n.ThenBranch != nil && usesThreadBuiltins(n.ThenBranch)) || (n.ElseBranch != nil && usesThreadBuiltins(n.ElseBranch))
-	case *ast.WhileStmtNode:
-		return usesThreadBuiltins(n.Condition) || (n.Body != nil && usesThreadBuiltins(n.Body))
 	case *ast.ForStmtNode:
 		u := n.Body != nil && usesThreadBuiltins(n.Body)
 		if n.Initializer != nil {
@@ -417,6 +410,24 @@ func usesThreadBuiltins(node ast.ASTNode) bool {
 			return usesThreadBuiltins(n.Initializer)
 		}
 		return false
+	default:
+		return false
+	}
+}
+
+// usesManagedBuiltins checks if the AST uses cleanup annotations (requires managed.h)
+func usesManagedBuiltins(node ast.ASTNode) bool {
+	switch n := node.(type) {
+	case *ast.ProgramNode:
+		for _, d := range n.Declarations {
+			if usesManagedBuiltins(d) {
+				return true
+			}
+		}
+		return false
+	case *ast.ExternDeclNode:
+		// Extern with cleanup annotation needs managed runtime
+		return n.CleanupFunc != ""
 	default:
 		return false
 	}
@@ -668,6 +679,7 @@ func (c *Compiler) CompileMulti(inputFiles []string, outputFile string) error {
 	c.generator.SetUsesGui(usesGuiBuiltins(program))
 	c.generator.SetUsesAsync(usesAsyncBuiltins(program))
 	c.generator.SetUsesThread(usesThreadBuiltins(program))
+	c.generator.SetUsesManaged(usesManagedBuiltins(program))
 	code, err := c.generator.Generate(program)
 	if err != nil {
 		return fmt.Errorf("code generation error: %w", err)
