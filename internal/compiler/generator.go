@@ -60,6 +60,7 @@ type CodeGenerator struct {
 	usesNetwork            bool                    // if true, emit #include "runtime/network.h"
 	usesGui                bool                    // if true, emit #include "runtime/gui_runtime.h"
 	usesAsync              bool                    // if true, emit #include "runtime/async.h"
+	usesThread             bool                    // if true, emit #include "runtime/thread.h"
 	includedHeaders        map[string]bool         // track headers to prevent duplicates
 }
 
@@ -87,6 +88,9 @@ func (g *CodeGenerator) SetUsesGui(v bool) { g.usesGui = v }
 
 // SetUsesAsync sets whether to emit #include "runtime/async.h" (set by compiler when AST uses async APIs).
 func (g *CodeGenerator) SetUsesAsync(v bool) { g.usesAsync = v }
+
+// SetUsesThread sets whether to emit #include "runtime/thread.h" (set by compiler when AST uses thread APIs).
+func (g *CodeGenerator) SetUsesThread(v bool) { g.usesThread = v }
 
 func (g *CodeGenerator) Generate(node ast.ASTNode) (string, error) {
 	g.output.Reset()
@@ -268,6 +272,8 @@ func (g *CodeGenerator) VisitNode(node ast.ASTNode) {
 		g.VisitYieldStmt(n)
 	case *ast.AwaitExprNode:
 		g.VisitAwaitExpr(n)
+	case *ast.SpawnStmtNode:
+		g.VisitSpawnStmt(n)
 	default:
 		g.Write(fmt.Sprintf("// Unknown node type: %T\n", node))
 	}
@@ -305,6 +311,9 @@ func (g *CodeGenerator) VisitProgram(node *ast.ProgramNode) {
 	}
 	if g.usesAsync {
 		g.Write("#include \"runtime/async.h\"\n")
+	}
+	if g.usesThread {
+		g.Write("#include \"runtime/thread.h\"\n")
 	}
 	g.Write("#include \"runtime/game.h\"\n\n")
 
@@ -1928,6 +1937,26 @@ func (g *CodeGenerator) VisitAwaitExpr(node *ast.AwaitExprNode) {
 	g.Write("async_await(")
 	g.VisitNode(node.Expr)
 	g.Write(")")
+}
+
+func (g *CodeGenerator) VisitSpawnStmt(node *ast.SpawnStmtNode) {
+	// spawn fn(args) -> thread_spawn(fn, args)
+	// spawn var = fn(args) -> cortex_thread var = thread_spawn(fn, args)
+	if node.ThreadVar != "" {
+		g.Write("cortex_thread " + node.ThreadVar + " = ")
+	}
+	g.Write("thread_spawn((void(*)(void*))")
+	g.VisitNode(node.Function)
+	g.Write(", ")
+	if len(node.Arguments) == 0 {
+		g.Write("NULL")
+	} else if len(node.Arguments) == 1 {
+		g.VisitNode(node.Arguments[0])
+	} else {
+		// Multiple args need a struct - for now use NULL
+		g.Write("NULL")
+	}
+	g.Write(");")
 }
 
 func (g *CodeGenerator) Write(text string) {

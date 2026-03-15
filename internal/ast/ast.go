@@ -730,6 +730,33 @@ func (n *MemberAccessNode) String() string {
 	return fmt.Sprintf("MemberAccess{Object: %v, Member: %s}", n.Object, n.Member)
 }
 
+// SpawnStmtNode represents a spawn statement that runs a function in a new thread.
+type SpawnStmtNode struct {
+	BaseNode
+	Function  Node   // Function to spawn (identifier or expression)
+	Arguments []Node // Arguments to pass
+	ThreadVar string // Optional variable to store thread handle
+}
+
+func (n *SpawnStmtNode) String() string {
+	return fmt.Sprintf("Spawn{Function: %v, Args: %v, ThreadVar: %s}", n.Function, n.Arguments, n.ThreadVar)
+}
+
+// ChannelExprNode represents channel operations (create, send, recv).
+type ChannelExprNode struct {
+	BaseNode
+	Operation string // "create", "send", "recv", "try_send", "try_recv", "close"
+	Channel   Node   // Channel handle (for send/recv/close)
+	Value     Node   // Value to send (for send operations)
+	ElemType  string // Element type (for create)
+	Capacity  int    // Buffer capacity (for create)
+}
+
+func (n *ChannelExprNode) String() string {
+	return fmt.Sprintf("Channel{Op: %s, Channel: %v, Value: %v, ElemType: %s, Cap: %d}",
+		n.Operation, n.Channel, n.Value, n.ElemType, n.Capacity)
+}
+
 // Node constants for compatibility
 const (
 	NodeProgram            = NodeInclude
@@ -761,6 +788,8 @@ const (
 	NodeAssignment         = NodeInclude
 	NodeArrayAccess        = NodeIndexExpr
 	NodeMemberAccess       = NodeMemberExpr
+	NodeSpawnStmt          = NodeInclude
+	NodeChannelExpr        = NodeInclude
 )
 
 // Config holds configuration for code generation.

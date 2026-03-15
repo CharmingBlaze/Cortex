@@ -905,6 +905,99 @@ coroutine void animate_player(Player* p) {
 
 ---
 
+## Threading and Channels
+
+Cortex provides **true parallelism** with threads and thread-safe channels for communication.
+
+### Spawning Threads
+
+Use `spawn` to run a function in a new thread:
+
+```c
+void worker(void* arg) {
+    show("Worker running in parallel!");
+    thread_sleep_ms(1000);
+    show("Worker done!");
+}
+
+void main() {
+    show("Main starting...");
+    spawn worker(null);       // Fire and forget
+    
+    // Or capture thread handle
+    spawn t = worker(null);   // t is cortex_thread
+    thread_join(t);           // Wait for completion
+    show("Worker finished");
+}
+```
+
+### Thread API
+
+| Function | Description |
+|----------|-------------|
+| `spawn fn(args)` | Run function in new thread (fire and forget) |
+| `spawn var = fn(args)` | Run and capture thread handle |
+| `thread_join(t)` | Wait for thread to complete |
+| `thread_is_running(t)` | Check if thread is still running |
+| `thread_id()` | Get current thread ID |
+| `thread_sleep_ms(ms)` | Sleep for milliseconds |
+
+### Channels
+
+Channels provide thread-safe communication between threads:
+
+```c
+void producer(void* arg) {
+    cortex_channel ch = (cortex_channel)arg;
+    for (int i = 1; i <= 5; i++) {
+        channel_send(ch, &i);  // Send value
+        show("Sent: " + to_string(i));
+    }
+    channel_close(ch);
+}
+
+void consumer(void* arg) {
+    cortex_channel ch = (cortex_channel)arg;
+    int value;
+    while (channel_recv(ch, &value)) {
+        show("Received: " + to_string(value));
+    }
+    show("Channel closed");
+}
+
+void main() {
+    // Create channel for int values, capacity 10
+    cortex_channel ch = channel_create(sizeof(int), 10);
+    
+    spawn producer(ch);
+    spawn consumer(ch);
+    
+    thread_sleep_ms(100);  // Let threads finish
+    channel_free(ch);
+}
+```
+
+### Channel API
+
+| Function | Description |
+|----------|-------------|
+| `channel_create(elem_size, capacity)` | Create a new channel |
+| `channel_send(ch, &value)` | Send value (blocks if full) |
+| `channel_recv(ch, &out)` | Receive value (blocks if empty) |
+| `channel_try_send(ch, &value)` | Non-blocking send (returns 1=sent, 0=would block, -1=closed) |
+| `channel_try_recv(ch, &out)` | Non-blocking receive (returns 1=received, 0=would block, -1=closed) |
+| `channel_close(ch)` | Close channel (no more sends) |
+| `channel_is_closed(ch)` | Check if channel is closed |
+| `channel_free(ch)` | Free channel resources |
+
+### When to Use
+
+- **Coroutines** (`coroutine`/`co_yield`): Cooperative multitasking, game loops, state machines
+- **Threads** (`spawn`): True parallelism, CPU-intensive work, blocking I/O
+- **Channels**: Thread communication, producer-consumer patterns
+
+---
+
 ## Unit tests
 
 Define tests and run them from `main`:
@@ -1226,6 +1319,8 @@ cortex -i main.cx -o myapp
 | Defer          | `defer { cleanup_code(); }` |
 | Coroutine      | `coroutine void f() { co_yield(); }` |
 | Async API      | `async_create(fn, arg)`, `async_resume(co)`, `async_await(co)` |
+| Threading      | `spawn fn(args)`, `spawn t = fn(args)`, `thread_join(t)` |
+| Channels       | `channel_create(size, cap)`, `channel_send(ch, &v)`, `channel_recv(ch, &out)` |
 | Vectors        | `make_vec2(x,y)`, `vec2_add`, `vec2_length`, `normalize` |
 | Random         | `random_int(min,max)`, `random_float(min,max)` |
 | Time           | `get_time()`, `sleep(sec)`, `wait(sec)` |

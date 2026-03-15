@@ -85,10 +85,10 @@ func (p *Parser) ParseDeclaration() (ast.ASTNode, error) {
 		nameToken := p.Consume(TokenIdentifier, "Expected function name after 'async'")
 		return p.ParseFunctionDeclaration(typeToken, nameToken)
 	}
-	if p.Check(TokenActor) || p.Check(TokenChannel) || p.Check(TokenSpawn) {
-		if !p.features.Actors {
-			return nil, fmt.Errorf("line %d: actor/channel/spawn requires features.actors (enable in config)", p.Peek().Line)
-		}
+
+	// Handle spawn statement: spawn function(args) or spawn var = function(args)
+	if p.Match(TokenSpawn) {
+		return p.ParseSpawnStatement()
 	}
 
 	if p.Match(TokenPackage) {
@@ -1248,6 +1248,38 @@ func (p *Parser) ParseYieldStatement() (ast.ASTNode, error) {
 	return &ast.YieldStmtNode{
 		BaseNode: ast.BaseNode{Type: ast.NodeYieldStmt, Line: p.Previous().Line, Column: p.Previous().Column},
 		Value:    value,
+	}, nil
+}
+
+func (p *Parser) ParseSpawnStatement() (ast.ASTNode, error) {
+	line, col := p.Peek().Line, p.Peek().Column
+
+	// Check for optional variable assignment: spawn var = func(args)
+	var threadVar string
+	if p.Check(TokenIdentifier) && p.position+1 < len(p.tokens) && p.tokens[p.position+1].Type == TokenAssign {
+		threadVar = p.Advance().Value
+		p.Consume(TokenAssign, "Expected '=' after spawn variable")
+	}
+
+	// Parse the function call
+	expr, err := p.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	// Should be a call expression
+	call, ok := expr.(*ast.CallExprNode)
+	if !ok {
+		return nil, fmt.Errorf("line %d: expected function call after 'spawn'", line)
+	}
+
+	p.Consume(TokenSemicolon, "Expected ';' after spawn statement")
+
+	return &ast.SpawnStmtNode{
+		BaseNode:  ast.BaseNode{Type: ast.NodeSpawnStmt, Line: line, Column: col},
+		Function:  call.Function,
+		Arguments: call.Args,
+		ThreadVar: threadVar,
 	}, nil
 }
 

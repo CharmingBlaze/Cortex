@@ -1,0 +1,20 @@
+// Test threading and channels
+
+void worker(void* arg) {
+    show("Worker started");
+    thread_sleep_ms(1000);
+    show("Worker finished");
+}
+
+void main() {
+    show("=== Threading Test ===");
+    
+    // Spawn a thread
+    spawn worker(null);
+    
+    show("Main continues...");
+    thread_sleep_ms(500);
+    show("Main waiting for worker...");
+    
+    show("=== Test complete ===");
+}

@@ -798,6 +798,88 @@ func (a *SemanticAnalyzer) RegisterBuiltins() {
 		SymbolType: SymbolFunction,
 		Node:       nil,
 	})
+
+	// Thread builtins
+	a.globalScope.Define(&Symbol{
+		Name:       "thread_spawn",
+		Type:       "cortex_thread",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "thread_join",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "thread_is_running",
+		Type:       "bool",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "thread_id",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "thread_sleep_ms",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+
+	// Channel builtins
+	a.globalScope.Define(&Symbol{
+		Name:       "channel_create",
+		Type:       "cortex_channel",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "channel_send",
+		Type:       "bool",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "channel_recv",
+		Type:       "bool",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "channel_try_send",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "channel_try_recv",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "channel_close",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "channel_is_closed",
+		Type:       "bool",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "channel_free",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
 }
 
 func (a *SemanticAnalyzer) Analyze(node ast.ASTNode) error {
@@ -910,6 +992,8 @@ func (a *SemanticAnalyzer) VisitNode(node ast.ASTNode) {
 		a.VisitYieldStmt(n)
 	case *ast.AwaitExprNode:
 		a.VisitAwaitExpr(n)
+	case *ast.SpawnStmtNode:
+		a.VisitSpawnStmt(n)
 	default:
 		a.AddError(fmt.Errorf("unknown node type: %T", node))
 	}
@@ -1902,6 +1986,22 @@ func (a *SemanticAnalyzer) VisitAwaitExpr(node *ast.AwaitExprNode) {
 		a.AddError(fmt.Errorf("await expression used outside of async function at line %d", node.GetLine()))
 	}
 	a.VisitNode(node.Expr)
+}
+
+func (a *SemanticAnalyzer) VisitSpawnStmt(node *ast.SpawnStmtNode) {
+	// Visit the function and arguments
+	a.VisitNode(node.Function)
+	for _, arg := range node.Arguments {
+		a.VisitNode(arg)
+	}
+	// If thread variable is specified, define it in current scope
+	if node.ThreadVar != "" {
+		a.currentScope.Define(&Symbol{
+			Name:       node.ThreadVar,
+			Type:       "cortex_thread",
+			SymbolType: SymbolVariable,
+		})
+	}
 }
 
 func (a *SemanticAnalyzer) AddError(err error) {

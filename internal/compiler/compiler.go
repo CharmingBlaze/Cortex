@@ -77,6 +77,13 @@ var asyncBuiltins = map[string]bool{
 	"async_create": true, "async_await": true, "async_is_complete": true, "async_run_all": true,
 }
 
+// threadBuiltins are functions that require runtime/thread.h
+var threadBuiltins = map[string]bool{
+	"thread_spawn": true, "thread_join": true, "thread_is_running": true, "thread_id": true, "thread_sleep_ms": true,
+	"channel_create": true, "channel_send": true, "channel_recv": true,
+	"channel_try_send": true, "channel_try_recv": true, "channel_close": true, "channel_is_closed": true, "channel_free": true,
+}
+
 func usesNetworkBuiltins(node ast.ASTNode) bool {
 	switch n := node.(type) {
 	case *ast.ProgramNode:
@@ -353,6 +360,68 @@ func usesAsyncBuiltins(node ast.ASTNode) bool {
 	}
 }
 
+func usesThreadBuiltins(node ast.ASTNode) bool {
+	switch n := node.(type) {
+	case *ast.ProgramNode:
+		for _, d := range n.Declarations {
+			if usesThreadBuiltins(d) {
+				return true
+			}
+		}
+		return false
+	case *ast.FunctionDeclNode:
+		if n.Body != nil {
+			return usesThreadBuiltins(n.Body)
+		}
+		return false
+	case *ast.BlockNode:
+		for _, s := range n.Statements {
+			if usesThreadBuiltins(s) {
+				return true
+			}
+		}
+		return false
+	case *ast.CallExprNode:
+		if id, ok := n.Function.(*ast.IdentifierNode); ok {
+			return threadBuiltins[id.Name]
+		}
+		return false
+	case *ast.SpawnStmtNode:
+		// Spawn statements need thread runtime
+		return true
+	case *ast.IfStmtNode:
+		return usesThreadBuiltins(n.Condition) || (n.ThenBranch != nil && usesThreadBuiltins(n.ThenBranch)) || (n.ElseBranch != nil && usesThreadBuiltins(n.ElseBranch))
+	case *ast.WhileStmtNode:
+		return usesThreadBuiltins(n.Condition) || (n.Body != nil && usesThreadBuiltins(n.Body))
+	case *ast.ForStmtNode:
+		u := n.Body != nil && usesThreadBuiltins(n.Body)
+		if n.Initializer != nil {
+			u = u || usesThreadBuiltins(n.Initializer)
+		}
+		if n.Condition != nil {
+			u = u || usesThreadBuiltins(n.Condition)
+		}
+		if n.Increment != nil {
+			u = u || usesThreadBuiltins(n.Increment)
+		}
+		return u
+	case *ast.ReturnStmtNode:
+		if n.Value != nil {
+			return usesThreadBuiltins(n.Value)
+		}
+		return false
+	case *ast.AssignmentNode:
+		return usesThreadBuiltins(n.Target) || usesThreadBuiltins(n.Value)
+	case *ast.VariableDeclNode:
+		if n.Initializer != nil {
+			return usesThreadBuiltins(n.Initializer)
+		}
+		return false
+	default:
+		return false
+	}
+}
+
 type Compiler struct {
 	lexer       *Lexer
 	parser      *Parser
@@ -598,6 +667,7 @@ func (c *Compiler) CompileMulti(inputFiles []string, outputFile string) error {
 	c.generator.SetUsesNetwork(usesNet)
 	c.generator.SetUsesGui(usesGuiBuiltins(program))
 	c.generator.SetUsesAsync(usesAsyncBuiltins(program))
+	c.generator.SetUsesThread(usesThreadBuiltins(program))
 	code, err := c.generator.Generate(program)
 	if err != nil {
 		return fmt.Errorf("code generation error: %w", err)
@@ -614,7 +684,8 @@ func (c *Compiler) CompileMulti(inputFiles []string, outputFile string) error {
 	linkLibs := c.libraries
 	usesGui := usesGuiBuiltins(program)
 	usesAsync := usesAsyncBuiltins(program)
-	return c.compileCCode(cFile, outputFile, linkLibs, usesNet, usesGui, usesAsync)
+	usesThread := usesThreadBuiltins(program)
+	return c.compileCCode(cFile, outputFile, linkLibs, usesNet, usesGui, usesAsync, usesThread)
 }
 
 func (c *Compiler) collectIncludes(program *ast.ProgramNode) {
@@ -694,7 +765,7 @@ func collectLinkPragmas(node ast.ASTNode) []string {
 	return libs
 }
 
-func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, usesNetwork bool, usesGui bool, usesAsync bool) error {
+func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, usesNetwork bool, usesGui bool, usesAsync bool, usesThread bool) error {
 	runtimeDir := FindRuntimeDir()
 	if runtimeDir == "" {
 		return fmt.Errorf("could not find runtime directory (run from project root or set CORTEX_ROOT)")
@@ -755,6 +826,12 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 		asyncSource := filepath.Join(runtimeDir, "async.c")
 		if _, err := os.Stat(asyncSource); err == nil {
 			args = append(args, asyncSource)
+		}
+	}
+	if usesThread {
+		threadSource := filepath.Join(runtimeDir, "thread.c")
+		if _, err := os.Stat(threadSource); err == nil {
+			args = append(args, threadSource)
 		}
 	}
 	helperSource := filepath.Join(runtimeDir, "raylib_helper.c")
