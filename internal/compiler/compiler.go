@@ -71,6 +71,12 @@ var guiBuiltins = map[string]bool{
 	"gui_quit": true,
 }
 
+// asyncBuiltins are functions that require runtime/async.h
+var asyncBuiltins = map[string]bool{
+	"co_create": true, "co_resume": true, "co_yield": true, "co_free": true, "co_current": true, "co_finished": true,
+	"async_create": true, "async_await": true, "async_is_complete": true, "async_run_all": true,
+}
+
 func usesNetworkBuiltins(node ast.ASTNode) bool {
 	switch n := node.(type) {
 	case *ast.ProgramNode:
@@ -276,6 +282,65 @@ func usesGuiBuiltins(node ast.ASTNode) bool {
 		return usesGuiBuiltins(n.Array) || usesGuiBuiltins(n.Index)
 	case *ast.DeferStmtNode:
 		return n.Body != nil && usesGuiBuiltins(n.Body)
+	default:
+		return false
+	}
+}
+
+func usesAsyncBuiltins(node ast.ASTNode) bool {
+	switch n := node.(type) {
+	case *ast.ProgramNode:
+		for _, d := range n.Declarations {
+			if usesAsyncBuiltins(d) {
+				return true
+			}
+		}
+		return false
+	case *ast.FunctionDeclNode:
+		if n.Body != nil {
+			return usesAsyncBuiltins(n.Body)
+		}
+		return false
+	case *ast.BlockNode:
+		for _, s := range n.Statements {
+			if usesAsyncBuiltins(s) {
+				return true
+			}
+		}
+		return false
+	case *ast.CallExprNode:
+		if id, ok := n.Function.(*ast.IdentifierNode); ok {
+			return asyncBuiltins[id.Name]
+		}
+		return false
+	case *ast.IfStmtNode:
+		return usesAsyncBuiltins(n.Condition) || (n.ThenBranch != nil && usesAsyncBuiltins(n.ThenBranch)) || (n.ElseBranch != nil && usesAsyncBuiltins(n.ElseBranch))
+	case *ast.WhileStmtNode:
+		return usesAsyncBuiltins(n.Condition) || (n.Body != nil && usesAsyncBuiltins(n.Body))
+	case *ast.ForStmtNode:
+		u := n.Body != nil && usesAsyncBuiltins(n.Body)
+		if n.Initializer != nil {
+			u = u || usesAsyncBuiltins(n.Initializer)
+		}
+		if n.Condition != nil {
+			u = u || usesAsyncBuiltins(n.Condition)
+		}
+		if n.Increment != nil {
+			u = u || usesAsyncBuiltins(n.Increment)
+		}
+		return u
+	case *ast.ReturnStmtNode:
+		if n.Value != nil {
+			return usesAsyncBuiltins(n.Value)
+		}
+		return false
+	case *ast.AssignmentNode:
+		return usesAsyncBuiltins(n.Target) || usesAsyncBuiltins(n.Value)
+	case *ast.VariableDeclNode:
+		if n.Initializer != nil {
+			return usesAsyncBuiltins(n.Initializer)
+		}
+		return false
 	default:
 		return false
 	}
@@ -525,6 +590,7 @@ func (c *Compiler) CompileMulti(inputFiles []string, outputFile string) error {
 	usesNet := usesNetworkBuiltins(program)
 	c.generator.SetUsesNetwork(usesNet)
 	c.generator.SetUsesGui(usesGuiBuiltins(program))
+	c.generator.SetUsesAsync(usesAsyncBuiltins(program))
 	code, err := c.generator.Generate(program)
 	if err != nil {
 		return fmt.Errorf("code generation error: %w", err)
@@ -540,7 +606,8 @@ func (c *Compiler) CompileMulti(inputFiles []string, outputFile string) error {
 
 	linkLibs := c.libraries
 	usesGui := usesGuiBuiltins(program)
-	return c.compileCCode(cFile, outputFile, linkLibs, usesNet, usesGui)
+	usesAsync := usesAsyncBuiltins(program)
+	return c.compileCCode(cFile, outputFile, linkLibs, usesNet, usesGui, usesAsync)
 }
 
 func (c *Compiler) collectIncludes(program *ast.ProgramNode) {
@@ -581,6 +648,7 @@ var standardCHeaders = map[string]bool{
 	"stdbool.h": true, "math.h": true, "stddef.h": true, "limits.h": true,
 	"ctype.h": true, "errno.h": true, "assert.h": true, "signal.h": true,
 	"gui_runtime.h": true, "core.h": true, "game.h": true, "network.h": true,
+	"async.h": true,
 }
 
 // collectLinkPragmas returns library names from #pragma link, #use, and #include <name.h> (C-style: include implies -l name).
@@ -619,7 +687,7 @@ func collectLinkPragmas(node ast.ASTNode) []string {
 	return libs
 }
 
-func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, usesNetwork bool, usesGui bool) error {
+func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, usesNetwork bool, usesGui bool, usesAsync bool) error {
 	runtimeDir := FindRuntimeDir()
 	if runtimeDir == "" {
 		return fmt.Errorf("could not find runtime directory (run from project root or set CORTEX_ROOT)")
@@ -674,6 +742,12 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 					args = append(args, guiArchive)
 				}
 			}
+		}
+	}
+	if usesAsync {
+		asyncSource := filepath.Join(runtimeDir, "async.c")
+		if _, err := os.Stat(asyncSource); err == nil {
+			args = append(args, asyncSource)
 		}
 	}
 	helperSource := filepath.Join(runtimeDir, "raylib_helper.c")

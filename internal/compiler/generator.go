@@ -59,6 +59,7 @@ type CodeGenerator struct {
 	lambdaClosureCache     map[*ast.LambdaNode]int // lambda -> closure id (so we emit struct/fn once)
 	usesNetwork            bool                    // if true, emit #include "runtime/network.h"
 	usesGui                bool                    // if true, emit #include "runtime/gui_runtime.h"
+	usesAsync              bool                    // if true, emit #include "runtime/async.h"
 	includedHeaders        map[string]bool         // track headers to prevent duplicates
 }
 
@@ -83,6 +84,9 @@ func (g *CodeGenerator) SetUsesNetwork(v bool) { g.usesNetwork = v }
 
 // SetUsesGui sets whether to emit #include "runtime/gui_runtime.h" (set by compiler when AST uses GUI APIs).
 func (g *CodeGenerator) SetUsesGui(v bool) { g.usesGui = v }
+
+// SetUsesAsync sets whether to emit #include "runtime/async.h" (set by compiler when AST uses async APIs).
+func (g *CodeGenerator) SetUsesAsync(v bool) { g.usesAsync = v }
 
 func (g *CodeGenerator) Generate(node ast.ASTNode) (string, error) {
 	g.output.Reset()
@@ -298,6 +302,9 @@ func (g *CodeGenerator) VisitProgram(node *ast.ProgramNode) {
 	}
 	if g.usesGui {
 		g.Write("#include \"runtime/gui_runtime.h\"\n")
+	}
+	if g.usesAsync {
+		g.Write("#include \"runtime/async.h\"\n")
 	}
 	g.Write("#include \"runtime/game.h\"\n\n")
 

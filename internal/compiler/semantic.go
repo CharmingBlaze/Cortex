@@ -1801,6 +1801,9 @@ func (a *SemanticAnalyzer) VisitIdentifier(node *ast.IdentifierNode) {
 		} else if networkBuiltins[node.Name] {
 			// Network builtins are always available
 			node.ResolvedType = "any"
+		} else if asyncBuiltins[node.Name] {
+			// Async builtins are always available
+			node.ResolvedType = "any"
 		} else {
 			a.AddErrorAt(fmt.Errorf("undefined identifier '%s' at line %d", node.Name, node.GetLine()), node, errors.ErrSemanticUnknown, "Check spelling or declare the identifier.")
 		}

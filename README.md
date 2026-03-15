@@ -909,10 +909,10 @@ So you can call **any C library** (e.g. raylib, SDL, libcurl) from Cortex by inc
 | **Dict literals** | `{ "key": value }` — **implemented** |
 | **Named/Default params** | `fn f(int x = 0)` — **implemented** |
 | **defer** | `defer { ... }` — **implemented** |
-| **Async/actors** | Keywords gated; runtime is stretch |
+| **Async/coroutines** | `co_yield`, `async_create`, `async_await` — **implemented** |
 | **Hot reloading** | Planned for future |
 
-**The core for "games and apps" is complete:** types, control flow, functions, C interop, vectors, I/O, build system, and config-driven features.
+**The core for "games and apps" is complete:** types, control flow, functions, C interop, vectors, I/O, async/coroutines, build system, and config-driven features.
 
 ---
 

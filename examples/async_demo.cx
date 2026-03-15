@@ -1,0 +1,26 @@
+// Async/await example using coroutines
+// The compiler auto-includes runtime/async.h when async functions are used
+
+void fetch_data(void* arg) {
+    println("Fetching data...");
+    
+    // Simulate async work with yields
+    for (int i = 0; i < 3; i++) {
+        println("Working... " + (i + 1));
+        co_yield();
+    }
+    
+    println("Done!");
+}
+
+void main() {
+    println("=== Async/Coroutine Demo ===");
+    
+    // Create async task
+    async_task task = async_create(fetch_data, null);
+    
+    // Await the result
+    async_await(task);
+    
+    println("=== Demo completed! ===");
+}
