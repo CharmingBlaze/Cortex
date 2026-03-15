@@ -111,7 +111,7 @@ cortex run
 
 1. Cortex parses your `.cx` file
 2. Generates C code in a temporary file
-3. Invokes C compiler (Zig CC/TCC/GCC/Clang)
+3. Invokes C compiler (Zig CC bundled, or system GCC/Clang)
 4. Runs the resulting executable
 5. Cleans up temp files
 
@@ -315,7 +315,7 @@ Project configuration file in TOML format:
 name = "mygame"
 version = "0.1.0"
 entry = "main.cx"           # Entry point file
-backend = "auto"            # gcc, tcc, or auto
+backend = "auto"            # gcc, zig, or auto
 
 [project.features]
 async = true                # Enable async/await

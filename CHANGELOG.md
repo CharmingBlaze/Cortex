@@ -2,6 +2,43 @@
 
 All notable changes to Cortex will be documented in this file.
 
+## [0.2.0] - 2026-03-15
+
+### Added
+
+#### Optional Types
+- **Optional type syntax**: `int?`, `string?`, `User?`
+- **Postfix `?` operator**: Check if optional has value (`maybe?` returns bool)
+- **Postfix `!` operator**: Force unwrap optional (`maybe!` returns value)
+
+#### Match Expressions
+- **Match as expressions**: `string result = match n { 1 => "one", _ => "other" };`
+- **Nested match**: Match expressions can be nested inside cases
+- **Comma-separated cases**: Clean syntax with comma separators
+
+#### Arrow Functions
+- **Typed parameters**: `(int a, int b) => a + b`
+- **Type inference with `fn`**: `fn add = (int x, int y) => x + y;`
+
+#### Arrays
+- **Array type syntax**: `int[]`, `string[]`, `int[][]`
+- **Curly brace literals**: `int[] nums = {1, 2, 3, 4, 5};`
+
+### Fixed
+- Optional unwrap in if conditions now generates correct C code
+- Postfix `?` and `!` operators properly distinguished from prefix `!` (logical NOT)
+- Arrow functions with typed parameters parse correctly
+- Array type declarations work with `Type[]` syntax
+
+### Release Packages
+- Windows (x64, ARM64) with bundled Zig CC compiler
+- Linux (x64, ARM64) with bundled Zig CC compiler
+- macOS (Intel, Apple Silicon) with bundled Zig CC compiler
+
+**No external C compiler required!** Zig CC is bundled with all releases.
+
+---
+
 ## [0.1.0] - 2024-03-15
 
 ### Added
@@ -53,18 +90,12 @@ All notable changes to Cortex will be documented in this file.
 - Added clean examples for all new features
 - Polished if statement documentation
 
-### Release Packages
-- Windows (x64, x86) with bundled TCC option
-- Linux (x64, ARM64)
-- macOS (Intel, Apple Silicon)
-
 ---
 
 ## Future Plans
 
 ### Planned Features
 - `for (item in collection)` iteration
-- Pattern matching with `match`
 - Async/await support
 - Actor model for concurrency
 - GUI toolkit improvements

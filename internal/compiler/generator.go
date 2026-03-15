@@ -37,8 +37,10 @@ func EscapeStringForC(s string) string {
 type CodeGenerator struct {
 	indentation            int
 	output                 strings.Builder
+	headerOutput           strings.Builder  // for includes
 	outputTarget           *strings.Builder // normally &output; set to &lambdaDefs when emitting lambda body
 	lambdaDefs             strings.Builder
+	lambdaForwardDecls     strings.Builder // forward declarations for lambdas
 	lambdaCounter          int
 	testDefs               strings.Builder
 	testRegistrations      []struct{ name, funcName string }
@@ -99,7 +101,9 @@ func (g *CodeGenerator) SetUsesManaged(v bool) { g.usesManaged = v }
 
 func (g *CodeGenerator) Generate(node ast.ASTNode) (string, error) {
 	g.output.Reset()
+	g.headerOutput.Reset()
 	g.lambdaDefs.Reset()
+	g.lambdaForwardDecls.Reset()
 	g.lambdaCounter = 0
 	g.testDefs.Reset()
 	g.testRegistrations = nil
@@ -128,7 +132,8 @@ func (g *CodeGenerator) Generate(node ast.ASTNode) (string, error) {
 		}
 		registerTests.WriteString("}\n")
 	}
-	return g.lambdaDefs.String() + g.testDefs.String() + registerTests.String() + g.output.String(), nil
+	// Order: headers -> forward decls -> main code -> lambda definitions -> tests
+	return g.headerOutput.String() + g.lambdaForwardDecls.String() + g.output.String() + g.lambdaDefs.String() + g.testDefs.String() + registerTests.String(), nil
 }
 
 func (g *CodeGenerator) CollectTests(node ast.ASTNode) {
@@ -289,11 +294,12 @@ func (g *CodeGenerator) VisitNode(node ast.ASTNode) {
 }
 
 func (g *CodeGenerator) VisitProgram(node *ast.ProgramNode) {
-	g.Write("// Generated Cortex Program\n")
-	g.Write(fmt.Sprintf("#define CORTEX_FEATURE_ASYNC %d\n", BoolToInt(g.cfg.Features.Async)))
-	g.Write(fmt.Sprintf("#define CORTEX_FEATURE_ACTORS %d\n", BoolToInt(g.cfg.Features.Actors)))
-	g.Write(fmt.Sprintf("#define CORTEX_FEATURE_BLOCKCHAIN %d\n", BoolToInt(g.cfg.Features.Blockchain)))
-	g.Write(fmt.Sprintf("#define CORTEX_FEATURE_QOL %d\n\n", BoolToInt(g.cfg.Features.QoL)))
+	// Write header includes to headerOutput
+	g.headerOutput.WriteString("// Generated Cortex Program\n")
+	g.headerOutput.WriteString(fmt.Sprintf("#define CORTEX_FEATURE_ASYNC %d\n", BoolToInt(g.cfg.Features.Async)))
+	g.headerOutput.WriteString(fmt.Sprintf("#define CORTEX_FEATURE_ACTORS %d\n", BoolToInt(g.cfg.Features.Actors)))
+	g.headerOutput.WriteString(fmt.Sprintf("#define CORTEX_FEATURE_BLOCKCHAIN %d\n", BoolToInt(g.cfg.Features.Blockchain)))
+	g.headerOutput.WriteString(fmt.Sprintf("#define CORTEX_FEATURE_QOL %d\n\n", BoolToInt(g.cfg.Features.QoL)))
 
 	// Track standard includes to prevent duplicates
 	g.includedHeaders["stdio.h"] = true
@@ -305,31 +311,31 @@ func (g *CodeGenerator) VisitProgram(node *ast.ProgramNode) {
 	g.includedHeaders["core.h"] = true
 	g.includedHeaders["game.h"] = true
 
-	g.Write("#include <stdio.h>\n")
-	g.Write("#include <stdlib.h>\n")
-	g.Write("#include <math.h>\n")
-	g.Write("#include <stdbool.h>\n")
-	g.Write("#include <time.h>\n")
-	g.Write("#include <string.h>\n")
-	g.Write("#include \"runtime/core.h\"\n")
+	g.headerOutput.WriteString("#include <stdio.h>\n")
+	g.headerOutput.WriteString("#include <stdlib.h>\n")
+	g.headerOutput.WriteString("#include <math.h>\n")
+	g.headerOutput.WriteString("#include <stdbool.h>\n")
+	g.headerOutput.WriteString("#include <time.h>\n")
+	g.headerOutput.WriteString("#include <string.h>\n")
+	g.headerOutput.WriteString("#include \"runtime/core.h\"\n")
 	if g.usesNetwork {
-		g.Write("#include \"runtime/network.h\"\n")
+		g.headerOutput.WriteString("#include \"runtime/network.h\"\n")
 	}
 	if g.usesGui {
-		g.Write("#include \"runtime/gui_runtime.h\"\n")
+		g.headerOutput.WriteString("#include \"runtime/gui_runtime.h\"\n")
 	}
 	if g.usesAsync {
-		g.Write("#include \"runtime/async.h\"\n")
+		g.headerOutput.WriteString("#include \"runtime/async.h\"\n")
 	}
 	if g.usesThread {
-		g.Write("#include \"runtime/thread.h\"\n")
+		g.headerOutput.WriteString("#include \"runtime/thread.h\"\n")
 	}
 	if g.usesManaged {
-		g.Write("#include \"runtime/managed.h\"\n")
+		g.headerOutput.WriteString("#include \"runtime/managed.h\"\n")
 	}
-	g.Write("#include \"runtime/game.h\"\n\n")
+	g.headerOutput.WriteString("#include \"runtime/game.h\"\n\n")
 
-	// Generate declarations
+	// Generate declarations to output
 	for _, decl := range node.Declarations {
 		g.VisitNode(decl)
 		g.Write("\n")
@@ -528,6 +534,101 @@ func (g *CodeGenerator) VisitVariableDecl(node *ast.VariableDeclNode) {
 	if node.Module != "" {
 		cName = node.Module + "__" + node.Name
 	}
+
+	// Handle function pointer types (inferred from lambda)
+	if strings.HasPrefix(node.Type, "fn_") {
+		// Parse function type: fn_retType_param1_param2_...
+		parts := strings.Split(node.Type, "_")
+		if len(parts) >= 2 {
+			retType := g.ConvertType(parts[1])
+			var paramTypes []string
+			for i := 2; i < len(parts); i++ {
+				paramTypes = append(paramTypes, g.ConvertType(parts[i]))
+			}
+			paramStr := strings.Join(paramTypes, ", ")
+			if paramStr == "" {
+				paramStr = "void"
+			}
+			// Generate function pointer: retType (*name)(params)
+			g.Write(fmt.Sprintf("%s (*%s)(%s) = ", retType, cName, paramStr))
+			if node.Initializer != nil {
+				g.VisitNode(node.Initializer)
+			}
+			if !g.omitTrailingSemicolon {
+				g.Write(";")
+			}
+			g.Write("\n")
+			return
+		}
+	}
+
+	// Handle var with lambda initializer - use function pointer
+	if node.Type == "var" && node.Initializer != nil {
+		if lambda, isLambda := node.Initializer.(*ast.LambdaNode); isLambda {
+			// Determine lambda signature for function pointer
+			retType := "double" // default for var return
+			if lambda.ReturnType != "" && lambda.ReturnType != "var" {
+				retType = g.ConvertType(lambda.ReturnType)
+			}
+
+			// Build parameter types
+			var paramTypes []string
+			for _, p := range lambda.Parameters {
+				if p.Type == "var" {
+					paramTypes = append(paramTypes, "double")
+				} else {
+					paramTypes = append(paramTypes, g.ConvertType(p.Type))
+				}
+			}
+
+			// Generate function pointer declaration: double (*name)(double)
+			paramStr := strings.Join(paramTypes, ", ")
+			g.Write(fmt.Sprintf("%s (*%s)(%s) = ", retType, cName, paramStr))
+			g.VisitNode(lambda) // This writes the lambda name
+			if !g.omitTrailingSemicolon {
+				g.Write(";")
+			}
+			g.Write("\n")
+			return
+		}
+	}
+
+	// Handle union types (A | B) - use AnyValue
+	if strings.Contains(node.Type, " | ") {
+		g.Write(fmt.Sprintf("AnyValue %s = ", cName))
+		if node.Initializer != nil {
+			g.EmitExprAsAny(node.Initializer)
+		} else {
+			g.Write("make_any_null()")
+		}
+		if !g.omitTrailingSemicolon {
+			g.Write(";")
+		}
+		g.Write("\n")
+		return
+	}
+
+	// Handle optional types (T?)
+	if strings.HasSuffix(node.Type, "?") {
+		varType := g.ConvertType(node.Type)
+		g.Write(fmt.Sprintf("%s %s = ", varType, cName))
+		if node.Initializer == nil {
+			g.Write(g.optionalNone(node.Type))
+		} else if lit, ok := node.Initializer.(*ast.LiteralNode); ok && lit.Type == "null" {
+			g.Write(g.optionalNone(node.Type))
+		} else {
+			g.Write(g.optionalSome(node.Type))
+			g.Write("(")
+			g.VisitNode(node.Initializer)
+			g.Write(")")
+		}
+		if !g.omitTrailingSemicolon {
+			g.Write(";")
+		}
+		g.Write("\n")
+		return
+	}
+
 	if dl, ok := node.Initializer.(*ast.DictLiteralNode); ok {
 		g.Write("cortex_dict* " + cName + " = dict_create()")
 		if !g.omitTrailingSemicolon {
@@ -695,6 +796,25 @@ func (g *CodeGenerator) VisitEnumDecl(node *ast.EnumDeclNode) {
 	if node.Module != "" {
 		cName = node.Module + "__" + node.Name
 	}
+
+	// Check if this is a string enum (has StringValues)
+	if len(node.StringValues) > 0 {
+		// Generate string constants for string enum
+		g.Write(fmt.Sprintf("typedef const char* %s;\n", cName))
+		for _, value := range node.Values {
+			if strVal, ok := node.StringValues[value]; ok {
+				g.Write(fmt.Sprintf("const char* %s = \"%s\";\n", value, strVal))
+			} else {
+				g.Write(fmt.Sprintf("const char* %s = \"%s\";\n", value, value))
+			}
+		}
+		if g.typeEmitNames != nil {
+			g.typeEmitNames[node.Name] = cName
+		}
+		return
+	}
+
+	// Regular enum
 	g.Write("typedef enum {\n")
 	g.Indent()
 
@@ -858,21 +978,59 @@ func (g *CodeGenerator) VisitLambda(node *ast.LambdaNode) {
 	g.lambdaCounter++
 	name := fmt.Sprintf("cortex_lambda_%d", g.lambdaCounter-1)
 	retType := node.ReturnType
-	if retType == "" {
-		retType = "void"
+	if retType == "" || retType == "var" {
+		retType = "double" // Use double for dynamically typed return
 	}
 	cRet := g.ConvertType(retType)
 	var params []string
 	for _, p := range node.Parameters {
-		params = append(params, g.ConvertType(p.Type)+" "+p.Name)
+		pType := p.Type
+		if pType == "var" {
+			pType = "double" // Use double for dynamically typed parameters (supports numeric ops)
+		} else {
+			pType = g.ConvertType(pType)
+		}
+		params = append(params, pType+" "+p.Name)
 	}
 	paramStr := strings.Join(params, ", ")
+
+	// Emit forward declaration
+	g.lambdaForwardDecls.WriteString("static " + cRet + " " + name + "(" + paramStr + ");\n")
 
 	oldTarget := g.outputTarget
 	g.outputTarget = &g.lambdaDefs
 	g.Write("static " + cRet + " " + name + "(" + paramStr + ") {\n")
 	g.Indent()
-	g.VisitBlock(node.Body)
+	// For lambdas with expression body, generate return for last statement
+	if len(node.Body.Statements) > 0 && cRet != "void" {
+		// Visit all but last statement normally
+		for i := 0; i < len(node.Body.Statements)-1; i++ {
+			g.VisitNode(node.Body.Statements[i])
+			if !g.omitTrailingSemicolon {
+				g.Write(";")
+			}
+			g.Write("\n")
+		}
+		// Check if last statement is an expression type and add return
+		lastStmt := node.Body.Statements[len(node.Body.Statements)-1]
+		isExpr := false
+		switch lastStmt.(type) {
+		case *ast.BinaryExprNode, *ast.CallExprNode, *ast.IdentifierNode, *ast.LiteralNode,
+			*ast.UnaryExprNode, *ast.MemberAccessNode, *ast.IndexExprNode, *ast.ArrayAccessNode,
+			*ast.LambdaNode, *ast.TupleExprNode:
+			isExpr = true
+		}
+		if isExpr {
+			g.Write("return ")
+		}
+		g.VisitNode(lastStmt)
+		if !g.omitTrailingSemicolon {
+			g.Write(";")
+		}
+		g.Write("\n")
+	} else {
+		g.VisitBlock(node.Body)
+	}
 	g.Dedent()
 	g.Write("}\n")
 	g.outputTarget = oldTarget
@@ -980,16 +1138,80 @@ func (g *CodeGenerator) VisitDeferStmt(node *ast.DeferStmtNode) {
 }
 
 func (g *CodeGenerator) VisitMatchStmt(node *ast.MatchStmtNode) {
+	// Check if this is a match expression (has ExprBody) or match statement (has Body)
+	isExpr := false
+	for _, c := range node.Cases {
+		if c.ExprBody != nil && c.Body == nil {
+			isExpr = true
+			break
+		}
+	}
+
+	// For match expressions, use ternary operator chain
+	if isExpr {
+		// Build ternary: (cond1) ? val1 : (cond2) ? val2 : default
+		for _, c := range node.Cases {
+			if c.TypeName == "_" || (c.TypeName == "" && c.Literal == nil) {
+				// Default case - just output the value
+				g.VisitNode(c.ExprBody)
+				return
+			}
+			// Output condition
+			if c.Literal != nil {
+				g.Write("(")
+				g.VisitNode(node.Value)
+				g.Write(" == ")
+				g.VisitNode(c.Literal)
+				g.Write(") ? ")
+			} else if c.TypeName == "Ok" {
+				g.Write("(result_is_ok(")
+				g.VisitNode(node.Value)
+				g.Write(")) ? ")
+			} else if c.TypeName == "Err" {
+				g.Write("(!result_is_ok(")
+				g.VisitNode(node.Value)
+				g.Write(")) ? ")
+			} else {
+				g.Write("(is_type(")
+				g.VisitNode(node.Value)
+				g.Write(", \"" + c.TypeName + "\")) ? ")
+			}
+			g.VisitNode(c.ExprBody)
+			g.Write(" : ")
+		}
+		// Should not reach here if _ case exists
+		return
+	}
+
+	// For match statements, use if/else chain
 	for i, c := range node.Cases {
 		if i > 0 {
 			g.Write(" else ")
 		}
+		// Handle _ wildcard as default case
+		if c.TypeName == "_" {
+			if isExpr {
+				// For expression, just output the value
+				g.VisitNode(c.ExprBody)
+			} else {
+				g.Write("{\n")
+				g.Indent()
+				g.VisitBlock(c.Body)
+				g.Dedent()
+				g.Write("\n}")
+			}
+			continue
+		}
 		if c.TypeName == "" && c.Literal == nil {
-			g.Write("{\n")
-			g.Indent()
-			g.VisitBlock(c.Body)
-			g.Dedent()
-			g.Write("\n}")
+			if isExpr {
+				g.VisitNode(c.ExprBody)
+			} else {
+				g.Write("{\n")
+				g.Indent()
+				g.VisitBlock(c.Body)
+				g.Dedent()
+				g.Write("\n}")
+			}
 			continue
 		}
 		if c.TypeName == "Ok" {
@@ -1002,11 +1224,19 @@ func (g *CodeGenerator) VisitMatchStmt(node *ast.MatchStmtNode) {
 				g.Write("AnyValue " + c.VarName + " = result_value(")
 				g.VisitNode(node.Value)
 				g.Write(");\n")
-				g.VisitBlock(c.Body)
+				if isExpr {
+					g.VisitNode(c.ExprBody)
+				} else {
+					g.VisitBlock(c.Body)
+				}
 				g.Dedent()
 				g.Write("\n}")
 			} else {
-				g.VisitNode(c.Body)
+				if isExpr {
+					g.VisitNode(c.ExprBody)
+				} else {
+					g.VisitBlock(c.Body)
+				}
 			}
 			continue
 		}
@@ -1020,11 +1250,19 @@ func (g *CodeGenerator) VisitMatchStmt(node *ast.MatchStmtNode) {
 				g.Write("char* " + c.VarName + " = result_error(")
 				g.VisitNode(node.Value)
 				g.Write(");\n")
-				g.VisitBlock(c.Body)
+				if isExpr {
+					g.VisitNode(c.ExprBody)
+				} else {
+					g.VisitBlock(c.Body)
+				}
 				g.Dedent()
 				g.Write("\n}")
 			} else {
-				g.VisitNode(c.Body)
+				if isExpr {
+					g.VisitNode(c.ExprBody)
+				} else {
+					g.VisitBlock(c.Body)
+				}
 			}
 			continue
 		}
@@ -1047,12 +1285,10 @@ func (g *CodeGenerator) VisitMatchStmt(node *ast.MatchStmtNode) {
 				g.VisitBlock(c.Body)
 				g.Dedent()
 				g.Write("\n}")
-			} else {
-				g.VisitNode(c.Body)
+				continue
 			}
-			continue
 		}
-		g.VisitNode(c.Body)
+		g.VisitBlock(c.Body)
 	}
 }
 
@@ -1367,6 +1603,13 @@ func (g *CodeGenerator) GetExpressionType(expr ast.ASTNode) string {
 		return e.Type
 	case *ast.IdentifierNode:
 		if e.ResolvedType != "" {
+			// If this is a function pointer type, return the return type
+			if strings.HasPrefix(e.ResolvedType, "fn_") {
+				parts := strings.Split(e.ResolvedType, "_")
+				if len(parts) >= 2 {
+					return parts[1] // Return type is second part
+				}
+			}
 			return e.ResolvedType
 		}
 		return "any"
@@ -1390,6 +1633,13 @@ func (g *CodeGenerator) GetExpressionType(expr ast.ASTNode) string {
 		return g.InferBinaryExpressionType(e)
 	case *ast.CallExprNode:
 		if id, ok := e.Function.(*ast.IdentifierNode); ok && id.ResolvedType != "" {
+			// If this is a function pointer type, return the return type
+			if strings.HasPrefix(id.ResolvedType, "fn_") {
+				parts := strings.Split(id.ResolvedType, "_")
+				if len(parts) >= 2 {
+					return parts[1] // Return type is second part
+				}
+			}
 			return id.ResolvedType
 		}
 		return "any"
@@ -1450,6 +1700,14 @@ func (g *CodeGenerator) VisitUnaryExpr(node *ast.UnaryExprNode) {
 	if node.IsPostfix && (node.Operator == "++" || node.Operator == "--") {
 		g.VisitNode(node.Operand)
 		g.Write(node.Operator)
+	} else if node.IsPostfix && node.Operator == "?" {
+		// Postfix ? - optional check: expr? returns true if optional has value
+		g.VisitNode(node.Operand)
+		g.Write(".has_value")
+	} else if node.IsPostfix && node.Operator == "!" {
+		// Postfix ! - force unwrap: expr! returns the value
+		g.VisitNode(node.Operand)
+		g.Write(".value")
 	} else {
 		g.Write(fmt.Sprintf("(%s", node.Operator))
 		g.VisitNode(node.Operand)
@@ -1471,18 +1729,8 @@ func (g *CodeGenerator) VisitCallExpr(node *ast.CallExprNode) {
 		// Check for channel methods: ch.send(val), ch.recv(), ch.close(), etc.
 		switch member.Member {
 		case "send":
-			// ch.send(val) -> channel_send(ch, &val)
-			g.Write("channel_send(")
-			g.VisitNode(member.Object)
-			if len(node.Args) > 0 {
-				g.Write(", &")
-				g.VisitNode(node.Args[0])
-			}
-			g.Write(")")
-			return
-		case "recv":
-			// ch.recv(&out) -> channel_recv(ch, &out)
-			g.Write("channel_recv(")
+			// ch.send(val) -> channel_send_typed(ch, val) (macro handles temp variable)
+			g.Write("channel_send_typed(")
 			g.VisitNode(member.Object)
 			if len(node.Args) > 0 {
 				g.Write(", ")
@@ -1490,11 +1738,26 @@ func (g *CodeGenerator) VisitCallExpr(node *ast.CallExprNode) {
 			}
 			g.Write(")")
 			return
+		case "recv":
+			// ch.recv() -> channel_recv_typed(ch, T) (macro returns value directly)
+			// ch.recv(&out) -> channel_recv(ch, &out) (traditional form with output param)
+			if len(node.Args) == 0 {
+				g.Write("channel_recv_typed(")
+				g.VisitNode(member.Object)
+				g.Write(", int)") // Default to int type - TODO: infer from channel type
+			} else {
+				g.Write("channel_recv(")
+				g.VisitNode(member.Object)
+				g.Write(", &")
+				g.VisitNode(node.Args[0])
+				g.Write(")")
+			}
+			return
 		case "try_send":
-			g.Write("channel_try_send(")
+			g.Write("channel_try_send_typed(")
 			g.VisitNode(member.Object)
 			if len(node.Args) > 0 {
-				g.Write(", &")
+				g.Write(", ")
 				g.VisitNode(node.Args[0])
 			}
 			g.Write(")")
@@ -1566,8 +1829,61 @@ func (g *CodeGenerator) VisitCallExpr(node *ast.CallExprNode) {
 		// Case-insensitive matching for built-in functions
 		switch strings.ToLower(name) {
 		case "print", "say":
+			// Check if argument is a union type (AnyValue)
+			if len(node.Args) > 0 {
+				argType := g.GetExpressionType(node.Args[0])
+				if strings.Contains(argType, " | ") {
+					g.Write("print_any(")
+					g.VisitNode(node.Args[0])
+					g.Write(")")
+					return
+				}
+				// Handle numeric types - convert to string
+				if argType == "int" || argType == "int32" || argType == "int64" {
+					g.Write("print_string(toString_int(")
+					g.VisitNode(node.Args[0])
+					g.Write("))")
+					return
+				}
+				if argType == "float" || argType == "double" || argType == "float32" || argType == "float64" || argType == "number" {
+					g.Write("print_string(toString_float(")
+					g.VisitNode(node.Args[0])
+					g.Write("))")
+					return
+				}
+			}
 			g.Write("print_string")
 		case "println", "show", "writeline":
+			// Check if argument is a union type (AnyValue)
+			if len(node.Args) > 0 {
+				argType := g.GetExpressionType(node.Args[0])
+				if strings.Contains(argType, " | ") {
+					g.Write("println_any(")
+					g.VisitNode(node.Args[0])
+					g.Write(")")
+					return
+				}
+				// Handle numeric types - convert to string
+				if argType == "int" || argType == "int32" || argType == "int64" {
+					g.Write("println_string(toString_int(")
+					g.VisitNode(node.Args[0])
+					g.Write("))")
+					return
+				}
+				if argType == "float" || argType == "double" || argType == "float32" || argType == "float64" || argType == "number" {
+					g.Write("println_string(toString_float(")
+					g.VisitNode(node.Args[0])
+					g.Write("))")
+					return
+				}
+				// Handle bool type
+				if argType == "bool" {
+					g.Write("println_string(toString_bool(")
+					g.VisitNode(node.Args[0])
+					g.Write("))")
+					return
+				}
+			}
 			g.Write("println_string")
 		case "printf":
 			g.Write("printf")
@@ -1878,6 +2194,9 @@ func (g *CodeGenerator) VisitLiteral(node *ast.LiteralNode) {
 		g.Write(fmt.Sprintf(`"%s"`, EscapeStringForC(node.Value.(string))))
 	case "char":
 		g.Write(fmt.Sprintf(`'%s'`, EscapeStringForC(node.Value.(string))))
+	case "type":
+		// Type literal for macros like channel_of(T, N)
+		g.Write(fmt.Sprintf("%s", node.Value.(string)))
 	default:
 		// For numbers, just output the value directly for C compatibility
 		g.Write(fmt.Sprintf("%v", node.Value))
@@ -2031,6 +2350,17 @@ func (g *CodeGenerator) VisitMemberAccess(node *ast.MemberAccessNode) {
 }
 
 func (g *CodeGenerator) ConvertType(cortexType string) string {
+	// Handle union types: A | B -> AnyValue (dynamic type)
+	if strings.Contains(cortexType, " | ") {
+		return "AnyValue"
+	}
+	// Handle optional types: T? -> optional wrapper struct
+	if strings.HasSuffix(cortexType, "?") {
+		baseType := strings.TrimSuffix(cortexType, "?")
+		baseCType := g.ConvertType(baseType)
+		// Use a struct wrapper for optional values
+		return "cortex_optional_" + strings.ReplaceAll(baseCType, "*", "_ptr")
+	}
 	switch cortexType {
 	case "void":
 		return "void"
@@ -2071,6 +2401,56 @@ func (g *CodeGenerator) ConvertType(cortexType string) string {
 			return "void*" // Placeholder for function pointer conversion
 		}
 		return cortexType // Fallback to original type
+	}
+}
+
+// optionalNone returns the C expression for an empty optional value
+func (g *CodeGenerator) optionalNone(cortexType string) string {
+	baseType := strings.TrimSuffix(cortexType, "?")
+	switch baseType {
+	case "int":
+		return "optional_none_int()"
+	case "float":
+		return "optional_none_float()"
+	case "double":
+		return "((cortex_optional_double){.has_value = false})"
+	case "char":
+		return "((cortex_optional_char){.has_value = false})"
+	case "bool":
+		return "((cortex_optional_bool){.has_value = false})"
+	case "string":
+		return "optional_none_string()"
+	case "vec2":
+		return "((cortex_optional_vec2){.has_value = false})"
+	case "vec3":
+		return "((cortex_optional_vec3){.has_value = false})"
+	default:
+		return "((cortex_optional_ptr){.has_value = false})"
+	}
+}
+
+// optionalSome returns the C expression prefix for a present optional value
+func (g *CodeGenerator) optionalSome(cortexType string) string {
+	baseType := strings.TrimSuffix(cortexType, "?")
+	switch baseType {
+	case "int":
+		return "optional_some_int"
+	case "float":
+		return "optional_some_float"
+	case "double":
+		return "(cortex_optional_double){.has_value = true, .value = "
+	case "char":
+		return "(cortex_optional_char){.has_value = true, .value = "
+	case "bool":
+		return "(cortex_optional_bool){.has_value = true, .value = "
+	case "string":
+		return "optional_some_string"
+	case "vec2":
+		return "(cortex_optional_vec2){.has_value = true, .value = "
+	case "vec3":
+		return "(cortex_optional_vec3){.has_value = true, .value = "
+	default:
+		return "(cortex_optional_ptr){.has_value = true, .value = "
 	}
 }
 

@@ -169,7 +169,7 @@ cortex run
 
 1. Cortex reads your `.cx` file
 2. Compiles it to C code
-3. Invokes the C compiler (Zig CC/TCC/GCC)
+3. Invokes the C compiler (Zig CC bundled, or system GCC/Clang)
 4. Runs the resulting executable
 5. Cleans up temporary files
 
@@ -222,7 +222,7 @@ libs = ["raylib", "opengl32", "gdi32"]
 name = "myapp"
 version = "0.1.0"
 entry = "main.cx"        # Entry point file
-backend = "auto"         # C compiler: gcc, tcc, or auto
+backend = "auto"         # C compiler: gcc, zig, or auto
 
 [project.features]
 async = true             # Enable async/await
@@ -739,7 +739,7 @@ void main() {
 **Problem:** No C compiler installed.
 
 **Solution:**
-- Windows: Install TCC or MinGW
+- Windows: Install MinGW or use bundled Zig CC
 - Linux: `sudo apt install gcc`
 - macOS: `xcode-select --install`
 

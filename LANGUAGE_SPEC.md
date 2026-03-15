@@ -45,7 +45,7 @@ Cortex provides a modern, simple CLI inspired by Go and Rust:
 | `cortex run [file.cx]` | Compile and run (uses cortex.toml if found) |
 | `cortex build [file.cx] [-o output]` | Compile to executable |
 | `cortex bind <lib> -i <header.h>` | Generate Cortex bindings from C header |
-| `cortex -i file.cx -run` | Legacy: compile and run single file |
+| `cortex -i file.cx -run` | Invokes C compiler (Zig CC bundled, or system GCC/Clang) |
 | `cortex -i file.cx -o output -use raylib` | Legacy: compile with library |
 
 ### C Library Binding Generator
@@ -75,7 +75,7 @@ Cortex uses TOML for project configuration. Create a `cortex.toml` in your proje
 name = "my_game"
 version = "0.1.0"
 entry = "main.cx"           # Entry point (default: main.cx)
-backend = "auto"            # C backend: gcc, tcc, or auto
+backend = "auto"            # C backend: zig, or auto
 
 [project.features]
 async = true                # Enable async/await
@@ -144,6 +144,25 @@ Cortex is a modern systems programming language that combines C's performance wi
 - `var` - Smart dynamic variable with type inference
 - `any` - Universal type that can hold any value
 
+#### Array Type Syntax
+Arrays can be declared using C-style syntax with square brackets:
+```c
+int[] nums = {1, 2, 3, 4, 5};      // Dynamic array of ints
+string[] names = {"Alice", "Bob"};  // Dynamic array of strings
+int[][] matrix = {{1,2}, {3,4}};    // 2D array (array of arrays)
+
+// Fixed-size arrays
+int arr[5];                         // Array with 5 elements
+arr[0] = 10;
+```
+
+#### Array Literals
+Arrays can be initialized using curly brace literals:
+```c
+int[] nums = {1, 2, 3, 4, 5};
+string[] names = {"Alice", "Bob", "Charlie"};
+```
+
 ### Optional Types
 Optional types represent a value that may or may not exist:
 ```c
@@ -151,6 +170,33 @@ int? maybe_int;       // Either an int or null
 string? maybe_name;   // Either a string or null
 User? maybe_user;     // Either a User struct or null
 ```
+
+#### Optional Operators
+Cortex provides postfix operators for working with optionals:
+
+**Postfix `?` - Optional Check**
+Returns `true` if the optional has a value, `false` otherwise:
+```c
+int? maybe = 42;
+if (maybe?) {
+    println("Has a value!");
+}
+if (!(maybe?)) {
+    println("No value!");
+}
+```
+
+**Postfix `!` - Force Unwrap**
+Returns the value inside the optional (use only when you know it has a value):
+```c
+int? maybe = 42;
+if (maybe?) {
+    int value = maybe!;  // Unwraps to 42
+    println(value);
+}
+```
+
+These operators work with the underlying `cortex_optional_T` struct representation that has `has_value` and `value` fields.
 
 ### Union Types
 Union types allow a variable to hold one of several types:
@@ -438,8 +484,11 @@ Arrow functions provide concise syntax for callbacks and lambdas:
 // No parameters
 () => println("Clicked!")
 
-// Single expression body
+// Single expression body with untyped parameters
 (x) => x * 2
+
+// Typed parameters
+(int a, int b) => a + b
 
 // Block body
 (x, y) => {
@@ -449,16 +498,41 @@ Arrow functions provide concise syntax for callbacks and lambdas:
 
 // Used as callbacks
 gui_button("Click", () => println("Clicked!"));
+
+// Assigned to variables with fn type inference
+fn add = (int a, int b) => a + b;
+fn mul = (int x, int y) => x * y;
+printf("add(3,4)=%d\n", add(3, 4));
 ```
 
 ### Match Expressions
 Pattern matching for type-safe branching:
 ```c
 match value {
-    int x => println("int: ${x}");
-    string s => println("string: ${s}");
-    _ => println("unknown");
+    int x => println("int: ${x}"),
+    string s => println("string: ${s}"),
+    _ => println("unknown"),
 }
+
+// Match as an expression
+int n = 2;
+string result = match n {
+    1 => "one",
+    2 => "two",
+    _ => "other"
+};
+printf("result: %s\n", result);  // prints "two"
+
+// Nested match expressions
+int x = 1, y = 2;
+string nested = match x {
+    1 => match y {
+        1 => "1,1",
+        2 => "1,2",
+        _ => "1,_"
+    },
+    _ => "other"
+};
 
 // With guards
 match result {

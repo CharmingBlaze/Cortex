@@ -515,15 +515,25 @@ func (p *Parser) ParseEnumDeclaration() (ast.ASTNode, error) {
 	stringValues := make(map[string]string)
 
 	for !p.Check(TokenRBrace) && !p.IsAtEnd() {
-		valueToken := p.Consume(TokenIdentifier, "Expected enum value")
-		values = append(values, valueToken.Value)
+		// Support both identifier and string literal enum values
+		var valueName string
+		if p.Check(TokenString) {
+			// String literal as enum value: "active", "inactive"
+			strTok := p.Advance()
+			valueName = strTok.Value
+			stringValues[valueName] = strTok.Value
+		} else {
+			valueToken := p.Consume(TokenIdentifier, "Expected enum value")
+			valueName = valueToken.Value
+		}
+		values = append(values, valueName)
 
 		// Check for explicit value: = "string" or = number
 		if p.Match(TokenAssign) {
 			if p.Check(TokenString) {
 				// String enum: Red = "red"
 				strTok := p.Advance()
-				stringValues[valueToken.Value] = strTok.Value
+				stringValues[valueName] = strTok.Value
 			}
 			// For numeric values, we could parse them but for now just skip
 			// as auto-increment is the default
@@ -604,6 +614,12 @@ func (p *Parser) ParseVariableOrFunctionDeclaration() (ast.ASTNode, error) {
 		typeToken.Value += "*"
 	}
 
+	// Handle array type syntax: Type[] name or Type[][] name
+	for p.Match(TokenLBracket) {
+		p.Consume(TokenRBracket, "Expected ']' after '[' for array type")
+		typeToken.Value += "[]"
+	}
+
 	// Handle const specially - it's a modifier, not the actual type
 	// After const, we need: actualType name OR name (for type inference)
 	if typeToken.Type == TokenConst {
@@ -613,6 +629,11 @@ func (p *Parser) ParseVariableOrFunctionDeclaration() (ast.ASTNode, error) {
 			actualType = p.ConsumeTypeOrVar()
 			for p.Match(TokenMultiply) {
 				actualType.Value += "*"
+			}
+			// Handle array type syntax for const: const Type[] name or const Type[][] name
+			for p.Match(TokenLBracket) {
+				p.Consume(TokenRBracket, "Expected ']' after '[' for array type")
+				actualType.Value += "[]"
 			}
 		} else {
 			// const without type - infer from initializer
@@ -683,6 +704,10 @@ func (p *Parser) ParseFunctionDeclaration(typeToken, nameToken Token) (ast.ASTNo
 
 	// Use the type token as return type (C-style: int func() {})
 	returnType := typeToken.Value
+	// Handle 'fn' keyword - default to void
+	if typeToken.Type == TokenFn {
+		returnType = "void"
+	}
 	// Also support -> for explicit return type override
 	if p.Match(TokenArrow) {
 		returnTypeTok := p.ConsumeType("Expected return type after ->")
@@ -708,9 +733,15 @@ func (p *Parser) ParseVariableDeclarationWithTypes(typeToken, nameToken Token) (
 	var initializer ast.ASTNode
 	var arraySize int = -1 // -1 means not an array, 0 means empty size, >0 means fixed size
 	isConst := typeToken.Type == TokenConst
+	isVar := typeToken.Type == TokenVar || typeToken.Type == TokenLet || typeToken.Type == TokenFn
 
 	// The actual type - for const, this was already resolved by the caller
 	actualType := typeToken.Value
+
+	// Handle var/let/fn as type inference
+	if isVar {
+		actualType = "var"
+	}
 
 	// Check for array size declaration: Type name[size]
 	if p.Match(TokenLBracket) {
@@ -1432,16 +1463,41 @@ func (p *Parser) ParseDeferStatement() (ast.ASTNode, error) {
 }
 
 func (p *Parser) ParseMatchStatement() (ast.ASTNode, error) {
-	p.Consume(TokenLParen, "Expected '(' after match")
-	value, err := p.ParseExpression()
-	if err != nil {
-		return nil, err
+	// Optional parentheses - allow match(x) or match x
+	var value ast.ASTNode
+	var err error
+	if p.Match(TokenLParen) {
+		value, err = p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		p.Consume(TokenRParen, "Expected ')' after match")
+	} else {
+		// No parens - parse expression directly
+		value, err = p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
 	}
-	p.Consume(TokenRParen, "Expected ')' after match value")
 	p.Consume(TokenLBrace, "Expected '{' after match")
 
 	var cases []*ast.CaseClauseNode
 	for !p.Check(TokenRBrace) && !p.IsAtEnd() {
+		// Handle _ wildcard case
+		if p.Match(TokenUnderscore) {
+			p.Consume(TokenFatArrow, "Expected '=>' after _")
+			body, err := p.ParseBlock()
+			if err != nil {
+				return nil, err
+			}
+			cases = append(cases, &ast.CaseClauseNode{
+				BaseNode: ast.BaseNode{Type: ast.NodeCaseClause, Line: p.Previous().Line, Column: p.Previous().Column},
+				TypeName: "_",
+				VarName:  "",
+				Body:     body.(*ast.BlockNode),
+			})
+			continue
+		}
 		if p.Match(TokenDefault) {
 			p.Consume(TokenColon, "Expected ':' after default")
 			body, err := p.ParseBlock()
@@ -1456,6 +1512,65 @@ func (p *Parser) ParseMatchStatement() (ast.ASTNode, error) {
 			})
 			continue
 		}
+		// Support modern syntax: type var => body OR literal => body (without 'case' keyword)
+		if p.Check(TokenIdentifier) || p.IsTypeToken(p.Peek().Type) || p.Check(TokenNumber) || p.Check(TokenString) {
+			// Check if this is a modern-style case (without 'case' keyword)
+			// Peek ahead for =>
+			startPos := p.position
+			var typeName string
+			var varName string
+			var lit ast.ASTNode
+
+			if p.IsTypeToken(p.Peek().Type) {
+				typeName = p.Advance().Value
+				if p.Check(TokenIdentifier) {
+					varName = p.Advance().Value
+				}
+			} else if p.Check(TokenNumber) || p.Check(TokenString) {
+				lit, _ = p.ParseExpression()
+			} else if p.Check(TokenIdentifier) {
+				// Could be enum value or type name
+				typeName = p.Advance().Value
+				if p.Check(TokenIdentifier) {
+					varName = p.Advance().Value
+				}
+			}
+
+			// Check for => (modern syntax) or : (traditional syntax)
+			if p.Match(TokenFatArrow) {
+				// Modern syntax: type var => body
+				body, err := p.ParseBlock()
+				if err != nil {
+					return nil, err
+				}
+				cases = append(cases, &ast.CaseClauseNode{
+					BaseNode: ast.BaseNode{Type: ast.NodeCaseClause, Line: p.Previous().Line, Column: p.Previous().Column},
+					TypeName: typeName,
+					VarName:  varName,
+					Literal:  lit,
+					Body:     body.(*ast.BlockNode),
+				})
+				continue
+			} else if p.Check(TokenColon) {
+				// Traditional syntax with colon
+				p.Advance()
+				body, err := p.ParseBlock()
+				if err != nil {
+					return nil, err
+				}
+				cases = append(cases, &ast.CaseClauseNode{
+					BaseNode: ast.BaseNode{Type: ast.NodeCaseClause, Line: p.Previous().Line, Column: p.Previous().Column},
+					TypeName: typeName,
+					VarName:  varName,
+					Literal:  lit,
+					Body:     body.(*ast.BlockNode),
+				})
+				continue
+			}
+			// Not a match case, restore position and fall through to case keyword check
+			p.position = startPos
+		}
+
 		if !p.Match(TokenCase) {
 			return nil, fmt.Errorf("expected case or default in match")
 		}
@@ -1518,6 +1633,120 @@ func (p *Parser) ParseMatchStatement() (ast.ASTNode, error) {
 		}
 	}
 	p.Consume(TokenRBrace, "Expected '}' after match")
+	return &ast.MatchStmtNode{
+		BaseNode: ast.BaseNode{Type: ast.NodeMatchStmt, Line: value.GetLine(), Column: value.GetColumn()},
+		Value:    value,
+		Cases:    cases,
+	}, nil
+}
+
+// ParseMatchExpression parses match as an expression that returns a value
+func (p *Parser) ParseMatchExpression() (ast.ASTNode, error) {
+	// Optional parentheses - allow match(x) or match x
+	var value ast.ASTNode
+	var err error
+	if p.Match(TokenLParen) {
+		value, err = p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		p.Consume(TokenRParen, "Expected ')' after match")
+	} else {
+		// No parens - parse expression directly
+		value, err = p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+	}
+	p.Consume(TokenLBrace, "Expected '{' after match")
+
+	var cases []*ast.CaseClauseNode
+	for !p.Check(TokenRBrace) && !p.IsAtEnd() {
+		// Handle _ wildcard case
+		if p.Match(TokenUnderscore) {
+			p.Consume(TokenFatArrow, "Expected '=>' after _")
+			// For expression, parse single expression instead of block
+			var bodyExpr ast.ASTNode
+			if p.Check(TokenLBrace) {
+				blk, err := p.ParseBlock()
+				if err != nil {
+					return nil, err
+				}
+				bodyExpr = blk
+			} else {
+				bodyExpr, err = p.ParseExpression()
+				if err != nil {
+					return nil, err
+				}
+			}
+			cases = append(cases, &ast.CaseClauseNode{
+				BaseNode: ast.BaseNode{Type: ast.NodeCaseClause, Line: p.Previous().Line, Column: p.Previous().Column},
+				TypeName: "_",
+				ExprBody: bodyExpr,
+			})
+			continue
+		}
+
+		// Parse the case value (literal or identifier)
+		var lit ast.ASTNode
+		var typeName string
+		var varName string
+
+		if p.Check(TokenNumber) || p.Check(TokenString) {
+			lit, _ = p.ParsePrimary()
+		} else if p.Check(TokenIdentifier) {
+			// Could be enum value or type name
+			typeName = p.Advance().Value
+			if p.Check(TokenIdentifier) {
+				varName = p.Advance().Value
+			}
+			// Check if this was actually a literal (enum value) - look ahead for =>
+			if p.Check(TokenFatArrow) {
+				// It was a literal enum value, use typeName as the literal
+				lit = &ast.IdentifierNode{
+					BaseNode: ast.BaseNode{Type: ast.NodeIdentifier, Line: p.Previous().Line, Column: p.Previous().Column},
+					Name:     typeName,
+				}
+				typeName = ""
+			}
+		} else if p.IsTypeToken(p.Peek().Type) {
+			typeName = p.Advance().Value
+			if p.Check(TokenIdentifier) {
+				varName = p.Advance().Value
+			}
+		}
+
+		// Expect => followed by expression
+		if !p.Match(TokenFatArrow) {
+			return nil, fmt.Errorf("expected '=>' after case value, got %s", p.Peek().Value)
+		}
+
+		// Parse expression for this case
+		var bodyExpr ast.ASTNode
+		if p.Check(TokenLBrace) {
+			blk, err := p.ParseBlock()
+			if err != nil {
+				return nil, err
+			}
+			bodyExpr = blk
+		} else {
+			bodyExpr, err = p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+		}
+		cases = append(cases, &ast.CaseClauseNode{
+			BaseNode: ast.BaseNode{Type: ast.NodeCaseClause, Line: p.Previous().Line, Column: p.Previous().Column},
+			TypeName: typeName,
+			VarName:  varName,
+			Literal:  lit,
+			ExprBody: bodyExpr,
+		})
+		// Optional comma separator
+		p.Match(TokenComma)
+	}
+	p.Consume(TokenRBrace, "Expected '}' after match")
+	// Return as a ternary-like expression node - use MatchStmtNode for now
 	return &ast.MatchStmtNode{
 		BaseNode: ast.BaseNode{Type: ast.NodeMatchStmt, Line: value.GetLine(), Column: value.GetColumn()},
 		Value:    value,
@@ -2169,6 +2398,22 @@ func (p *Parser) ParseCall() (ast.ASTNode, error) {
 				IsIncrement: false,
 				IsPrefix:    false,
 			}
+		} else if p.Match(TokenQuestion) {
+			// Postfix ? - optional check (returns bool)
+			expr = &ast.UnaryExprNode{
+				BaseNode:  ast.BaseNode{Type: ast.NodeUnaryExpr, Line: expr.GetLine(), Column: expr.GetColumn()},
+				Operator:  "?",
+				Operand:   expr,
+				IsPostfix: true,
+			}
+		} else if p.Match(TokenNot) {
+			// Postfix ! - force unwrap
+			expr = &ast.UnaryExprNode{
+				BaseNode:  ast.BaseNode{Type: ast.NodeUnaryExpr, Line: expr.GetLine(), Column: expr.GetColumn()},
+				Operator:  "!",
+				Operand:   expr,
+				IsPostfix: true,
+			}
 		} else {
 			break
 		}
@@ -2203,8 +2448,60 @@ func (p *Parser) ParsePrimary() (ast.ASTNode, error) {
 		}, nil
 	}
 
+	// Handle match expression: match value { cases }
+	if p.Match(TokenMatch) {
+		return p.ParseMatchExpression()
+	}
+
+	// Handle channel<T>(size) constructor
+	if p.Match(TokenChannel) {
+		line, col := p.Previous().Line, p.Previous().Column
+		// Parse type parameter: <T>
+		elemType := "any" // default type
+		if p.Match(TokenLess) {
+			// Accept either identifier or type keyword (int, float, etc.)
+			if p.IsTypeToken(p.Peek().Type) {
+				tok := p.Advance()
+				elemType = tok.Value
+			} else if p.Check(TokenIdentifier) {
+				tok := p.Advance()
+				elemType = tok.Value
+			} else {
+				return nil, fmt.Errorf("expected type in channel<T> at line %d", line)
+			}
+			p.Consume(TokenGreater, "Expected '>' after channel type")
+		}
+		// Parse constructor arguments: (size)
+		p.Consume(TokenLParen, "Expected '(' after channel")
+		var sizeArg ast.ASTNode
+		if !p.Check(TokenRParen) {
+			arg, err := p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+			sizeArg = arg
+		}
+		p.Consume(TokenRParen, "Expected ')' after channel arguments")
+		// Use channel_of(T, N) macro which expands to channel_create(sizeof(T), N)
+		return &ast.CallExprNode{
+			BaseNode: ast.BaseNode{Type: ast.NodeCallExpr, Line: line, Column: col},
+			Function: &ast.IdentifierNode{
+				BaseNode: ast.BaseNode{Type: ast.NodeIdentifier, Line: line, Column: col},
+				Name:     "channel_of",
+			},
+			Args: []ast.ASTNode{
+				&ast.LiteralNode{
+					BaseNode: ast.BaseNode{Type: ast.NodeLiteral, Line: line, Column: col},
+					Value:    elemType,
+					Type:     "type",
+				},
+				sizeArg,
+			},
+		}, nil
+	}
+
 	// Allow type keywords to be used as identifiers in expressions (e.g., var result = ...)
-	if p.IsTypeToken(p.Peek().Type) && !p.Check(TokenVoid) && !p.Check(TokenVar) {
+	if p.IsTypeToken(p.Peek().Type) && !p.Check(TokenVoid) && !p.Check(TokenVar) && !p.Check(TokenLet) && !p.Check(TokenFn) {
 		tok := p.Advance()
 		return &ast.IdentifierNode{
 			BaseNode: ast.BaseNode{Type: ast.NodeIdentifier, Line: tok.Line, Column: tok.Column},
@@ -2285,9 +2582,11 @@ func (p *Parser) ParsePrimary() (ast.ASTNode, error) {
 	}
 
 	if p.Match(TokenLParen) {
-		// Check for arrow function: () => expr or (params) => expr
+		// Check for arrow function: () => expr or (params) => expr or (type param) => expr
 		savedPos := p.position - 1 // position of the '('
 		isArrowFunc := false
+		paramNames := []string{} // Declared at outer scope for use later
+		paramTypes := []string{} // For typed parameters
 
 		// Look ahead to detect arrow function pattern
 		if p.Check(TokenRParen) {
@@ -2299,12 +2598,28 @@ func (p *Parser) ParsePrimary() (ast.ASTNode, error) {
 				// Not arrow func, restore to before '(' for expression parsing
 				p.position = savedPos
 			}
-		} else if p.Check(TokenIdentifier) {
-			// Check for (x, y) => pattern
-			paramNames := []string{}
-			for p.Check(TokenIdentifier) {
-				paramNames = append(paramNames, p.Peek().Value)
-				p.Advance()
+		} else if p.Check(TokenIdentifier) || p.IsTypeToken(p.Peek().Type) {
+			// Check for (x, y) => pattern or (int x, int y) => pattern
+			for p.Check(TokenIdentifier) || p.IsTypeToken(p.Peek().Type) {
+				// Check if this is a typed parameter (type name) or untyped (just name)
+				if p.IsTypeToken(p.Peek().Type) {
+					// Typed parameter: int x
+					paramType := p.Advance().Value
+					if p.Check(TokenIdentifier) {
+						paramNames = append(paramNames, p.Peek().Value)
+						paramTypes = append(paramTypes, paramType)
+						p.Advance()
+					} else {
+						// Not a valid pattern, restore
+						p.position = savedPos
+						break
+					}
+				} else if p.Check(TokenIdentifier) {
+					// Untyped parameter: x
+					paramNames = append(paramNames, p.Peek().Value)
+					paramTypes = append(paramTypes, "var")
+					p.Advance()
+				}
 				if p.Check(TokenComma) {
 					p.Advance()
 				}
@@ -2313,8 +2628,6 @@ func (p *Parser) ParsePrimary() (ast.ASTNode, error) {
 				p.Advance() // consume ')'
 				if p.Check(TokenFatArrow) {
 					isArrowFunc = true
-					// Create parameters from collected names
-					_ = paramNames // Will use these for typed params
 				} else {
 					// Not arrow func, restore position
 					p.position = savedPos
@@ -2351,10 +2664,24 @@ func (p *Parser) ParsePrimary() (ast.ASTNode, error) {
 				}
 			}
 
+			// Build parameters from the collected names and types
+			params := make([]*ast.ParameterNode, len(paramNames))
+			for i, name := range paramNames {
+				paramType := "var"
+				if i < len(paramTypes) {
+					paramType = paramTypes[i]
+				}
+				params[i] = &ast.ParameterNode{
+					BaseNode: ast.BaseNode{Type: ast.NodeParameter, Line: body.GetLine(), Column: body.GetColumn()},
+					Name:     name,
+					Type:     paramType,
+				}
+			}
+
 			return &ast.LambdaNode{
-				BaseNode:   ast.BaseNode{Type: ast.NodeLambda, Line: p.Peek().Line, Column: p.Peek().Column},
+				BaseNode:   ast.BaseNode{Type: ast.NodeLambda, Line: body.GetLine(), Column: body.GetColumn()},
 				Captures:   []string{},
-				Parameters: []*ast.ParameterNode{},
+				Parameters: params,
 				ReturnType: "",
 				Body:       body,
 			}, nil
@@ -2387,6 +2714,22 @@ func (p *Parser) ParsePrimary() (ast.ASTNode, error) {
 		}
 		p.Consume(TokenRParen, "Expected ')' after expression")
 		return expr, nil
+	}
+
+	// Array literal with curly braces: {1, 2, 3} — must come before struct/dict detection
+	if p.Check(TokenLBrace) {
+		// Look ahead to determine if this is an array literal
+		// Array literal: {number, ...} or {expr, ...} where first element is not string:"key":
+		next := p.PeekAhead(1)
+		if next.Type == TokenNumber || next.Type == TokenMinus || next.Type == TokenTrue || next.Type == TokenFalse || next.Type == TokenLBrace || next.Type == TokenString {
+			// Check if it's actually a dict (string followed by colon)
+			if next.Type == TokenString && p.PeekAhead(2).Type == TokenColon {
+				// This is a dict literal, fall through
+			} else {
+				// This is likely an array literal
+				return p.ParseArrayLiteralBrace()
+			}
+		}
 	}
 
 	// Dict literal: { "key": value, ... } — keys must be string literals
@@ -2426,6 +2769,29 @@ func (p *Parser) ParsePrimary() (ast.ASTNode, error) {
 
 	return nil, fmt.Errorf("Unexpected token '%s' at line %d, column %d",
 		p.Peek().Value, p.Peek().Line, p.Peek().Column)
+}
+
+// ParseArrayLiteralBrace parses array literals with curly braces: {1, 2, 3}
+func (p *Parser) ParseArrayLiteralBrace() (ast.ASTNode, error) {
+	p.Consume(TokenLBrace, "Expected '{' for array literal")
+	var elements []ast.ASTNode
+	for !p.Check(TokenRBrace) && !p.IsAtEnd() {
+		e, err := p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		elements = append(elements, e)
+		if !p.Check(TokenRBrace) {
+			p.Consume(TokenComma, "Expected ',' or '}' in array literal")
+		}
+	}
+	p.Consume(TokenRBrace, "Expected '}' after array literal")
+	node := &ast.ArrayLiteralNode{
+		BaseNode: ast.BaseNode{Type: ast.NodeArrayLiteral, Line: p.Previous().Line, Column: p.Previous().Column},
+		Elements: elements,
+	}
+	p.AnnotateArrayLiteral(node)
+	return node, nil
 }
 
 func (p *Parser) ParseDictLiteral() (ast.ASTNode, error) {
@@ -2546,25 +2912,47 @@ func (p *Parser) Match(types ...TokenType) bool {
 }
 
 func (p *Parser) MatchType() bool {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
 	return p.Match(typeTokens...)
 }
 
 func (p *Parser) ConsumeTypeOrVar() Token {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
 	for _, tokenType := range typeTokens {
 		if p.Check(tokenType) {
-			return p.Advance()
+			tok := p.Advance()
+			// Check for optional type suffix: int? means optional int
+			if p.Check(TokenQuestion) {
+				p.Advance() // consume '?'
+				tok.Value = tok.Value + "?"
+			}
+			// Check for union type: int | float | string
+			for p.Check(TokenPipe) {
+				p.Advance() // consume '|'
+				tok.Value = tok.Value + " | "
+				// Get next type in union
+				nextTok := p.ConsumeType("Expected type after '|' in union")
+				tok.Value = tok.Value + nextTok.Value
+			}
+			return tok
 		}
 	}
 	if p.Check(TokenIdentifier) {
-		return p.Advance()
+		tok := p.Advance()
+		// Check for union type with identifier types
+		for p.Check(TokenPipe) {
+			p.Advance() // consume '|'
+			tok.Value = tok.Value + " | "
+			nextTok := p.ConsumeType("Expected type after '|' in union")
+			tok.Value = tok.Value + nextTok.Value
+		}
+		return tok
 	}
 	panic(fmt.Sprintf("Expected type or 'var'. Got %s instead", p.Peek().Value))
 }
 
 func (p *Parser) ConsumeType(errorMessage string) Token {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
 	for _, tokenType := range typeTokens {
 		if p.Check(tokenType) {
 			tok := p.Advance()
@@ -2602,7 +2990,7 @@ func (p *Parser) ConsumeType(errorMessage string) Token {
 }
 
 func (p *Parser) IsTypeToken(tokenType TokenType) bool {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
 	for _, tt := range typeTokens {
 		if tt == tokenType {
 			return true

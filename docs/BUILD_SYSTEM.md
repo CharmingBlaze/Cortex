@@ -27,7 +27,7 @@ build {
     // Output executable
     output: "myapp"
     
-    // C compiler (optional - auto-detected: gcc, tcc, clang)
+    // C compiler (optional - auto-detected: gcc, clang, zig)
     compiler: "gcc"
     
     // Compiler flags
@@ -107,7 +107,7 @@ cortex build -run
 
 - **Simple syntax**: Familiar C-like braces and colons
 - **Glob patterns**: `src/*.c` automatically finds all .c files
-- **Auto-detection**: Finds compiler (gcc, tcc, clang) automatically
+- **Auto-detection**: Finds compiler (gcc, clang, zig) automatically
 - **Cross-platform**: Works on Windows, macOS, Linux
 - **Incremental builds**: Only rebuilds changed files
 - **Dependency resolution**: Can fetch common libraries automatically
