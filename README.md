@@ -6,6 +6,19 @@
 
 ---
 
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Beginner's Guide](docs/BEGINNERS_GUIDE.md) | Start here! Complete tutorial for beginners |
+| [CLI Reference](docs/CLI_REFERENCE.md) | All commands explained with examples |
+| [Binding Guide](docs/BINDING_GUIDE.md) | How to use and bind C libraries |
+| [Language Spec](LANGUAGE_SPEC.md) | Language syntax and features |
+| [Language Guide](LANGUAGE_GUIDE.md) | Comprehensive language reference |
+| [Changelog](CHANGELOG.md) | Version history and changes |
+
+---
+
 ## What is Cortex?
 
 Cortex is a **systems programming language** that gives you C's power with modern ergonomics. It compiles to C, runs at native speed, and integrates seamlessly with any C library — but feels like a modern language.
