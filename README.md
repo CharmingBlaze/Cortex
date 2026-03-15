@@ -182,6 +182,7 @@ int calculate(int a, int b) {
 | `cortex new <name>` | Create a new project with cortex.toml |
 | `cortex run [file.cx]` | Compile and run (uses cortex.toml if found) |
 | `cortex build [file.cx] [-o output]` | Compile to executable |
+| `cortex bind <lib> -i <header.h>` | Generate Cortex bindings from C header |
 | `cortex -i file.cx -run` | Legacy: compile and run single file |
 | `cortex -i file.cx -o output -use raylib` | Legacy: compile with library |
 

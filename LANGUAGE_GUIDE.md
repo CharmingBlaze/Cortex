@@ -32,6 +32,9 @@ cortex run hello.cx
 
 # Build to executable
 cortex build game.cx -o game.exe
+
+# Generate bindings from C library
+cortex bind raylib -i third_party/raylib/src/raylib.h
 ```
 
 ### Project Configuration (cortex.toml)

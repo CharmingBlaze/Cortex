@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cortex/internal/binder"
 	"cortex/internal/compiler"
 	"cortex/internal/config"
 	"flag"
@@ -24,7 +25,7 @@ func (s *stringList) Set(v string) error {
 }
 
 func main() {
-	// Check for subcommands (build, run)
+	// Check for subcommands (build, run, bind, new)
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "build":
@@ -32,6 +33,9 @@ func main() {
 			return
 		case "run":
 			runCommand(os.Args[2:])
+			return
+		case "bind":
+			bindCommand(os.Args[2:])
 			return
 		case "new":
 			newCommand(os.Args[2:])
@@ -182,6 +186,83 @@ void main() {
 	fmt.Println("Next steps:")
 	fmt.Printf("  cd %s\n", name)
 	fmt.Println("  cortex run")
+}
+
+// bindCommand handles: cortex bind <libname> -i <header.h> [-o output.cx]
+func bindCommand(args []string) {
+	fs := flag.NewFlagSet("bind", flag.ExitOnError)
+	var headerPath string
+	var outputPath string
+	fs.StringVar(&headerPath, "i", "", "Input C header file")
+	fs.StringVar(&outputPath, "o", "", "Output Cortex binding file")
+	fs.Parse(args)
+
+	if fs.NArg() == 0 {
+		fmt.Fprintln(os.Stderr, "Usage: cortex bind <libname> -i <header.h> [-o output.cx]")
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "Examples:")
+		fmt.Fprintln(os.Stderr, "  cortex bind raylib -i third_party/raylib/src/raylib.h")
+		fmt.Fprintln(os.Stderr, "  cortex bind mylib -i mylib.h -o bindings/mylib.cx")
+		os.Exit(1)
+	}
+
+	libName := fs.Arg(0)
+
+	// Find header file
+	if headerPath == "" {
+		// Try common locations
+		searchPaths := []string{
+			filepath.Join("third_party", libName, "include", libName+".h"),
+			filepath.Join("third_party", libName, "src", libName+".h"),
+			filepath.Join("include", libName+".h"),
+			libName + ".h",
+		}
+		for _, p := range searchPaths {
+			if _, err := os.Stat(p); err == nil {
+				headerPath = p
+				break
+			}
+		}
+		if headerPath == "" {
+			fmt.Fprintf(os.Stderr, "Error: Could not find header for '%s'. Use -i to specify path.\n", libName)
+			os.Exit(1)
+		}
+	}
+
+	if !exists(headerPath) {
+		fmt.Fprintf(os.Stderr, "Error: Header file '%s' does not exist\n", headerPath)
+		os.Exit(1)
+	}
+
+	// Determine output path
+	if outputPath == "" {
+		outputPath = filepath.Join("bindings", libName+".cx")
+	}
+
+	fmt.Printf("Binding %s from %s...\n", libName, headerPath)
+
+	// Create binder
+	b := binder.NewBinder(libName)
+
+	// Parse header
+	if err := b.ParseHeader(headerPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing header: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Generate bindings
+	if err := b.SaveToFile(outputPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Error saving bindings: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Generated bindings: %s\n", outputPath)
+	fmt.Println("")
+	fn, st, en, dc := b.Stats()
+	fmt.Println("Functions found:", fn)
+	fmt.Println("Structs found:", st)
+	fmt.Println("Enums found:", en)
+	fmt.Println("Constants found:", dc)
 }
 
 // compileFile compiles a single file to an executable

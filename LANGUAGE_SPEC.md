@@ -44,8 +44,27 @@ Cortex provides a modern, simple CLI inspired by Go and Rust:
 | `cortex new <name>` | Create a new project with cortex.toml |
 | `cortex run [file.cx]` | Compile and run (uses cortex.toml if found) |
 | `cortex build [file.cx] [-o output]` | Compile to executable |
+| `cortex bind <lib> -i <header.h>` | Generate Cortex bindings from C header |
 | `cortex -i file.cx -run` | Legacy: compile and run single file |
 | `cortex -i file.cx -o output -use raylib` | Legacy: compile with library |
+
+### C Library Binding Generator
+
+Cortex can automatically generate bindings from C headers:
+
+```bash
+# Generate bindings from a C library
+cortex bind raylib -i third_party/raylib/src/raylib.h
+
+# Output: bindings/raylib.cx with functions, structs, enums, constants
+```
+
+The binder:
+- Parses C function declarations → Cortex `extern` functions
+- Parses C structs → Cortex `struct` definitions
+- Parses C enums → Cortex constants
+- Parses `#define` constants → Cortex `const` declarations
+- Auto-detects cleanup functions for memory management
 
 ### Project Configuration (cortex.toml)
 
