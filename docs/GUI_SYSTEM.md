@@ -478,10 +478,28 @@ Check that you're passing valid callback functions.
 Always use `gui_free()` for strings returned by GUI functions.
 
 ### GTK4 not found
-Install GTK4 development libraries:
-- Linux: `sudo apt install libgtk-4-dev`
-- macOS: `brew install gtk4`
-- Windows: Use MSYS2 or vcpkg
+
+**Windows:**
+- For development: Install MSYS2 from https://msys2.org, then run `pacman -S mingw-w64-x86_64-gtk4`
+- For distribution: Use `bundle_gtk.ps1` to create a portable bundle - no installation required on target machines
+
+**Linux:** `sudo apt install libgtk-4-dev`
+
+**macOS:** `brew install gtk4`
+
+## Windows Distribution
+
+To distribute your GUI app on Windows without requiring users to install anything:
+
+```bash
+# Compile your app
+./cortex -i myapp.cx -o myapp.exe
+
+# Bundle GTK4 (creates dist/ folder with everything)
+powershell -ExecutionPolicy Bypass -File bundle_gtk.ps1 -AppExe myapp.exe
+
+# The dist/ folder (47 MB) is portable - copy to any Windows machine!
+```
 
 ## License
 

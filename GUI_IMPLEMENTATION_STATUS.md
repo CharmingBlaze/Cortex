@@ -1,41 +1,35 @@
 # Cortex GUI System Implementation Status
 
 ## Overview
-A complete, cross-platform GUI system for Cortex with:
-- **Native Windows backend** using WinAPI (zero dependencies)
-- **GTK4 backend** for Linux/macOS
+A complete, cross-platform GUI system for Cortex using **GTK4 on all platforms** for a consistent, modern look:
+- **GTK4 backend** for Windows, Linux, and macOS
+- **Bundled distribution** for Windows (no installation required)
+- **System GTK4** for Linux/macOS
 
 ## Completed Components
 
-### 1. Native Windows Backend (`runtime/gui_native.c`)
-- Pure WinAPI implementation for Windows
-- No external dependencies (uses built-in Windows controls)
-- Auto-layout system with proper spacing and margins
-- All standard widgets supported
-- Non-blocking event loop for integration with raylib/SDL/OpenGL
-
-### 2. GTK4 Backend (`internal/gui_gtk4/`)
+### GTK4 Backend (`internal/gui_gtk4/`)
 - **gui_gtk4_internal.h**: Internal types, widget registry, helper functions
 - **gui_core.c**: Lifecycle, main window, clipboard, utilities
-- **gui_widgets.c**: Labels, buttons, entries, checkboxes, dropdowns, sliders, progress, images
-- **gui_containers.c**: VBox, HBox, Grid, Scroll, Tabs
+- **gui_widgets.c**: Labels, buttons, entries, checkboxes, dropdowns, sliders, progress, images, radio, spin
+- **gui_containers.c**: VBox, HBox, Grid, Scroll, Tabs, spacing, headers
 - **gui_dialogs.c**: Alerts, confirm, file picker, folder picker
-- **Makefile**: Build configuration for static/shared library
 
-### 3. C Runtime API
+### C Runtime API
 - **runtime/gui_runtime.h**: Simplified public C API header with opaque handle types
 - Auto-managed main window and main container (vbox)
 - Convenience macros for one-liner widget creation
 - Layout controls: `gui_spacing()`, `gui_set_margin()`, `gui_set_spacing()`
 - Section headers: `gui_header()`, `gui_subheader()`
 
-### 4. Documentation
-- **docs/GUI_SYSTEM.md**: Comprehensive API reference for GTK4-based system
+### Build System
+- **bundle_gtk.ps1**: Creates portable Windows distribution with bundled GTK4
 
-### 5. Example Programs
+### Example Programs
 - **examples/gui/hello_gui.cx**: Comprehensive demo with all widget types
 - **examples/gui/gui_showcase.cx**: Full feature showcase
 - **examples/gui/gui_raylib_integration.cx**: Integration example
+- **examples/gui/simple_gui.cx**: Minimal GTK4 test
 
 ## Features Implemented
 
@@ -43,7 +37,7 @@ A complete, cross-platform GUI system for Cortex with:
 - Auto-managed main window via `gui_start()`
 - Set title, size, resizable
 - Simple one-line initialization
-- Cross-platform: GTK4 on Linux/macOS, Native on Windows
+- Cross-platform GTK4 for consistent look
 
 ### Widgets
 - Labels, buttons (including primary style), text entries (single, multi, password)
@@ -77,13 +71,20 @@ A complete, cross-platform GUI system for Cortex with:
 
 ## Platform Support
 
-| Platform | Backend | Dependencies |
+| Platform | Backend | Distribution |
 |----------|---------|--------------|
-| Windows | Native WinAPI | None (built-in) |
-| Linux | GTK4 | libgtk-4-dev |
-| macOS | GTK4 | gtk4 (homebrew) |
+| Windows | GTK4 | Bundled (47 MB) - no installation required |
+| Linux | GTK4 | System (`sudo apt install libgtk-4-dev`) |
+| macOS | GTK4 | System (`brew install gtk4`) |
 
-## Installing GTK4 (Linux/macOS only)
+## Installing GTK4
+
+### Windows (Development)
+```bash
+# Install MSYS2 from https://msys2.org
+# Then in MSYS2 terminal:
+pacman -S mingw-w64-x86_64-gtk4
+```
 
 ### Linux
 ```bash
@@ -108,11 +109,8 @@ powershell -ExecutionPolicy Bypass -File bundle_gtk.ps1 -AppExe hello_gui.exe
 # The dist/ folder contains everything needed - no MSYS2 required!
 ```
 
-### Linux/macOS (GTK4 required)
+### Linux/macOS
 ```bash
-sudo apt install libgtk-4-dev    # Linux
-brew install gtk4                 # macOS
-
 ./cortex -i examples/gui/hello_gui.cx -o hello_gui
 ./hello_gui
 ```
@@ -130,7 +128,7 @@ brew install gtk4                 # macOS
 - No MSYS2 or GTK4 installation required on target machines
 - Just copy the `dist/` folder and run
 
-### Auto-Layout System (Windows)
+### Auto-Layout System
 - Automatic widget positioning with configurable margins and spacing
 - Horizontal box (`gui_hbox`) for button rows
 - `gui_end_row()` to finish horizontal layout
@@ -153,20 +151,19 @@ brew install gtk4                 # macOS
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| runtime/gui_native.c | 1500+ | Native Windows backend |
-| internal/gui_gtk4/gui_gtk4_internal.h | 80 | Internal types and helpers |
-| internal/gui_gtk4/gui_core.c | 200 | Core lifecycle and window |
-| internal/gui_gtk4/gui_widgets.c | 290 | Widget implementations |
-| internal/gui_gtk4/gui_containers.c | 70 | Layout containers |
+| internal/gui_gtk4/gui_gtk4_internal.h | 227 | Internal types and helpers |
+| internal/gui_gtk4/gui_core.c | 228 | Core lifecycle and window |
+| internal/gui_gtk4/gui_widgets.c | 320 | Widget implementations |
+| internal/gui_gtk4/gui_containers.c | 120 | Layout containers |
 | internal/gui_gtk4/gui_dialogs.c | 190 | Dialog functions |
-| runtime/gui_runtime.h | 200 | Public C API header |
-| docs/GUI_SYSTEM.md | 490 | Documentation |
+| runtime/gui_runtime.h | 249 | Public C API header |
+| bundle_gtk.ps1 | 120 | Windows bundling script |
 
 ## Recent Updates
 
-### Cross-Platform GUI (Latest)
-- ✅ Native WinAPI for Windows (zero dependencies)
-- ✅ GTK4 for Linux/macOS
+### GTK4 on All Platforms (Latest)
+- ✅ GTK4 for Windows, Linux, macOS - consistent modern look
+- ✅ Bundled distribution for Windows (47 MB)
 - ✅ Auto-layout system with proper spacing
 - ✅ All standard widgets (labels, buttons, entries, checkboxes, radio, sliders, progress, spin, list, etc.)
 - ✅ Horizontal box layout for button rows
@@ -177,7 +174,7 @@ brew install gtk4                 # macOS
 ## Conclusion
 
 The Cortex GUI system provides:
-- Zero-dependency native Windows GUI
-- GTK4 for Linux/macOS with native platform appearance
+- Modern GTK4 look on all platforms
+- Bundled distribution for Windows (no installation required)
 - Unified API across all platforms
 - Auto-layout for professional-looking interfaces
