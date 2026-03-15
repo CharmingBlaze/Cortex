@@ -866,8 +866,36 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 	if backend == "" {
 		backend = "auto"
 	}
-	useTcc := backend == "tcc" || (backend == "auto" && findTcc() != "")
 
+	// Priority: zig cc (bundled), zig (PATH), tcc, gcc
+	useZig := backend == "zig" || (backend == "auto")
+	useTcc := backend == "tcc" || (backend == "auto")
+
+	// Try Zig CC first
+	if useZig {
+		if zigPath := findBundledZig(); zigPath != "" {
+			args = append(args, "-lm")
+			cmd := exec.Command(zigPath, append([]string{"cc"}, args...)...)
+			output, err := cmd.CombinedOutput()
+			os.Remove(cFile)
+			if err != nil {
+				return fmt.Errorf("Zig CC compilation failed: %v\nOutput: %s", err, string(output))
+			}
+			return nil
+		}
+		if zigExe := findZig(); zigExe != "" {
+			args = append(args, "-lm")
+			cmd := exec.Command(zigExe, append([]string{"cc"}, args...)...)
+			output, err := cmd.CombinedOutput()
+			os.Remove(cFile)
+			if err != nil {
+				return fmt.Errorf("Zig CC compilation failed: %v\nOutput: %s", err, string(output))
+			}
+			return nil
+		}
+	}
+
+	// Try TCC
 	if useTcc {
 		if tccExe := findTcc(); tccExe != "" {
 			args = append(args, "-lm")
@@ -884,6 +912,7 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 		}
 	}
 
+	// Fallback to GCC
 	args = append(args, "-lm")
 	cmd := exec.Command("gcc", args...)
 	output, err := cmd.CombinedOutput()
@@ -909,6 +938,41 @@ func findTcc() string {
 				return p
 			}
 		}
+	}
+	if p, err := exec.LookPath(exeName); err == nil {
+		return p
+	}
+	return ""
+}
+
+// findBundledZig returns the path to bundled zig if found (relative to cortex binary)
+func findBundledZig() string {
+	exeName := "zig"
+	if isWindows() {
+		exeName = "zig.exe"
+	}
+	if exe, err := os.Executable(); err == nil {
+		// Release structure: bin/cortex, zig/zig
+		binDir := filepath.Dir(exe)
+		releaseDir := filepath.Dir(binDir)
+		zigPath := filepath.Join(releaseDir, "zig", exeName)
+		if _, err := os.Stat(zigPath); err == nil {
+			return zigPath
+		}
+		// Also check tools/zig
+		toolsZig := filepath.Join(binDir, "tools", exeName)
+		if _, err := os.Stat(toolsZig); err == nil {
+			return toolsZig
+		}
+	}
+	return ""
+}
+
+// findZig returns the path to zig in PATH
+func findZig() string {
+	exeName := "zig"
+	if isWindows() {
+		exeName = "zig.exe"
 	}
 	if p, err := exec.LookPath(exeName); err == nil {
 		return p

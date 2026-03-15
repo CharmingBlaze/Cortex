@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -85,14 +86,58 @@ func LoadConfig(path string) (Config, error) {
 }
 
 // autoDetectCompiler finds an available C compiler
+// Priority: zig cc (bundled), tcc, gcc, clang, cc
 func AutoDetectCompiler() string {
-	candidates := []string{"gcc", "tcc", "clang", "cc"}
+	// Check for bundled Zig first
+	if zigPath := findBundledZig(); zigPath != "" {
+		return zigPath
+	}
+
+	// Check for zig in PATH
+	if _, err := exec.LookPath("zig"); err == nil {
+		return "zig cc"
+	}
+
+	// Check for TCC
+	if _, err := exec.LookPath("tcc"); err == nil {
+		return "tcc"
+	}
+
+	// Check standard compilers
+	candidates := []string{"gcc", "clang", "cc"}
 	for _, compiler := range candidates {
 		if _, err := exec.LookPath(compiler); err == nil {
 			return compiler
 		}
 	}
 	return "gcc" // fallback
+}
+
+// findBundledZig looks for zig relative to the cortex binary
+func findBundledZig() string {
+	// Get the directory where cortex binary is located
+	execPath, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	execDir := filepath.Dir(execPath)
+
+	// Check for zig in sibling zig directory (release structure)
+	// cortex is in bin/, zig is in zig/
+	zigDir := filepath.Join(filepath.Dir(execDir), "zig")
+
+	// Check for zig executable
+	zigExe := "zig"
+	if runtime.GOOS == "windows" {
+		zigExe = "zig.exe"
+	}
+
+	zigPath := filepath.Join(zigDir, zigExe)
+	if _, err := os.Stat(zigPath); err == nil {
+		return zigPath + " cc"
+	}
+
+	return ""
 }
 
 // Build executes the build process

@@ -8,18 +8,20 @@
 
 ## Quick Start
 
-**Get running in 2 minutes — no Go required!**
+**Get running in 2 minutes — no Go, no GCC, no external C compiler required!**
 
 ### 1. Download
 
-Grab the latest release for your platform:
+Grab the latest release for your platform (includes bundled Zig CC):
 
 | Platform | Download |
 |----------|----------|
-| **Windows** | [cortex-windows-amd64.zip](https://github.com/CharmingBlaze/Cortex/releases/latest) |
-| **Linux** | [cortex-linux-amd64.tar.gz](https://github.com/CharmingBlaze/Cortex/releases/latest) |
-| **macOS (Intel)** | [cortex-darwin-amd64.tar.gz](https://github.com/CharmingBlaze/Cortex/releases/latest) |
-| **macOS (M1/M2)** | [cortex-darwin-arm64.tar.gz](https://github.com/CharmingBlaze/Cortex/releases/latest) |
+| **Windows x64** | [cortex-windows-amd64.zip](https://github.com/CharmingBlaze/Cortex/releases/latest) |
+| **Windows ARM** | [cortex-windows-arm64.zip](https://github.com/CharmingBlaze/Cortex/releases/latest) |
+| **Linux x64** | [cortex-linux-amd64.tar.gz](https://github.com/CharmingBlaze/Cortex/releases/latest) |
+| **Linux ARM64** | [cortex-linux-arm64.tar.gz](https://github.com/CharmingBlaze/Cortex/releases/latest) |
+| **macOS Intel** | [cortex-darwin-amd64.tar.gz](https://github.com/CharmingBlaze/Cortex/releases/latest) |
+| **macOS M1/M2** | [cortex-darwin-arm64.tar.gz](https://github.com/CharmingBlaze/Cortex/releases/latest) |
 
 ### 2. Install
 
@@ -33,8 +35,9 @@ install.bat
 **Linux/macOS:**
 ```bash
 tar -xzf cortex-*.tar.gz
-export PATH="$PWD/cortex-*/bin:$PATH"
-# Add to ~/.bashrc or ~/.zshrc for persistence
+source install.sh
+# Or add to PATH manually:
+export PATH="$PWD/cortex-*/bin:$PWD/cortex-*/zig:$PATH"
 ```
 
 ### 3. Run
@@ -48,19 +51,12 @@ cortex run hello.cx
 # Output: Hello, Cortex!
 ```
 
-**That's it!** You're now running Cortex. No Go installation needed — the binary is standalone.
+**That's it!** Everything is bundled:
+- ✓ Cortex compiler
+- ✓ Zig CC (C compiler)
+- ✓ Runtime libraries
 
----
-
-## Requirements
-
-The only thing you need is a **C compiler**:
-
-| Platform | Install |
-|----------|---------|
-| **Windows** | TCC (bundled) or [MinGW](https://www.mingw-w64.org/) |
-| **Linux** | `sudo apt install gcc` (usually pre-installed) |
-| **macOS** | `xcode-select --install` |
+**No external dependencies.**
 
 ---
 

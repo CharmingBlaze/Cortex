@@ -10,6 +10,10 @@ on:
         description: 'Version number (e.g., 0.1.0)'
         required: true
         default: '0.1.0'
+      zig_version:
+        description: 'Zig version (e.g., 0.13.0)'
+        required: true
+        default: '0.13.0'
 
 jobs:
   build:
@@ -23,28 +27,34 @@ jobs:
             arch: amd64
             runner: windows-latest
             extension: .exe
+            zig_target: x86_64-windows
           - os: windows
-            arch: 386
+            arch: arm64
             runner: windows-latest
             extension: .exe
+            zig_target: aarch64-windows
           # Linux
           - os: linux
             arch: amd64
             runner: ubuntu-latest
             extension: ''
+            zig_target: x86_64-linux
           - os: linux
             arch: arm64
             runner: ubuntu-latest
             extension: ''
+            zig_target: aarch64-linux
           # macOS
           - os: darwin
             arch: amd64
             runner: macos-latest
             extension: ''
+            zig_target: x86_64-macos
           - os: darwin
             arch: arm64
             runner: macos-latest
             extension: ''
+            zig_target: aarch64-macos
 
     steps:
       - name: Checkout code
@@ -61,8 +71,29 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "ZIG_VERSION=${{ github.event.inputs.zig_version }}" >> $GITHUB_OUTPUT
           else
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+            echo "ZIG_VERSION=0.13.0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download Zig
+        shell: bash
+        run: |
+          ZIG_VERSION=${{ steps.version.outputs.ZIG_VERSION }}
+          ZIG_TARGET=${{ matrix.zig_target }}
+          OS=${{ matrix.os }}
+          
+          if [ "$OS" = "windows" ]; then
+            ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-${ZIG_TARGET}-${ZIG_VERSION}.zip"
+            curl -L -o zig.zip "$ZIG_URL"
+            unzip zig.zip
+            mv zig-${ZIG_TARGET}-${ZIG_VERSION} zig-bundle
+          else
+            ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-${ZIG_TARGET}-${ZIG_VERSION}.tar.xz"
+            curl -L -o zig.tar.xz "$ZIG_URL"
+            tar -xf zig.tar.xz
+            mv zig-${ZIG_TARGET}-${ZIG_VERSION} zig-bundle
           fi
 
       - name: Build
@@ -85,12 +116,16 @@ jobs:
           PKG_DIR="cortex-${VERSION}-${OS}-${ARCH}"
           
           mkdir -p ${PKG_DIR}/bin
+          mkdir -p ${PKG_DIR}/zig
           mkdir -p ${PKG_DIR}/runtime
           mkdir -p ${PKG_DIR}/examples
           mkdir -p ${PKG_DIR}/docs
           
           # Copy binary
           cp build/cortex${EXT} ${PKG_DIR}/bin/
+          
+          # Copy Zig bundle
+          cp -r zig-bundle/* ${PKG_DIR}/zig/
           
           # Copy runtime
           cp -r runtime/*.c ${PKG_DIR}/runtime/ 2>/dev/null || true
