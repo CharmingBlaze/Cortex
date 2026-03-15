@@ -1090,11 +1090,18 @@ func (a *SemanticAnalyzer) VisitVariableDecl(node *ast.VariableDeclNode) {
 	if node.Module != "" {
 		emitName = node.Module + "__" + node.Name
 	}
+
+	// Determine symbol type based on IsConst
+	symType := SymbolVariable
+	if node.IsConst {
+		symType = SymbolConst
+	}
+
 	varSymbol := &Symbol{
 		Name:       node.Name,
 		EmitName:   emitName,
 		Type:       node.Type,
-		SymbolType: SymbolVariable,
+		SymbolType: symType,
 		Node:       node,
 	}
 
@@ -1828,6 +1835,15 @@ func (a *SemanticAnalyzer) FeatureGateMessage(name string) (string, bool) {
 func (a *SemanticAnalyzer) VisitAssignment(node *ast.AssignmentNode) {
 	a.VisitNode(node.Target)
 	a.VisitNode(node.Value)
+	// Check for const reassignment
+	if ident, ok := node.Target.(*ast.IdentifierNode); ok {
+		if sym := a.currentScope.Resolve(ident.Name); sym != nil {
+			if sym.SymbolType == SymbolConst {
+				a.AddError(fmt.Errorf("cannot assign to const '%s' (line %d)", ident.Name, node.GetLine()))
+				return
+			}
+		}
+	}
 	// Static type checking: ensure value is assignable to target when target has static type
 	var targetType string
 	switch t := node.Target.(type) {

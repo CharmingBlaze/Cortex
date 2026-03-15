@@ -1,0 +1,6 @@
+// Test const reassignment error
+
+void main() {
+    const x = 10;
+    x = 20;  // This should error: cannot assign to const 'x'
+}

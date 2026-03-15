@@ -1,0 +1,21 @@
+// Test const binding immutability
+
+void main() {
+    // Basic const with type inference
+    const x = 10;
+    println("x = " + x);
+    
+    // Const with explicit type
+    const int y = 20;
+    println("y = " + y);
+    
+    // Const with var type
+    const var name = "Cortex";
+    println("name = " + name);
+    
+    // Const array - can modify elements but not reassign
+    const arr = [1, 2, 3];
+    println("arr[0] = " + arr[0]);
+    
+    println("All const tests passed!");
+}

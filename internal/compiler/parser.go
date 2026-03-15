@@ -562,6 +562,33 @@ func (p *Parser) ParseVariableOrFunctionDeclaration() (ast.ASTNode, error) {
 	for p.Match(TokenMultiply) {
 		typeToken.Value += "*"
 	}
+
+	// Handle const specially - it's a modifier, not the actual type
+	// After const, we need: actualType name OR name (for type inference)
+	if typeToken.Type == TokenConst {
+		// Get the actual type or use var for type inference
+		var actualType Token
+		if p.IsTypeToken(p.Peek().Type) {
+			actualType = p.ConsumeTypeOrVar()
+			for p.Match(TokenMultiply) {
+				actualType.Value += "*"
+			}
+		} else {
+			// const without type - infer from initializer
+			actualType = Token{Type: TokenVar, Value: "var"}
+		}
+		// Get the name
+		nameToken := p.Consume(TokenIdentifier, "Expected variable name after const")
+
+		// Check if this is a function by looking for opening parenthesis
+		if p.Check(TokenLParen) {
+			return p.ParseFunctionDeclaration(actualType, nameToken)
+		} else {
+			// Mark as const and pass actual type
+			return p.ParseVariableDeclarationWithConst(actualType, nameToken)
+		}
+	}
+
 	// Allow type keywords to be used as names (e.g., "result" as variable name)
 	var nameToken Token
 	if p.IsTypeToken(p.Peek().Type) {
@@ -639,6 +666,10 @@ func (p *Parser) ParseFunctionDeclaration(typeToken, nameToken Token) (ast.ASTNo
 func (p *Parser) ParseVariableDeclarationWithTypes(typeToken, nameToken Token) (ast.ASTNode, error) {
 	var initializer ast.ASTNode
 	var arraySize int = -1 // -1 means not an array, 0 means empty size, >0 means fixed size
+	isConst := typeToken.Type == TokenConst
+
+	// The actual type - for const, this was already resolved by the caller
+	actualType := typeToken.Value
 
 	// Check for array size declaration: Type name[size]
 	if p.Match(TokenLBracket) {
@@ -666,11 +697,12 @@ func (p *Parser) ParseVariableDeclarationWithTypes(typeToken, nameToken Token) (
 		BaseNode:    ast.BaseNode{Type: ast.NodeVariableDecl, Line: nameToken.Line, Column: nameToken.Column},
 		Name:        nameToken.Value,
 		Module:      p.currentModule,
-		Type:        typeToken.Value,
+		Type:        actualType,
 		Initializer: initializer,
+		IsConst:     isConst,
 	}
 	if arraySize >= 0 {
-		node.Type = typeToken.Value + "[]"
+		node.Type = actualType + "[]"
 		node.ArraySize = arraySize
 	}
 	return node, nil
@@ -680,6 +712,48 @@ func (p *Parser) ParseVariableDeclaration() (ast.ASTNode, error) {
 	typeToken := p.ConsumeType("Expected type")
 	nameToken := p.Consume(TokenIdentifier, "Expected variable name")
 	return p.ParseVariableDeclarationWithTypes(typeToken, nameToken)
+}
+
+// ParseVariableDeclarationWithConst parses a const declaration with the actual type already resolved.
+func (p *Parser) ParseVariableDeclarationWithConst(actualTypeToken, nameToken Token) (ast.ASTNode, error) {
+	var initializer ast.ASTNode
+	var arraySize int = -1 // -1 means not an array, 0 means empty size, >0 means fixed size
+
+	// Check for array size declaration: Type name[size]
+	if p.Match(TokenLBracket) {
+		if p.Check(TokenNumber) {
+			sizeTok := p.Advance()
+			arraySize = 0
+			if s, err := strconv.Atoi(sizeTok.Value); err == nil {
+				arraySize = s
+			}
+		} else if p.Check(TokenRBracket) {
+			arraySize = 0 // empty size like Type name[]
+		}
+		p.Consume(TokenRBracket, "Expected ']' after array size")
+	}
+
+	if p.Match(TokenAssign) {
+		init, err := p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		initializer = init
+	}
+
+	node := &ast.VariableDeclNode{
+		BaseNode:    ast.BaseNode{Type: ast.NodeVariableDecl, Line: nameToken.Line, Column: nameToken.Column},
+		Name:        nameToken.Value,
+		Module:      p.currentModule,
+		Type:        actualTypeToken.Value,
+		Initializer: initializer,
+		IsConst:     true,
+	}
+	if arraySize >= 0 {
+		node.Type = actualTypeToken.Value + "[]"
+		node.ArraySize = arraySize
+	}
+	return node, nil
 }
 
 // parseVariableDeclarationRest parses name and optional initializer when type was already consumed (e.g. in for-loop).
@@ -1918,12 +1992,12 @@ func (p *Parser) Match(types ...TokenType) bool {
 }
 
 func (p *Parser) MatchType() bool {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
 	return p.Match(typeTokens...)
 }
 
 func (p *Parser) ConsumeTypeOrVar() Token {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
 	for _, tokenType := range typeTokens {
 		if p.Check(tokenType) {
 			return p.Advance()
@@ -1936,7 +2010,7 @@ func (p *Parser) ConsumeTypeOrVar() Token {
 }
 
 func (p *Parser) ConsumeType(errorMessage string) Token {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
 	for _, tokenType := range typeTokens {
 		if p.Check(tokenType) {
 			return p.Advance()
@@ -1947,7 +2021,7 @@ func (p *Parser) ConsumeType(errorMessage string) Token {
 }
 
 func (p *Parser) IsTypeToken(tokenType TokenType) bool {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
 	for _, tt := range typeTokens {
 		if tt == tokenType {
 			return true

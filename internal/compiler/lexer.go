@@ -52,6 +52,7 @@ const (
 	TokenNull
 	TokenVar
 	TokenAny
+	TokenConst
 	TokenArray
 	TokenDict
 	TokenResult
@@ -496,6 +497,7 @@ func (l *Lexer) GetKeywordType(identifier string) TokenType {
 		"spawn":     TokenSpawn,
 		"var":       TokenVar,
 		"any":       TokenAny,
+		"const":     TokenConst,
 		"extern":    TokenExtern,
 		"package":   TokenPackage,
 		"import":    TokenImport,
