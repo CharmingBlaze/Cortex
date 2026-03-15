@@ -829,23 +829,33 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 	if usesGui {
 		// Add runtime directory to include path for gui_runtime.h
 		args = append(args, "-I", runtimeDir)
-		// Include gui_runtime.c
-		if _, err := os.Stat(guiRuntimeSource); err == nil {
-			args = append(args, guiRuntimeSource)
-		}
-		// Add GTK4 GUI implementation for all platforms
-		guiGtkDir := filepath.Join(runtimeDir, "..", "internal", "gui_gtk4")
-		gtkSources := []string{"gui_core.c", "gui_widgets.c", "gui_containers.c", "gui_dialogs.c"}
-		for _, src := range gtkSources {
-			srcPath := filepath.Join(guiGtkDir, src)
-			if _, err := os.Stat(srcPath); err == nil {
-				args = append(args, srcPath)
+		// Use native Windows GUI on Windows, GTK4 on other platforms
+		if isWindows() {
+			guiNativeSource := filepath.Join(runtimeDir, "gui_native.c")
+			if _, err := os.Stat(guiNativeSource); err == nil {
+				args = append(args, guiNativeSource)
 			}
+			// Link Windows GUI libraries
+			args = append(args, "-lgdi32", "-luser32", "-lcomctl32", "-lcomdlg32", "-lshell32")
+		} else {
+			// Include gui_runtime.c for non-Windows
+			if _, err := os.Stat(guiRuntimeSource); err == nil {
+				args = append(args, guiRuntimeSource)
+			}
+			// Add GTK4 GUI implementation for non-Windows
+			guiGtkDir := filepath.Join(runtimeDir, "..", "internal", "gui_gtk4")
+			gtkSources := []string{"gui_core.c", "gui_widgets.c", "gui_containers.c", "gui_dialogs.c"}
+			for _, src := range gtkSources {
+				srcPath := filepath.Join(guiGtkDir, src)
+				if _, err := os.Stat(srcPath); err == nil {
+					args = append(args, srcPath)
+				}
+			}
+			// Link GTK4 libraries
+			args = append(args, "-lgtk-4", "-lgdk-4", "-lpangocairo-1.0", "-lpango-1.0",
+				"-lharfbuzz", "-lcairo", "-lcairo-gobject", "-lgdk_pixbuf-2.0", "-lgio-2.0",
+				"-lgobject-2.0", "-lglib-2.0", "-lgraphene-1.0")
 		}
-		// Link GTK4 libraries
-		args = append(args, "-lgtk-4", "-lgdk-4", "-lpangocairo-1.0", "-lpango-1.0",
-			"-lharfbuzz", "-lcairo", "-lcairo-gobject", "-lgdk_pixbuf-2.0", "-lgio-2.0",
-			"-lgobject-2.0", "-lglib-2.0", "-lgraphene-1.0")
 	}
 	if usesAsync {
 		asyncSource := filepath.Join(runtimeDir, "async.c")

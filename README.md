@@ -484,7 +484,7 @@ void main() {
 
 ## Native GUI System
 
-Build desktop apps with GTK4 - consistent look across all platforms.
+Build desktop apps with a clean, simple API. Zero dependencies on Windows.
 
 ```c
 #include <gui_runtime.h>
@@ -506,6 +506,7 @@ void main() {
     gui_container row = gui_hbox();
     gui_add_to(row, gui_button("Save", on_click));
     gui_add_to(row, gui_button("Load", on_click));
+    gui_end_row();
     
     // Value controls
     gui_add(gui_slider(0, 100));
@@ -515,17 +516,17 @@ void main() {
 }
 ```
 
-**Widgets:** Labels, buttons, entries, checkboxes, radio buttons, sliders, progress bars, and more.
+**Widgets:** Labels, buttons, entries, checkboxes, radio buttons, sliders, progress bars, spin controls, list boxes, and more.
 
-**Layouts:** VBox, HBox, Grid, Scroll, Tabs for responsive designs.
+**Layouts:** VBox, HBox, auto-layout with configurable spacing and margins.
 
-**Cross-platform:** GTK4 on Windows, Linux, macOS.
+**Cross-platform:** Native WinAPI on Windows (zero dependencies), GTK4 on Linux/macOS.
 
-| Platform | Backend | Install |
-|----------|---------|---------|
-| Windows | GTK4 | `pacman -S mingw-w64-x86_64-gtk4` (MSYS2) |
-| Linux | GTK4 | `sudo apt install libgtk-4-dev` |
-| macOS | GTK4 | `brew install gtk4` |
+| Platform | Backend | Dependencies |
+|----------|---------|--------------|
+| Windows | Native WinAPI | None |
+| Linux | GTK4 | libgtk-4-dev |
+| macOS | GTK4 | gtk4 (homebrew) |
 
 ---
 
