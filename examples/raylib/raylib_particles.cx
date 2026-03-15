@@ -1,6 +1,9 @@
 // Raylib Particle System - Visual effects demo
-// Build: cortex -i raylib/raylib_particles.cx -o particles -use raylib
+// Build: cortex run raylib_particles.cx
 #include <raylib.h>
+#include <stdlib.h>
+#include <time.h>
+#include <math.h>
 
 void main() {
     int width = 800;
@@ -8,12 +11,15 @@ void main() {
     InitWindow(width, height, "Cortex Particle System");
     SetTargetFPS(60);
     
-    // Particle arrays (separate arrays instead of struct)
-    float px[100];
-    float py[100];
-    float pvx[100];
-    float pvy[100];
-    float plife[100];
+    // Seed random
+    srand((int)time(NULL));
+    
+    // Particle arrays
+    float px[200];
+    float py[200];
+    float pvx[200];
+    float pvy[200];
+    float plife[200];
     int particle_count = 0;
     
     // Emitter position
@@ -25,13 +31,16 @@ void main() {
         emitter_x = GetMouseX();
         emitter_y = GetMouseY();
         
-        // Spawn particles when mouse pressed
-        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) != 0 && particle_count < 100) {
+        // Spawn particles when mouse pressed (MOUSE_LEFT_BUTTON = 0)
+        if (IsMouseButtonDown(0) && particle_count < 200) {
             px[particle_count] = emitter_x;
             py[particle_count] = emitter_y;
-            pvx[particle_count] = (random_float(0.0, 1.0) - 0.5) * 4.0;
-            pvy[particle_count] = (random_float(0.0, 1.0) - 0.5) * 4.0 - 2.0;
-            plife[particle_count] = 60.0;
+            // Random velocity using standard C
+            float angle = (float)(rand() % 360) * 0.01745329;
+            float speed = 2.0 + (float)(rand() % 40) / 10.0;
+            pvx[particle_count] = cos(angle) * speed;
+            pvy[particle_count] = sin(angle) * speed - 2.0;
+            plife[particle_count] = 60.0 + (float)(rand() % 40);
             particle_count = particle_count + 1;
         }
         
@@ -40,7 +49,7 @@ void main() {
         while (i < particle_count) {
             px[i] = px[i] + pvx[i];
             py[i] = py[i] + pvy[i];
-            pvy[i] = pvy[i] + 0.05;  // gravity
+            pvy[i] = pvy[i] + 0.08;
             plife[i] = plife[i] - 1.0;
             i = i + 1;
         }
@@ -65,15 +74,26 @@ void main() {
         BeginDrawing();
         ClearBackground(BLACK);
         
-        // Draw particles
+        // Draw particles with color based on life
         i = 0;
         while (i < particle_count) {
-            DrawCircle(px[i], py[i], 4, GOLD);
+            float life_ratio = plife[i] / 100.0;
+            Color c;
+            c.r = (int)(255 * life_ratio);
+            c.g = (int)(200 * life_ratio);
+            c.b = 50;
+            c.a = 255;
+            DrawCircle((int)px[i], (int)py[i], 3 + (int)(life_ratio * 3), c);
             i = i + 1;
         }
         
-        DrawText("Click to spawn particles!", 10, 10, 20, WHITE);
-        DrawText(toString_int(particle_count), 10, 35, 18, GRAY);
+        DrawText("Click and drag to spawn particles!", 10, 10, 20, WHITE);
+        
+        // Show particle count
+        char count_text[50];
+        sprintf(count_text, "Particles: %d", particle_count);
+        DrawText(count_text, 10, 35, 18, GRAY);
+        
         EndDrawing();
     }
     
