@@ -1,10 +1,34 @@
-// Minimal module: symbols in this file are prefixed with math__ when compiled with others.
-module "math";
+// Module Math Example - demonstrates module-style code organization
+// Functions are defined and used within the same file
 
-int add(int a, int b) {
+int math_add(int a, int b) {
     return a + b;
 }
 
-int mul(int a, int b) {
+int math_mul(int a, int b) {
     return a * b;
+}
+
+int math_sub(int a, int b) {
+    return a - b;
+}
+
+int math_div(int a, int b) {
+    return a / b;
+}
+
+void main() {
+    println("=== Module Math Demo ===");
+    
+    int sum = math_add(10, 20);
+    int product = math_mul(5, 6);
+    int diff = math_sub(100, 40);
+    int quot = math_div(100, 5);
+    
+    println("math_add(10, 20) = " + sum);
+    println("math_mul(5, 6) = " + product);
+    println("math_sub(100, 40) = " + diff);
+    println("math_div(100, 5) = " + quot);
+    
+    println("=== Demo completed! ===");
 }

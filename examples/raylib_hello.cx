@@ -1,18 +1,25 @@
-// Cortex + raylib — use any C library easily.
-// Build: cortex -i raylib_hello.cx -o raylib_hello -I <path_to_raylib_include> -L <path_to_raylib_lib> -l raylib
-// Or:   cortex -i raylib_hello.cx -o raylib_hello -config configs/raylib.json
-// (Edit configs/raylib.json to set your include_paths and library_paths.)
-
-#include <raylib.h>
-#pragma link("raylib")
+// Cortex GUI Hello - demonstrates native GUI without external dependencies
+// This is the Cortex equivalent of a raylib-style window demo
+// Build: cortex -i raylib_hello.cx -o raylib_hello
 
 void main() {
-    InitWindow(800, 450, "Cortex + raylib");
-    while (!WindowShouldClose()) {
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-        DrawText("Hello from Cortex!", 190, 200, 20, LIGHTGRAY);
-        EndDrawing();
-    }
-    CloseWindow();
+    // Create window
+    gui_window win = gui_window_create("Cortex GUI Hello", 800, 450);
+    gui_window_center(win);
+    
+    // Create content
+    gui_widget label = gui_label_create("Hello from Cortex!");
+    gui_widget info = gui_label_create("This is a native GUI window.");
+    gui_widget btn = gui_button_create("Click Me", null);
+    
+    // Layout
+    gui_container vbox = gui_vbox_create();
+    gui_container_add(vbox, label);
+    gui_container_add(vbox, info);
+    gui_container_add(vbox, btn);
+    
+    // Show and run
+    gui_window_set_content(win, vbox);
+    gui_window_show(win);
+    gui_run();
 }

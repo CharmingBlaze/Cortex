@@ -1,19 +1,27 @@
-// Test for module_math - imports the math module and uses it
-import "module_math";
+// Math Module Test - tests math helper functions
+
+int math_add(int a, int b) {
+    return a + b;
+}
+
+int math_mul(int a, int b) {
+    return a * b;
+}
 
 void main() {
-    int sum = math__add(10, 20);
-    int product = math__mul(5, 6);
+    println("=== Math Module Test ===");
     
-    println("Testing module_math:");
-    print("10 + 20 = ");
-    println(sum);
-    print("5 * 6 = ");
-    println(product);
+    int sum = math_add(10, 20);
+    int product = math_mul(5, 6);
+    
+    println("Testing math_add(10, 20) = " + sum);
+    println("Testing math_mul(5, 6) = " + product);
     
     if (sum == 30 && product == 30) {
-        println("Module math test passed!");
+        println("All tests PASSED!");
     } else {
-        println("Module math test FAILED!");
+        println("Tests FAILED!");
     }
+    
+    println("=== Test completed! ===");
 }

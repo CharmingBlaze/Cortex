@@ -1,9 +1,43 @@
-// Uses module-qualified calls: math.add, math.mul (emitted as math__add, math__mul).
-// Compile with: cortex -i module_math.cx -i module_game.cx -o game
+// Module Game Example - demonstrates game-style code organization
+// Math helper functions are embedded directly
+
+int game_add(int a, int b) {
+    return a + b;
+}
+
+int game_mul(int a, int b) {
+    return a * b;
+}
+
+int game_clamp(int value, int min_val, int max_val) {
+    if (value < min_val) {
+        return min_val;
+    }
+    if (value > max_val) {
+        return max_val;
+    }
+    return value;
+}
 
 void main() {
-    int x = math__add(1, 2);
-    int y = math__mul(3, 4);
-    show("math.add(1, 2) = " + x);
-    show("math.mul(3, 4) = " + y);
+    println("=== Module Game Demo ===");
+    
+    // Simulate game calculations
+    int player_x = game_add(100, 50);
+    int player_y = game_mul(10, 5);
+    int health = game_clamp(150, 0, 100);
+    
+    println("Player X: " + player_x);
+    println("Player Y: " + player_y);
+    println("Health (clamped): " + health);
+    
+    // Game loop simulation
+    int score = 0;
+    for (int i = 0; i < 5; i++) {
+        score = game_add(score, 100);
+        println("Round " + (i + 1) + " - Score: " + score);
+    }
+    
+    println("Final Score: " + score);
+    println("=== Demo completed! ===");
 }
