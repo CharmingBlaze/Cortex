@@ -2,23 +2,18 @@
 // Build: cortex -i raylib/raylib_particles.cx -o particles -use raylib
 #include <raylib.h>
 
-struct Particle {
-    float x;
-    float y;
-    float vx;
-    float vy;
-    float life;
-    Color color;
-}
-
 void main() {
     int width = 800;
     int height = 450;
     InitWindow(width, height, "Cortex Particle System");
     SetTargetFPS(60);
     
-    // Particle array
-    Particle particles[100];
+    // Particle arrays (separate arrays instead of struct)
+    float px[100];
+    float py[100];
+    float pvx[100];
+    float pvy[100];
+    float plife[100];
     int particle_count = 0;
     
     // Emitter position
@@ -31,33 +26,38 @@ void main() {
         emitter_y = GetMouseY();
         
         // Spawn particles when mouse pressed
-        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && particle_count < 100) {
-            Particle p;
-            p.x = emitter_x;
-            p.y = emitter_y;
-            p.vx = (random_float(0.0, 1.0) - 0.5) * 4.0;
-            p.vy = (random_float(0.0, 1.0) - 0.5) * 4.0 - 2.0;
-            p.life = 60.0;
-            p.color = ColorFromHSV(random_float(0.0, 360.0), 0.8, 1.0);
-            particles[particle_count] = p;
+        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) != 0 && particle_count < 100) {
+            px[particle_count] = emitter_x;
+            py[particle_count] = emitter_y;
+            pvx[particle_count] = (random_float(0.0, 1.0) - 0.5) * 4.0;
+            pvy[particle_count] = (random_float(0.0, 1.0) - 0.5) * 4.0 - 2.0;
+            plife[particle_count] = 60.0;
             particle_count = particle_count + 1;
         }
         
         // Update particles
-        for (int i = 0; i < particle_count; i++) {
-            particles[i].x = particles[i].x + particles[i].vx;
-            particles[i].y = particles[i].y + particles[i].vy;
-            particles[i].vy = particles[i].vy + 0.05;  // gravity
-            particles[i].life = particles[i].life - 1.0;
+        int i = 0;
+        while (i < particle_count) {
+            px[i] = px[i] + pvx[i];
+            py[i] = py[i] + pvy[i];
+            pvy[i] = pvy[i] + 0.05;  // gravity
+            plife[i] = plife[i] - 1.0;
+            i = i + 1;
         }
         
         // Remove dead particles
         int write_idx = 0;
-        for (int i = 0; i < particle_count; i++) {
-            if (particles[i].life > 0) {
-                particles[write_idx] = particles[i];
+        i = 0;
+        while (i < particle_count) {
+            if (plife[i] > 0) {
+                px[write_idx] = px[i];
+                py[write_idx] = py[i];
+                pvx[write_idx] = pvx[i];
+                pvy[write_idx] = pvy[i];
+                plife[write_idx] = plife[i];
                 write_idx = write_idx + 1;
             }
+            i = i + 1;
         }
         particle_count = write_idx;
         
@@ -66,13 +66,14 @@ void main() {
         ClearBackground(BLACK);
         
         // Draw particles
-        for (int i = 0; i < particle_count; i++) {
-            float alpha = particles[i].life / 60.0;
-            DrawCircle(particles[i].x, particles[i].y, 4, particles[i].color);
+        i = 0;
+        while (i < particle_count) {
+            DrawCircle(px[i], py[i], 4, GOLD);
+            i = i + 1;
         }
         
         DrawText("Click to spawn particles!", 10, 10, 20, WHITE);
-        DrawText("Particles: ${particle_count}", 10, 35, 18, GRAY);
+        DrawText(toString_int(particle_count), 10, 35, 18, GRAY);
         EndDrawing();
     }
     

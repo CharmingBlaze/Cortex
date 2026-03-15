@@ -2,27 +2,18 @@
 // Build: cortex -i raylib/raylib_platformer.cx -o platformer -use raylib
 #include <raylib.h>
 
-struct Player {
-    float x;
-    float y;
-    float vx;
-    float vy;
-    bool grounded;
-}
-
 void main() {
     int width = 800;
     int height = 450;
     InitWindow(width, height, "Cortex Platformer");
     SetTargetFPS(60);
     
-    // Player
-    Player p;
-    p.x = 100.0;
-    p.y = 200.0;
-    p.vx = 0.0;
-    p.vy = 0.0;
-    p.grounded = false;
+    // Player (separate variables instead of struct)
+    float player_x = 100.0;
+    float player_y = 200.0;
+    float player_vx = 0.0;
+    float player_vy = 0.0;
+    bool grounded = false;
     
     int player_w = 32;
     int player_h = 48;
@@ -30,80 +21,84 @@ void main() {
     float jump_force = -10.0;
     float move_speed = 5.0;
     
-    // Platforms
-    struct { int x; int y; int w; int h; } platforms[5];
-    platforms[0] = { 0, height - 40, width, 40 };      // Ground
-    platforms[1] = { 150, 320, 150, 20 };
-    platforms[2] = { 400, 250, 150, 20 };
-    platforms[3] = { 200, 180, 150, 20 };
-    platforms[4] = { 500, 120, 150, 20 };
+    // Platforms (separate arrays)
+    int plat_x[5];
+    int plat_y[5];
+    int plat_w[5];
+    int plat_h[5];
+    plat_x[0] = 0; plat_y[0] = 410; plat_w[0] = 800; plat_h[0] = 40;
+    plat_x[1] = 150; plat_y[1] = 320; plat_w[1] = 150; plat_h[1] = 20;
+    plat_x[2] = 400; plat_y[2] = 250; plat_w[2] = 150; plat_h[2] = 20;
+    plat_x[3] = 200; plat_y[3] = 180; plat_w[3] = 150; plat_h[3] = 20;
+    plat_x[4] = 500; plat_y[4] = 120; plat_w[4] = 150; plat_h[4] = 20;
     
-    // Camera (simple follow)
+    // Camera
     float camera_x = 0.0;
     
     // Coins
-    int coins[5][2] = {
-        {200, 290},
-        {450, 220},
-        {250, 150},
-        {550, 90},
-        {700, 350}
-    };
+    int coin_x[5];
+    int coin_y[5];
+    coin_x[0] = 200; coin_y[0] = 290;
+    coin_x[1] = 450; coin_y[1] = 220;
+    coin_x[2] = 250; coin_y[2] = 150;
+    coin_x[3] = 550; coin_y[3] = 90;
+    coin_x[4] = 700; coin_y[4] = 350;
     int coins_collected = 0;
     
     while (!WindowShouldClose()) {
         // Input
-        if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
-            p.vx = -move_speed;
-        } else if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
-            p.vx = move_speed;
+        if (IsKeyDown(KEY_LEFT) != 0 || IsKeyDown(KEY_A) != 0) {
+            player_vx = -move_speed;
+        } else if (IsKeyDown(KEY_RIGHT) != 0 || IsKeyDown(KEY_D) != 0) {
+            player_vx = move_speed;
         } else {
-            p.vx = 0.0;
+            player_vx = 0.0;
         }
         
-        if ((IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) && p.grounded) {
-            p.vy = jump_force;
-            p.grounded = false;
+        if ((IsKeyPressed(KEY_SPACE) != 0 || IsKeyPressed(KEY_UP) != 0 || IsKeyPressed(KEY_W) != 0) && grounded) {
+            player_vy = jump_force;
+            grounded = false;
         }
         
         // Physics
-        p.vy = p.vy + gravity;
-        p.x = p.x + p.vx;
-        p.y = p.y + p.vy;
+        player_vy = player_vy + gravity;
+        player_x = player_x + player_vx;
+        player_y = player_y + player_vy;
         
         // Platform collision
-        p.grounded = false;
-        for (int i = 0; i < 5; i++) {
-            // Check if player is colliding with platform
-            if (p.x + player_w > platforms[i].x && 
-                p.x < platforms[i].x + platforms[i].w &&
-                p.y + player_h > platforms[i].y && 
-                p.y < platforms[i].y + platforms[i].h) {
+        grounded = false;
+        int i = 0;
+        while (i < 5) {
+            if (player_x + player_w > plat_x[i] && 
+                player_x < plat_x[i] + plat_w[i] &&
+                player_y + player_h > plat_y[i] && 
+                player_y < plat_y[i] + plat_h[i]) {
                 
                 // Landing on top
-                if (p.vy > 0 && p.y + player_h - p.vy <= platforms[i].y) {
-                    p.y = platforms[i].y - player_h;
-                    p.vy = 0.0;
-                    p.grounded = true;
+                if (player_vy > 0 && player_y + player_h - player_vy <= plat_y[i]) {
+                    player_y = plat_y[i] - player_h;
+                    player_vy = 0.0;
+                    grounded = true;
                 }
             }
+            i = i + 1;
         }
         
         // Coin collection
-        for (int i = 0; i < 5; i++) {
-            if (coins[i][0] != -1) {
-                float cx = coins[i][0];
-                float cy = coins[i][1];
-                if (p.x + player_w > cx - 10 && p.x < cx + 10 &&
-                    p.y + player_h > cy - 10 && p.y < cy + 10) {
-                    coins[i][0] = -1;  // Collected
+        i = 0;
+        while (i < 5) {
+            if (coin_x[i] != -1) {
+                if (player_x + player_w > coin_x[i] - 10 && player_x < coin_x[i] + 10 &&
+                    player_y + player_h > coin_y[i] - 10 && player_y < coin_y[i] + 10) {
+                    coin_x[i] = -1;
                     coins_collected = coins_collected + 1;
                 }
             }
+            i = i + 1;
         }
         
         // Camera follow
-        camera_x = p.x - width / 3;
+        camera_x = player_x - width / 3;
         if (camera_x < 0) camera_x = 0.0;
         
         // Draw
@@ -111,22 +106,26 @@ void main() {
         ClearBackground(SKYBLUE);
         
         // Draw platforms
-        for (int i = 0; i < 5; i++) {
-            DrawRectangle(platforms[i].x - camera_x, platforms[i].y, platforms[i].w, platforms[i].h, DARKGREEN);
+        i = 0;
+        while (i < 5) {
+            DrawRectangle(plat_x[i] - camera_x, plat_y[i], plat_w[i], plat_h[i], DARKGREEN);
+            i = i + 1;
         }
         
         // Draw coins
-        for (int i = 0; i < 5; i++) {
-            if (coins[i][0] != -1) {
-                DrawCircle(coins[i][0] - camera_x, coins[i][1], 10, GOLD);
+        i = 0;
+        while (i < 5) {
+            if (coin_x[i] != -1) {
+                DrawCircle(coin_x[i] - camera_x, coin_y[i], 10, GOLD);
             }
+            i = i + 1;
         }
         
         // Draw player
-        DrawRectangle(p.x - camera_x, p.y, player_w, player_h, RED);
+        DrawRectangle(player_x - camera_x, player_y, player_w, player_h, RED);
         
         // Draw UI
-        DrawText("Coins: ${coins_collected}/5", 10, 10, 24, BLACK);
+        DrawText(toString_int(coins_collected), 10, 10, 24, BLACK);
         DrawText("Arrow Keys / WASD to move, Space to jump", 10, 40, 18, DARKGRAY);
         
         if (coins_collected == 5) {

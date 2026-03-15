@@ -3,7 +3,7 @@
   "version": "5.5",
   "features": { "async": false, "actors": false, "blockchain": false, "qol": true },
   "includePaths": ["third_party/raylib/src"],
-  "libraryPaths": ["third_party/raylib/src"],
+  "libraryPaths": ["third_party/raylib/build/raylib"],
   "libraries": ["raylib", "opengl32", "gdi32", "winmm", "shell32"],
   "linkerFlags": ["-lraylib", "-lopengl32", "-lgdi32", "-lwinmm", "-lshell32"],
   "helperFiles": [],

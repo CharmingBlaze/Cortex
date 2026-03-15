@@ -91,13 +91,15 @@ void main() {
         DrawCircle(ball_x, ball_y, ball_radius, WHITE);
         
         // Draw center line
-        for (int i = 0; i < height; i = i + 20) {
-            DrawRectangle(width / 2 - 2, i, 4, 10, WHITE);
+        int cy = 0;
+        while (cy < height) {
+            DrawRectangle(width / 2 - 2, cy, 4, 10, WHITE);
+            cy = cy + 20;
         }
         
         // Draw scores
-        DrawText("${score1}", width / 4, 20, 40, WHITE);
-        DrawText("${score2}", 3 * width / 4, 20, 40, WHITE);
+        DrawText(toString_int(score1), width / 4, 20, 40, WHITE);
+        DrawText(toString_int(score2), 3 * width / 4, 20, 40, WHITE);
         
         DrawText("W/S - Player 1 | Up/Down - Player 2", 10, height - 25, 18, GRAY);
         EndDrawing();

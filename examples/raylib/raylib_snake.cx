@@ -18,9 +18,11 @@ void main() {
     int snake_len = 3;
     
     // Initialize snake in center
-    for (int i = 0; i < snake_len; i++) {
+    int i = 0;
+    while (i < snake_len) {
         snake_x[i] = grid_w / 2 - i;
         snake_y[i] = grid_h / 2;
+        i = i + 1;
     }
     
     // Direction
@@ -38,23 +40,25 @@ void main() {
     while (!WindowShouldClose()) {
         if (!game_over) {
             // Input
-            if (IsKeyPressed(KEY_UP) && dy != 1) {
+            if (IsKeyPressed(KEY_UP) != 0 && dy != 1) {
                 dx = 0; dy = -1;
             }
-            if (IsKeyPressed(KEY_DOWN) && dy != -1) {
+            if (IsKeyPressed(KEY_DOWN) != 0 && dy != -1) {
                 dx = 0; dy = 1;
             }
-            if (IsKeyPressed(KEY_LEFT) && dx != 1) {
+            if (IsKeyPressed(KEY_LEFT) != 0 && dx != 1) {
                 dx = -1; dy = 0;
             }
-            if (IsKeyPressed(KEY_RIGHT) && dx != -1) {
+            if (IsKeyPressed(KEY_RIGHT) != 0 && dx != -1) {
                 dx = 1; dy = 0;
             }
             
             // Move snake (shift body)
-            for (int i = snake_len - 1; i > 0; i--) {
+            i = snake_len - 1;
+            while (i > 0) {
                 snake_x[i] = snake_x[i - 1];
                 snake_y[i] = snake_y[i - 1];
+                i = i - 1;
             }
             snake_x[0] = snake_x[0] + dx;
             snake_y[0] = snake_y[0] + dy;
@@ -66,10 +70,12 @@ void main() {
             }
             
             // Check self collision
-            for (int i = 1; i < snake_len; i++) {
+            i = 1;
+            while (i < snake_len) {
                 if (snake_x[0] == snake_x[i] && snake_y[0] == snake_y[i]) {
                     game_over = true;
                 }
+                i = i + 1;
             }
             
             // Check food collision
@@ -81,11 +87,13 @@ void main() {
             }
         } else {
             // Restart on space
-            if (IsKeyPressed(KEY_SPACE)) {
+            if (IsKeyPressed(KEY_SPACE) != 0) {
                 snake_len = 3;
-                for (int i = 0; i < snake_len; i++) {
+                i = 0;
+                while (i < snake_len) {
                     snake_x[i] = grid_w / 2 - i;
                     snake_y[i] = grid_h / 2;
+                    i = i + 1;
                 }
                 dx = 1; dy = 0;
                 score = 0;
@@ -98,23 +106,32 @@ void main() {
         ClearBackground(DARKGREEN);
         
         // Draw grid
-        for (int x = 0; x < grid_w; x++) {
-            for (int y = 0; y < grid_h; y++) {
+        int x = 0;
+        while (x < grid_w) {
+            int y = 0;
+            while (y < grid_h) {
                 DrawRectangleLines(x * cell_size, y * cell_size, cell_size, cell_size, DARKGRAY);
+                y = y + 1;
             }
+            x = x + 1;
         }
         
         // Draw food
         DrawRectangle(food_x * cell_size, food_y * cell_size, cell_size, cell_size, RED);
         
         // Draw snake
-        for (int i = 0; i < snake_len; i++) {
-            Color c = i == 0 ? YELLOW : GREEN;
-            DrawRectangle(snake_x[i] * cell_size, snake_y[i] * cell_size, cell_size, cell_size, c);
+        i = 0;
+        while (i < snake_len) {
+            if (i == 0) {
+                DrawRectangle(snake_x[i] * cell_size, snake_y[i] * cell_size, cell_size, cell_size, YELLOW);
+            } else {
+                DrawRectangle(snake_x[i] * cell_size, snake_y[i] * cell_size, cell_size, cell_size, GREEN);
+            }
+            i = i + 1;
         }
         
         // Draw score
-        DrawText("Score: ${score}", 10, 10, 24, WHITE);
+        DrawText(toString_int(score), 10, 10, 24, WHITE);
         
         if (game_over) {
             DrawText("GAME OVER!", width / 2 - 80, height / 2, 32, RED);
