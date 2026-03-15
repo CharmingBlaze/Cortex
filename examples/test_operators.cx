@@ -1,0 +1,38 @@
+// Test compound assignment operators
+void main() {
+    int x = 10;
+    int y = 5;
+    
+    println("Initial: x = " + x + ", y = " + y);
+    
+    // Compound assignments
+    x += 3;
+    println("After x += 3: x = " + x);
+    
+    x -= 2;
+    println("After x -= 2: x = " + x);
+    
+    y *= 4;
+    println("After y *= 4: y = " + y);
+    
+    y /= 2;
+    println("After y /= 2: y = " + y);
+    
+    // Increment/decrement
+    int i = 0;
+    println("Testing ++ and --");
+    
+    i++;
+    println("After i++: i = " + i);
+    
+    i--;
+    println("After i--: i = " + i);
+    
+    ++i;
+    println("After ++i: i = " + i);
+    
+    --i;
+    println("After --i: i = " + i);
+    
+    println("All tests passed!");
+}

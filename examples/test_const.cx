@@ -1,0 +1,26 @@
+// Test const keyword
+void main() {
+    // Const with type inference
+    const greeting = "Hello";
+    println(greeting);
+    
+    // Const with explicit type
+    const int max_score = 100;
+    println("Max score: " + max_score);
+    
+    // Const float
+    const float pi = 3.14159;
+    println("Pi: " + pi);
+    
+    // Const in game context
+    const paddle_speed = 5;
+    const paddle_height = 80;
+    
+    println("Paddle speed: " + paddle_speed);
+    println("Paddle height: " + paddle_height);
+    
+    // Try to reassign (should error)
+    // paddle_speed = 10;  // This would be caught by semantic analyzer
+    
+    println("Const tests passed!");
+}

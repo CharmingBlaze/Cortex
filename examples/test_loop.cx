@@ -1,0 +1,15 @@
+// Test loop sugar
+void main() {
+    int count = 0;
+    
+    loop {
+        count++;
+        println("Count: " + count);
+        
+        if (count >= 5) {
+            break;
+        }
+    }
+    
+    println("Loop finished!");
+}

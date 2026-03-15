@@ -265,6 +265,10 @@ func (g *CodeGenerator) VisitNode(node ast.ASTNode) {
 		g.VisitIdentifier(n)
 	case *ast.AssignmentNode:
 		g.VisitAssignment(n)
+	case *ast.CompoundAssignmentNode:
+		g.VisitCompoundAssignment(n)
+	case *ast.IncrementNode:
+		g.VisitIncrement(n)
 	case *ast.ArrayAccessNode:
 		g.VisitArrayAccess(n)
 	case *ast.IndexExprNode:
@@ -1907,6 +1911,34 @@ func (g *CodeGenerator) VisitAssignment(node *ast.AssignmentNode) {
 	g.VisitNode(node.Target)
 	g.Write(" = ")
 	g.VisitNode(node.Value)
+	g.Write(";")
+}
+
+func (g *CodeGenerator) VisitCompoundAssignment(node *ast.CompoundAssignmentNode) {
+	g.VisitNode(node.Target)
+	g.Write(fmt.Sprintf(" %s= ", node.Operator))
+	g.VisitNode(node.Value)
+	g.Write(";")
+}
+
+func (g *CodeGenerator) VisitIncrement(node *ast.IncrementNode) {
+	if node.IsPrefix {
+		// Prefix: ++x or --x
+		if node.IsIncrement {
+			g.Write("++")
+		} else {
+			g.Write("--")
+		}
+		g.VisitNode(node.Target)
+	} else {
+		// Postfix: x++ or x--
+		g.VisitNode(node.Target)
+		if node.IsIncrement {
+			g.Write("++")
+		} else {
+			g.Write("--")
+		}
+	}
 	g.Write(";")
 }
 

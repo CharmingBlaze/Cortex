@@ -713,6 +713,37 @@ func (n *AssignmentNode) String() string {
 	return fmt.Sprintf("Assignment{Target: %v, Value: %v}", n.Target, n.Value)
 }
 
+// CompoundAssignmentNode represents a compound assignment (+=, -=, *=, /=).
+type CompoundAssignmentNode struct {
+	BaseNode
+	Target   Node
+	Value    Node
+	Operator string // "+", "-", "*", "/"
+}
+
+func (n *CompoundAssignmentNode) String() string {
+	return fmt.Sprintf("CompoundAssignment{Target: %v, Operator: %s=, Value: %v}", n.Target, n.Operator, n.Value)
+}
+
+// IncrementNode represents ++ or -- (postfix or prefix).
+type IncrementNode struct {
+	BaseNode
+	Target      Node
+	IsIncrement bool // true for ++, false for --
+	IsPrefix    bool // true for prefix (++x), false for postfix (x++)
+}
+
+func (n *IncrementNode) String() string {
+	op := "++"
+	if !n.IsIncrement {
+		op = "--"
+	}
+	if n.IsPrefix {
+		return fmt.Sprintf("Increment{Prefix %s %v}", op, n.Target)
+	}
+	return fmt.Sprintf("Increment{%v %s Postfix}", n.Target, op)
+}
+
 // ArrayAccessNode represents an array access.
 type ArrayAccessNode struct {
 	BaseNode
@@ -791,6 +822,8 @@ const (
 	NodeInterpolatedString = NodeStringLiteral
 	NodeLiteral            = NodeNumberLiteral
 	NodeAssignment         = NodeInclude
+	NodeCompoundAssignment = NodeInclude
+	NodeIncrement          = NodeInclude
 	NodeArrayAccess        = NodeIndexExpr
 	NodeMemberAccess       = NodeMemberExpr
 	NodeSpawnStmt          = NodeInclude

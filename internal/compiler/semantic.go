@@ -981,6 +981,10 @@ func (a *SemanticAnalyzer) VisitNode(node ast.ASTNode) {
 		a.VisitIdentifier(n)
 	case *ast.AssignmentNode:
 		a.VisitAssignment(n)
+	case *ast.CompoundAssignmentNode:
+		a.VisitCompoundAssignment(n)
+	case *ast.IncrementNode:
+		a.VisitIncrement(n)
 	case *ast.ArrayAccessNode:
 		a.VisitArrayAccess(n)
 	case *ast.IndexExprNode:
@@ -1951,6 +1955,33 @@ func (a *SemanticAnalyzer) VisitAssignment(node *ast.AssignmentNode) {
 		valueType := a.GetExpressionType(node.Value)
 		if !a.IsAssignableTo(valueType, targetType) {
 			a.AddError(fmt.Errorf("type mismatch: cannot assign %s to %s (line %d)", valueType, targetType, node.GetLine()))
+		}
+	}
+}
+
+func (a *SemanticAnalyzer) VisitCompoundAssignment(node *ast.CompoundAssignmentNode) {
+	// Visit target and value, same as regular assignment
+	a.VisitNode(node.Target)
+	a.VisitNode(node.Value)
+	// Check for const reassignment
+	if ident, ok := node.Target.(*ast.IdentifierNode); ok {
+		if sym := a.currentScope.Resolve(ident.Name); sym != nil {
+			if sym.SymbolType == SymbolConst {
+				a.AddError(fmt.Errorf("cannot assign to const '%s' (line %d)", ident.Name, node.GetLine()))
+			}
+		}
+	}
+}
+
+func (a *SemanticAnalyzer) VisitIncrement(node *ast.IncrementNode) {
+	// Visit the target
+	a.VisitNode(node.Target)
+	// Check for const reassignment
+	if ident, ok := node.Target.(*ast.IdentifierNode); ok {
+		if sym := a.currentScope.Resolve(ident.Name); sym != nil {
+			if sym.SymbolType == SymbolConst {
+				a.AddError(fmt.Errorf("cannot modify const '%s' (line %d)", ident.Name, node.GetLine()))
+			}
 		}
 	}
 }

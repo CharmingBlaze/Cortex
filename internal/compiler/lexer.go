@@ -36,6 +36,7 @@ const (
 	TokenElse
 	TokenFor
 	TokenWhile
+	TokenLoop
 	TokenDo
 	TokenReturn
 	TokenDefer
@@ -86,6 +87,10 @@ const (
 
 	// Operators
 	TokenAssign
+	TokenPlusAssign     // +=
+	TokenMinusAssign    // -=
+	TokenMultiplyAssign // *=
+	TokenDivideAssign   // /=
 	TokenPlus
 	TokenMinus
 	TokenMultiply
@@ -256,6 +261,22 @@ func (l *Lexer) Tokenize(input string) ([]Token, error) {
 				l.position++
 				value = "--"
 				tokenType = TokenDecrement
+			} else if char == '+' && l.PeekChar() == '=' {
+				l.position++
+				value = "+="
+				tokenType = TokenPlusAssign
+			} else if char == '-' && l.PeekChar() == '=' {
+				l.position++
+				value = "-="
+				tokenType = TokenMinusAssign
+			} else if char == '*' && l.PeekChar() == '=' {
+				l.position++
+				value = "*="
+				tokenType = TokenMultiplyAssign
+			} else if char == '/' && l.PeekChar() == '=' {
+				l.position++
+				value = "/="
+				tokenType = TokenDivideAssign
 			} else if char == '-' && l.PeekChar() == '>' {
 				l.position++
 				value = "->"
@@ -518,6 +539,7 @@ func (l *Lexer) GetKeywordType(identifier string) TokenType {
 		"else":      TokenElse,
 		"for":       TokenFor,
 		"while":     TokenWhile,
+		"loop":      TokenLoop,
 		"do":        TokenDo,
 		"return":    TokenReturn,
 		"defer":     TokenDefer,

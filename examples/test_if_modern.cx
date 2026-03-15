@@ -1,0 +1,36 @@
+// Test optional parentheses in if statements
+void main() {
+    int x = 10;
+
+    // Traditional (C-style)
+    if (x > 5) {
+        println("x > 5 (traditional)");
+    }
+
+    // Modern Cortex style — no parentheses
+    if x > 5 {
+        println("x > 5 (modern)");
+    }
+
+    // Single-statement body (no braces)
+    if x > 0 println("x is positive");
+
+    // Mixed style is allowed
+    if (x < 20) println("x < 20");
+
+    // Else with single statement
+    if x < 0 {
+        println("negative");
+    } else println("not negative");
+
+    // Else-if chain
+    if x == 5 {
+        println("x is 5");
+    } else if x == 10 {
+        println("x is 10");
+    } else {
+        println("x is something else");
+    }
+
+    println("All tests passed!");
+}

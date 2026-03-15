@@ -166,14 +166,90 @@ result = "hello";
 ## Control Structures
 
 ### Conditionals
+
+#### Optional Parentheses in if Statements
+Cortex allows you to write if statements with or without parentheses around the condition. Both of these are valid:
+
 ```c
-if (condition) {
-    // code
-} else if (condition) {
-    // code
+if (x > 5) { ... }
+if x > 5 { ... }
+```
+
+**When parentheses are useful:**
+- Complex expressions
+- Mixing operators
+- When you want C-like clarity
+
+**When parentheses can be omitted:**
+- Simple comparisons
+- Clean, readable conditions
+- When writing modern Cortex-style code
+
+#### Single-Statement Bodies
+Cortex allows single-statement bodies without braces:
+
+```c
+if x > 0 println("positive");
+```
+
+This keeps simple logic compact.
+
+#### Else and Else-If
+All combinations are allowed:
+
+```c
+if x < 0 println("neg");
+else println("not neg");
+
+if x == 5 println("five");
+else if x == 10 println("ten");
+else println("other");
+```
+
+Or with braces:
+
+```c
+if x == 5 {
+    println("five");
+} else if x == 10 {
+    println("ten");
 } else {
-    // code
+    println("other");
 }
+```
+
+#### Full Example
+```c
+// Traditional (C-style)
+if (x > 5) {
+    println("x > 5");
+}
+
+// Modern Cortex style — no parentheses
+if x > 5 {
+    println("x > 5");
+}
+
+// Single-statement body
+if x > 0 println("positive");
+
+// Mixed style is allowed
+if (x < 20) println("x < 20");
+```
+
+### Constants
+```c
+// Const with type inference
+const greeting = "Hello";
+const max_items = 100;
+
+// Const with explicit type
+const int max_score = 100;
+const float pi = 3.14159;
+
+// Const in game context
+const paddle_speed = 5;
+const paddle_height = 80;
 ```
 
 ### Loops
@@ -193,6 +269,12 @@ while (condition) {
     // code
 }
 
+// Infinite loop sugar
+loop {
+    // runs forever until break
+    if (should_exit) break;
+}
+
 // Do-while loop
 do {
     // code
@@ -202,6 +284,49 @@ do {
 repeat (10) {
     // runs 10 times
 }
+```
+
+### Operators
+
+#### Compound Assignment Operators
+Cortex supports shorthand assignment operators that modify a variable in place:
+
+| Long form | Short form | Meaning |
+|-----------|------------|---------|
+| `x = x + y` | `x += y` | Add to x |
+| `x = x - y` | `x -= y` | Subtract from x |
+| `x = x * y` | `x *= y` | Multiply x |
+| `x = x / y` | `x /= y` | Divide x |
+
+```c
+int score = 0;
+score += 10;      // score is now 10
+score -= 5;       // score is now 5
+score *= 2;       // score is now 10
+score /= 2;       // score is now 5
+```
+
+#### Increment and Decrement
+Cortex supports the familiar increment/decrement operators:
+
+```c
+int i = 0;
+i++;              // Postfix increment: i is now 1
+i--;              // Postfix decrement: i is now 0
+++i;              // Prefix increment: i is now 1
+--i;              // Prefix decrement: i is now 0
+```
+
+These are especially useful in loops:
+
+```c
+for (int i = 0; i < 10; i++) {
+    println(i);
+}
+
+// Or in game logic
+player.score++;
+ball.speed *= 1.1;
 ```
 
 ### Functions

@@ -1,0 +1,132 @@
+// Raylib Pong - Struct methods with dot notation
+// Build: cortex run raylib_pong_methods.cx
+#include <raylib.h>
+
+struct Ball {
+    float bx;
+    float by;
+    float bvx;
+    float bvy;
+    float br;
+
+    void reset(int w, int h, float speed) {
+        bx = w / 2.0;
+        by = h / 2.0;
+        bvx = speed;
+        bvy = speed * 0.75;
+    }
+
+    void update() {
+        bx += bvx;
+        by += bvy;
+    }
+}
+
+struct Paddle {
+    float py;
+    int pscore;
+
+    void move(float dy) {
+        py += dy;
+    }
+
+    void clamp(int h, int ph) {
+        if (py < 0) { py = 0; }
+        if (py > h - ph) { py = h - ph; }
+    }
+}
+
+void main() {
+    const width = 800;
+    const height = 450;
+    InitWindow(width, height, "Cortex Pong - Modern Syntax");
+    SetTargetFPS(60);
+
+    Ball ball;
+    ball.bx = width / 2.0;
+    ball.by = height / 2.0;
+    ball.bvx = 4.0;
+    ball.bvy = 3.0;
+    ball.br = 8.0;
+
+    Paddle p1;
+    p1.py = height / 2.0 - 40.0;
+    p1.pscore = 0;
+
+    Paddle p2;
+    p2.py = height / 2.0 - 40.0;
+    p2.pscore = 0;
+
+    const paddle_height = 80;
+    const paddle_width = 10;
+    const paddle_speed = 5;
+
+    loop {
+        // Player movement using methods
+        if IsKeyDown(KEY_W) p1.move(-paddle_speed);
+        if IsKeyDown(KEY_S) p1.move(paddle_speed);
+        if IsKeyDown(KEY_UP) p2.move(-paddle_speed);
+        if IsKeyDown(KEY_DOWN) p2.move(paddle_speed);
+
+        p1.clamp(height, paddle_height);
+        p2.clamp(height, paddle_height);
+
+        // Ball movement
+        ball.update();
+
+        // Wall bounce
+        if (ball.by - ball.br < 0 || ball.by + ball.br > height) {
+            ball.bvy = -ball.bvy;
+        }
+
+        // Paddle collisions
+        if (ball.bx - ball.br < paddle_width + 20 &&
+            ball.by > p1.py && ball.by < p1.py + paddle_height) {
+            ball.bvx = -ball.bvx;
+            ball.bx = paddle_width + 20 + ball.br;
+        }
+
+        if (ball.bx + ball.br > width - paddle_width - 20 &&
+            ball.by > p2.py && ball.by < p2.py + paddle_height) {
+            ball.bvx = -ball.bvx;
+            ball.bx = width - paddle_width - 20 - ball.br;
+        }
+
+        // Scoring
+        if ball.bx < 0 {
+            p2.pscore++;
+            ball.reset(width, height, 4.0);
+        }
+
+        if ball.bx > width {
+            p1.pscore++;
+            ball.reset(width, height, -4.0);
+        }
+
+        // Draw
+        BeginDrawing();
+        ClearBackground(BLACK);
+
+        DrawRectangle(20, p1.py, paddle_width, paddle_height, WHITE);
+        DrawRectangle(width - paddle_width - 20, p2.py, paddle_width, paddle_height, WHITE);
+        DrawCircle(ball.bx, ball.by, ball.br, WHITE);
+
+        // Center line
+        int cy = 0;
+        while (cy < height) {
+            DrawRectangle(width / 2 - 2, cy, 4, 10, WHITE);
+            cy += 20;
+        }
+
+        DrawText(toString_int(p1.pscore), width / 4, 20, 40, WHITE);
+        DrawText(toString_int(p2.pscore), 3 * width / 4, 20, 40, WHITE);
+        DrawText("W/S - P1 | Up/Down - P2", 10, height - 25, 18, GRAY);
+
+        EndDrawing();
+        
+        // Exit on window close
+        if WindowShouldClose() break;
+    }
+
+    CloseWindow();
+}

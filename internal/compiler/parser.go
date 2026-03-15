@@ -820,6 +820,9 @@ func (p *Parser) ParseStatement() (ast.ASTNode, error) {
 	if p.Match(TokenWhile) {
 		return p.ParseWhileStatement()
 	}
+	if p.Match(TokenLoop) {
+		return p.ParseLoopStatement()
+	}
 	// for ( x in collection ) vs for ( init; cond; incr ) — use lookahead
 	if p.Check(TokenFor) && p.position+3 < len(p.tokens) &&
 		p.tokens[p.position+1].Type == TokenLParen &&
@@ -897,23 +900,49 @@ func (p *Parser) ParseStatement() (ast.ASTNode, error) {
 }
 
 func (p *Parser) ParseIfStatement() (ast.ASTNode, error) {
-	p.Consume(TokenLParen, "Expected '(' after 'if'")
-	condition, err := p.ParseExpression()
-	if err != nil {
-		return nil, err
-	}
-	p.Consume(TokenRParen, "Expected ')' after if condition")
+	// Optional parentheses around condition
+	var condition ast.ASTNode
+	var err error
 
-	thenBranch, err := p.ParseBlock()
-	if err != nil {
-		return nil, err
+	if p.Match(TokenLParen) {
+		// Traditional: if (condition) { ... }
+		condition, err = p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		p.Consume(TokenRParen, "Expected ')' after if condition")
+	} else {
+		// Modern: if condition { ... } or if condition statement;
+		condition, err = p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
 	}
-	// ParseBlock already consumed the closing '}' if present
+
+	// Body can be a block { } or a single statement
+	var thenBranch *ast.BlockNode
+	if p.Check(TokenLBrace) {
+		body, err := p.ParseBlock()
+		if err != nil {
+			return nil, err
+		}
+		thenBranch = body.(*ast.BlockNode)
+	} else {
+		// Single statement body
+		stmt, err := p.ParseStatement()
+		if err != nil {
+			return nil, err
+		}
+		thenBranch = &ast.BlockNode{
+			BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: stmt.GetLine(), Column: stmt.GetColumn()},
+			Statements: []ast.ASTNode{stmt},
+		}
+	}
 
 	var elseBranch *ast.BlockNode
 	if p.Match(TokenElse) {
 		if p.Check(TokenIf) {
-			p.Advance() // consume "if" so parseIfStatement sees '('
+			p.Advance() // consume "if" so parseIfStatement sees optional parens
 			elseNode, err := p.ParseIfStatement()
 			if err != nil {
 				return nil, err
@@ -923,19 +952,29 @@ func (p *Parser) ParseIfStatement() (ast.ASTNode, error) {
 				BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: elseNode.GetLine(), Column: elseNode.GetColumn()},
 				Statements: []ast.ASTNode{elseNode},
 			}
-		} else {
+		} else if p.Check(TokenLBrace) {
 			elseBlock, err := p.ParseBlock()
 			if err != nil {
 				return nil, err
 			}
 			elseBranch = elseBlock.(*ast.BlockNode)
+		} else {
+			// Single statement else
+			elseStmt, err := p.ParseStatement()
+			if err != nil {
+				return nil, err
+			}
+			elseBranch = &ast.BlockNode{
+				BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: elseStmt.GetLine(), Column: elseStmt.GetColumn()},
+				Statements: []ast.ASTNode{elseStmt},
+			}
 		}
 	}
 
 	return &ast.IfStmtNode{
 		BaseNode:   ast.BaseNode{Type: ast.NodeIfStmt, Line: condition.GetLine(), Column: condition.GetColumn()},
 		Condition:  condition,
-		ThenBranch: thenBranch.(*ast.BlockNode),
+		ThenBranch: thenBranch,
 		ElseBranch: elseBranch,
 	}, nil
 }
@@ -956,6 +995,27 @@ func (p *Parser) ParseWhileStatement() (ast.ASTNode, error) {
 	return &ast.WhileStmtNode{
 		BaseNode:  ast.BaseNode{Type: ast.NodeWhileStmt, Line: condition.GetLine(), Column: condition.GetColumn()},
 		Condition: condition,
+		Body:      body.(*ast.BlockNode),
+	}, nil
+}
+
+func (p *Parser) ParseLoopStatement() (ast.ASTNode, error) {
+	// loop { } is sugar for while (true) { }
+	body, err := p.ParseBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a literal "true" as the condition
+	trueLiteral := &ast.LiteralNode{
+		BaseNode: ast.BaseNode{Type: ast.NodeLiteral, Line: p.Previous().Line, Column: p.Previous().Column},
+		Value:    true,
+		Type:     "bool",
+	}
+
+	return &ast.WhileStmtNode{
+		BaseNode:  ast.BaseNode{Type: ast.NodeWhileStmt, Line: p.Previous().Line, Column: p.Previous().Column},
+		Condition: trueLiteral,
 		Body:      body.(*ast.BlockNode),
 	}, nil
 }
@@ -1474,6 +1534,56 @@ func (p *Parser) ParseAssignment() (ast.ASTNode, error) {
 		}, nil
 	}
 
+	// Handle compound assignment operators: +=, -=, *=, /=
+	if p.Match(TokenPlusAssign) {
+		value, err := p.ParseAssignment()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.CompoundAssignmentNode{
+			BaseNode: ast.BaseNode{Type: ast.NodeCompoundAssignment, Line: expr.GetLine(), Column: expr.GetColumn()},
+			Target:   expr,
+			Value:    value,
+			Operator: "+",
+		}, nil
+	}
+	if p.Match(TokenMinusAssign) {
+		value, err := p.ParseAssignment()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.CompoundAssignmentNode{
+			BaseNode: ast.BaseNode{Type: ast.NodeCompoundAssignment, Line: expr.GetLine(), Column: expr.GetColumn()},
+			Target:   expr,
+			Value:    value,
+			Operator: "-",
+		}, nil
+	}
+	if p.Match(TokenMultiplyAssign) {
+		value, err := p.ParseAssignment()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.CompoundAssignmentNode{
+			BaseNode: ast.BaseNode{Type: ast.NodeCompoundAssignment, Line: expr.GetLine(), Column: expr.GetColumn()},
+			Target:   expr,
+			Value:    value,
+			Operator: "*",
+		}, nil
+	}
+	if p.Match(TokenDivideAssign) {
+		value, err := p.ParseAssignment()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.CompoundAssignmentNode{
+			BaseNode: ast.BaseNode{Type: ast.NodeCompoundAssignment, Line: expr.GetLine(), Column: expr.GetColumn()},
+			Target:   expr,
+			Value:    value,
+			Operator: "/",
+		}, nil
+	}
+
 	return expr, nil
 }
 
@@ -1656,7 +1766,7 @@ func (p *Parser) ParseUnary() (ast.ASTNode, error) {
 			Expr:     expr,
 		}, nil
 	}
-	if p.Match(TokenNot, TokenMinus, TokenIncrement, TokenDecrement) {
+	if p.Match(TokenNot, TokenMinus) {
 		operator := p.Previous()
 		right, err := p.ParseUnary()
 		if err != nil {
@@ -1667,6 +1777,31 @@ func (p *Parser) ParseUnary() (ast.ASTNode, error) {
 			BaseNode: ast.BaseNode{Type: ast.NodeUnaryExpr, Line: operator.Line, Column: operator.Column},
 			Operator: operator.Value,
 			Operand:  right,
+		}, nil
+	}
+	// Handle prefix ++ and -- separately
+	if p.Match(TokenIncrement) {
+		target, err := p.ParseUnary()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.IncrementNode{
+			BaseNode:    ast.BaseNode{Type: ast.NodeIncrement, Line: p.Previous().Line, Column: p.Previous().Column},
+			Target:      target,
+			IsIncrement: true,
+			IsPrefix:    true,
+		}, nil
+	}
+	if p.Match(TokenDecrement) {
+		target, err := p.ParseUnary()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.IncrementNode{
+			BaseNode:    ast.BaseNode{Type: ast.NodeIncrement, Line: p.Previous().Line, Column: p.Previous().Column},
+			Target:      target,
+			IsIncrement: false,
+			IsPrefix:    true,
 		}, nil
 	}
 
@@ -1822,18 +1957,18 @@ func (p *Parser) ParseCall() (ast.ASTNode, error) {
 				Index:    index,
 			}
 		} else if p.Match(TokenIncrement) {
-			expr = &ast.UnaryExprNode{
-				BaseNode:  ast.BaseNode{Type: ast.NodeUnaryExpr, Line: expr.GetLine(), Column: expr.GetColumn()},
-				Operator:  "++",
-				Operand:   expr,
-				IsPostfix: true,
+			expr = &ast.IncrementNode{
+				BaseNode:    ast.BaseNode{Type: ast.NodeIncrement, Line: expr.GetLine(), Column: expr.GetColumn()},
+				Target:      expr,
+				IsIncrement: true,
+				IsPrefix:    false,
 			}
 		} else if p.Match(TokenDecrement) {
-			expr = &ast.UnaryExprNode{
-				BaseNode:  ast.BaseNode{Type: ast.NodeUnaryExpr, Line: expr.GetLine(), Column: expr.GetColumn()},
-				Operator:  "--",
-				Operand:   expr,
-				IsPostfix: true,
+			expr = &ast.IncrementNode{
+				BaseNode:    ast.BaseNode{Type: ast.NodeIncrement, Line: expr.GetLine(), Column: expr.GetColumn()},
+				Target:      expr,
+				IsIncrement: false,
+				IsPrefix:    false,
 			}
 		} else {
 			break
