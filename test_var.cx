@@ -1,0 +1,7 @@
+void main()
+ { 
+    var x = 42; 
+    println("test");
+    return 0;
+}
+       

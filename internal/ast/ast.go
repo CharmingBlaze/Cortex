@@ -589,6 +589,7 @@ type CaseClauseNode struct {
 	TypeName string
 	VarName  string
 	Literal  Node
+	ExprBody Node // For match expressions: the expression result
 }
 
 func (n *CaseClauseNode) String() string {

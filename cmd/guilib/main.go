@@ -1,13 +1,14 @@
-// cmd/guilib/main.go - Build the GUI shared library
+// cmd/guilib/main.go - GUI Library Build Command
 //
-// This builds the Fyne-based GUI runtime as a DLL/shared library
-// that can be linked with Cortex-compiled programs.
+// The Cortex GUI is now a native GTK4 C library (internal/gui_gtk4).
+// This command is kept for compatibility but the GUI is built via Makefile.
+//
+// Build the GTK4 GUI library:
+//
+//	cd internal/gui_gtk4 && make
 package main
 
-import _ "cortex/internal/gui_fyne"
-
 func main() {
-	// This package exists only to build the shared library.
-	// All functionality is in the gui_fyne package.
-	// Build with: go build -buildmode=c-shared -o cortex_gui.dll ./cmd/guilib
+	// GUI library is now built from internal/gui_gtk4/Makefile
+	// Run: make -C internal/gui_gtk4
 }

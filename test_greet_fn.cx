@@ -1,0 +1,6 @@
+﻿void main() {
+    string greet(string name) {
+        return "Hello, " + name;
+    }
+    println(greet("World"));
+}

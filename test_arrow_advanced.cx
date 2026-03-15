@@ -1,0 +1,14 @@
+﻿void main() {
+    // Multiple parameters
+    var multiply = (a, b, c) => a * b * c;
+    println(multiply(2, 3, 4));
+    
+    // Nested lambdas
+    var makeAdder = (x) => (y) => x + y;
+    var add5 = makeAdder(5);
+    println(add5(10));
+    
+    // Callback as argument
+    var numbers = [1, 2, 3, 4, 5];
+    numbers.forEach((n) => println(n * 2));
+}

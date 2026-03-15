@@ -1,0 +1,6 @@
+﻿void main() {
+    int? maybe = 42;
+    if (maybe?) {
+        println_int(maybe!);
+    }
+}

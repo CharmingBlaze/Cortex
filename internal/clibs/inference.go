@@ -17,20 +17,29 @@ var LibraryMapping = map[string]string{
 
 // Standard C headers that don't need explicit library linking
 var standardCHeaders = map[string]bool{
-	"stdio.h":  true,
-	"stdlib.h": true,
-	"string.h": true,
-	"math.h":   true,
-	"time.h":   true,
-	"ctype.h":  true,
-	"errno.h":  true,
-	"assert.h": true,
-	"stddef.h": true,
-	"stdarg.h": true,
-	"limits.h": true,
-	"float.h":  true,
-	"signal.h": true,
-	"setjmp.h": true,
+	"stdio.h":   true,
+	"stdlib.h":  true,
+	"string.h":  true,
+	"math.h":    true,
+	"time.h":    true,
+	"ctype.h":   true,
+	"errno.h":   true,
+	"assert.h":  true,
+	"stddef.h":  true,
+	"stdarg.h":  true,
+	"limits.h":  true,
+	"float.h":   true,
+	"signal.h":  true,
+	"setjmp.h":  true,
+	"stdbool.h": true,
+	// Cortex runtime headers - built into the compiler
+	"gui_runtime.h": true,
+	"core.h":        true,
+	"game.h":        true,
+	"network.h":     true,
+	"async.h":       true,
+	"thread.h":      true,
+	"managed.h":     true,
 }
 
 // InferLibraryFromHeader infers the library name from a given header file.

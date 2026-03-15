@@ -1,0 +1,47 @@
+﻿// Comprehensive test suite for Cortex language
+
+void main() {
+    println("=== Cortex Language Test Suite ===");
+    
+    // Test 1: Basic types and variables
+    int a = 10;
+    float b = 3.14;
+    string s = "hello";
+    bool flag = true;
+    printf("Test 1 - Basic types: a=%d, b=%.2f, s=%s, flag=%d\n", a, b, s, flag);
+    
+    // Test 2: Match expression
+    int n = 2;
+    string result = match n {
+        1 => "one",
+        2 => "two",
+        _ => "other"
+    };
+    printf("Test 2 - Match expression: n=2 => %s\n", result);
+    
+    // Test 3: Optional types
+    int? maybe = 42;
+    if (maybe?) {
+        printf("Test 3 - Optional: maybe has value %d\n", maybe!);
+    }
+    
+    // Test 4: Arrow functions
+    fn add = (int x, int y) => x + y;
+    fn mul = (int x, int y) => x * y;
+    printf("Test 4 - Arrow functions: add(3,4)=%d, mul(3,4)=%d\n", add(3,4), mul(3,4));
+    
+    // Test 5: Nested match
+    int x = 1;
+    int y = 2;
+    string nested = match x {
+        1 => match y {
+            1 => "1,1",
+            2 => "1,2",
+            _ => "1,_"
+        },
+        _ => "other"
+    };
+    printf("Test 5 - Nested match: %s\n", nested);
+    
+    println("=== All tests completed! ===");
+}

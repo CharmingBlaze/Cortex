@@ -1,0 +1,7 @@
+﻿void main() {
+    int? maybe = 42;
+    println(maybe.has_value);
+    if (maybe.has_value) {
+        println(maybe.value);
+    }
+}

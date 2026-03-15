@@ -1,0 +1,115 @@
+// gui_showcase.cx - GTK4 GUI Demo
+// 
+// Demonstrates the simplified Cortex GUI API.
+// Run with: cortex run gui_showcase.cx
+
+#include <gui_runtime.h>
+
+// State
+gui_widget name_entry;
+gui_widget slider_label;
+gui_widget progress;
+int click_count = 0;
+
+void on_click(gui_event e) {
+    click_count++;
+    char msg[64];
+    sprintf(msg, "Button clicked %d times!", click_count);
+    gui_alert_info(msg);
+}
+
+void on_reset(gui_event e) {
+    click_count = 0;
+    gui_set_text(name_entry, "");
+    gui_set_value(progress, 0.0);
+    gui_alert_info("Reset complete!");
+}
+
+void on_slider(gui_event e) {
+    char text[32];
+    sprintf(text, "Volume: %d%%", (int)e.value);
+    gui_set_text(slider_label, text);
+}
+
+void on_confirm(gui_event e) {
+    if (e.checked) {
+        gui_quit();
+    }
+}
+
+void on_quit(gui_event e) {
+    gui_confirm("Are you sure you want to quit?", on_confirm);
+}
+
+void on_pick_file(gui_event e) {
+    if (e.text) {
+        char msg[256];
+        sprintf(msg, "Selected: %s", e.text);
+        gui_alert_info(msg);
+        gui_free(e.text);
+    }
+}
+
+fn main() {
+    // Create window - one line!
+    gui_start("Cortex GTK4 Demo", 500, 600);
+    
+    // Title
+    gui_add(gui_label("🚀 Cortex GUI Demo"));
+    gui_add(gui_separator());
+    
+    // Name entry
+    gui_add(gui_label("Your Name:"));
+    name_entry = gui_entry("Enter your name...");
+    gui_add(name_entry);
+    
+    // Buttons row
+    gui_container btns = gui_hbox();
+    gui_add_to(btns, gui_button("Click Me!", on_click));
+    gui_add_to(btns, gui_button_ok("OK Style", on_click));
+    gui_add_to(btns, gui_button("Reset", on_reset));
+    gui_add(btns);
+    
+    gui_add(gui_separator());
+    
+    // Checkbox
+    gui_add(gui_check("Enable notifications"));
+    gui_add(gui_check("Dark mode"));
+    
+    gui_add(gui_separator());
+    
+    // Dropdown
+    gui_add(gui_label("Select a color:"));
+    const char* colors[] = {"Red", "Green", "Blue", "Yellow", "Purple"};
+    gui_add(gui_select(colors, 5));
+    
+    gui_add(gui_separator());
+    
+    // Slider
+    slider_label = gui_label("Volume: 50%");
+    gui_add(slider_label);
+    gui_widget slider = gui_slider(0, 100);
+    gui_set_value(slider, 50);
+    gui_add(slider);
+    
+    gui_add(gui_separator());
+    
+    // Progress
+    gui_add(gui_label("Progress:"));
+    progress = gui_progress();
+    gui_set_value(progress, 0.75);
+    gui_add(progress);
+    
+    gui_add(gui_separator());
+    
+    // File picker button
+    gui_add(gui_button("Pick a File...", on_pick_file));
+    
+    gui_add(gui_separator());
+    
+    // Quit button
+    gui_add(gui_button("Quit", on_quit));
+    
+    // Run the app
+    gui_run();
+}

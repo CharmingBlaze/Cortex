@@ -1,0 +1,10 @@
+﻿void main() {
+    // Match expression
+    int n = 3;
+    string result = match n {
+        1 => "one",
+        2 => "two",
+        _ => "other"
+    };
+    println(result);
+}

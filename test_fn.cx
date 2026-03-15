@@ -1,0 +1,7 @@
+﻿fn greet() {
+    println("Hello from fn!");
+}
+
+fn main() {
+    greet();
+}

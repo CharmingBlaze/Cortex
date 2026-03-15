@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Cortex GUI System provides a complete, cross-platform graphical user interface framework powered by [Fyne](https://fyne.io/), a modern Go GUI toolkit. This system allows Cortex developers to create native desktop applications with a simple, BASIC-like API.
+The Cortex GUI System provides a complete, cross-platform graphical user interface framework powered by [GTK4](https://gtk.org/), a modern native C GUI toolkit. This system allows Cortex developers to create native desktop applications with a simple, easy-to-use API.
 
 ## Philosophy
 
@@ -11,26 +11,26 @@ The Cortex GUI System provides a complete, cross-platform graphical user interfa
 - **Powerful**: Full access to modern GUI capabilities
 - **Cross-platform**: Works on Windows, macOS, and Linux
 - **Pointer-free**: All GUI objects use opaque handles for safety
+- **Native**: Pure C implementation with GTK4 - no CGO or Go runtime
 
 ## Quick Start
 
 ```c
 #include <gui_runtime.h>
 
-void main() {
-    // Create a window
-    window w = gui_window("My App", 800, 600);
+void on_click(gui_event e) {
+    gui_alert_info("Button clicked!");
+}
+
+fn main() {
+    // Create window - one line!
+    gui_start("My App", 800, 600);
     
-    // Add a label
-    gui_label(w, "Hello, World!");
+    // Add widgets - super simple
+    gui_add_label("Hello, World!");
+    gui_add_button("Click Me", on_click);
     
-    // Add a button
-    gui_button(w, "Click Me", [](event e) {
-        println("Button clicked!");
-    });
-    
-    // Show and run
-    gui_window_show(w);
+    // Run the app
     gui_run();
 }
 ```
@@ -38,6 +38,13 @@ void main() {
 ## API Reference
 
 ### Application Lifecycle
+
+#### `void gui_start(const char* title, int width, int height)`
+Creates the main window and initializes GTK. One-liner to start your app.
+
+```c
+gui_start("My Application", 800, 600);
+```
 
 #### `void gui_run(void)`
 Starts the GUI event loop. This function blocks until the application exits.
@@ -53,412 +60,344 @@ Quits the GUI application.
 gui_quit();
 ```
 
-#### `int gui_version(void)`
-Returns the GUI API version number.
+### Main Window
+
+#### `void gui_add(gui_widget w)`
+Adds a widget to the main window (auto-creates vbox if needed).
 
 ```c
-int version = gui_version();
+gui_add(gui_label("Hello"));
 ```
 
-### Window Management
-
-#### `gui_window gui_window_create(const char* title, int width, int height)`
-Creates a new window with the specified title and size.
+#### `void gui_add_to(gui_container c, gui_widget w)`
+Adds a widget to a specific container.
 
 ```c
-gui_window w = gui_window_create("My Application", 800, 600);
+gui_add_to(vbox, gui_label("Hello"));
 ```
 
-#### `void gui_window_show(gui_window window)`
-Makes a window visible.
+#### `void gui_set_title(const char* title)`
+Changes the main window title.
 
 ```c
-gui_window_show(w);
+gui_set_title("New Title");
 ```
 
-#### `void gui_window_hide(gui_window window)`
-Hides a window.
+#### `void gui_set_size(int width, int height)`
+Changes the main window size.
 
 ```c
-gui_window_hide(w);
-```
-
-#### `void gui_window_close(gui_window window)`
-Closes and destroys a window.
-
-```c
-gui_window_close(w);
-```
-
-#### `void gui_window_set_title(gui_window window, const char* title)`
-Changes the window title.
-
-```c
-gui_window_set_title(w, "New Title");
-```
-
-#### `void gui_window_center(gui_window window)`
-Centers the window on the screen.
-
-```c
-gui_window_center(w);
-```
-
-#### `void gui_window_set_fixed_size(gui_window window, bool fixed)`
-Prevents or allows window resizing.
-
-```c
-gui_window_set_fixed_size(w, true);  // Fixed size
-gui_window_set_fixed_size(w, false); // Resizable
-```
-
-#### `void gui_window_set_fullscreen(gui_window window, bool fullscreen)`
-Toggles fullscreen mode.
-
-```c
-gui_window_set_fullscreen(w, true);
+gui_set_size(1024, 768);
 ```
 
 ### Widgets - Basic
 
-#### `gui_widget gui_label_create(const char* text)`
+#### `gui_widget gui_label(const char* text)`
 Creates a text label.
 
 ```c
-gui_widget label = gui_label_create("Hello, World!");
+gui_widget label = gui_label("Hello, World!");
 ```
 
-#### `void gui_label_set_text(gui_widget label, const char* text)`
-Updates label text.
+#### `void gui_set_text(gui_widget w, const char* text)`
+Updates text on labels, entries, or buttons.
 
 ```c
-gui_label_set_text(label, "Updated text");
+gui_set_text(label, "Updated text");
 ```
 
-#### `gui_widget gui_button_create(const char* label, gui_event_callback on_click)`
+#### `char* gui_get_text(gui_widget w)`
+Gets text from labels, entries, or buttons. Caller must free with `gui_free()`.
+
+```c
+char* text = gui_get_text(entry);
+println(text);
+gui_free(text);
+```
+
+#### `gui_widget gui_button(const char* text, gui_callback on_click)`
 Creates a clickable button.
 
 ```c
-gui_widget btn = gui_button_create("Click Me", [](event e) {
+gui_widget btn = gui_button("Click Me", [](gui_event e) {
     println("Clicked!");
 });
 ```
 
-#### `gui_widget gui_entry_create(const char* placeholder, gui_event_callback on_change)`
-Creates a single-line text input field.
+#### `gui_widget gui_button_ok(const char* text, gui_callback on_click)`
+Creates a primary/suggested-action button.
 
 ```c
-gui_widget entry = gui_entry_create("Enter name...", [](event e) {
-    const char* text = gui_event_get_string(e);
-    println("Text changed: " + text);
-});
-```
-
-#### `char* gui_entry_get_text(gui_widget entry)`
-Gets the current text from an entry field. Caller must free the result.
-
-```c
-char* text = gui_entry_get_text(entry);
-println(text);
-gui_free_string(text);
-```
-
-#### `void gui_entry_set_text(gui_widget entry, const char* text)`
-Sets the text in an entry field.
-
-```c
-gui_entry_set_text(entry, "New text");
-```
-
-#### `gui_widget gui_textarea_create(const char* placeholder, gui_event_callback on_change)`
-Creates a multi-line text area.
-
-```c
-gui_widget area = gui_textarea_create("Enter long text...", [](event e) {
-    const char* text = gui_event_get_string(e);
-    println(text);
-});
+gui_widget btn = gui_button_ok("OK", on_ok);
 ```
 
 ### Widgets - Input Controls
 
-#### `gui_widget gui_checkbox_create(const char* label, gui_event_callback on_change)`
+#### `gui_widget gui_entry(const char* placeholder)`
+Creates a single-line text input.
+
+```c
+gui_widget entry = gui_entry("Enter name...");
+```
+
+#### `gui_widget gui_entry_secret(const char* placeholder)`
+Creates a password entry field.
+
+```c
+gui_widget password = gui_entry_secret("Password");
+```
+
+#### `gui_widget gui_entry_multi(const char* placeholder)`
+Creates a multi-line text area.
+
+```c
+gui_widget area = gui_entry_multi("Enter long text...");
+```
+
+#### `gui_widget gui_check(const char* label)`
 Creates a checkbox.
 
 ```c
-gui_widget check = gui_checkbox_create("Enable feature", [](event e) {
-    bool checked = gui_event_get_bool(e);
-    println(checked ? "Enabled" : "Disabled");
-});
+gui_widget check = gui_check("Enable feature");
 ```
 
-#### `bool gui_checkbox_get_state(gui_widget checkbox)`
+#### `bool gui_is_checked(gui_widget w)`
 Gets the checkbox state.
 
 ```c
-bool is_checked = gui_checkbox_get_state(check);
+bool checked = gui_is_checked(check);
 ```
 
-#### `void gui_checkbox_set_state(gui_widget checkbox, bool checked)`
+#### `void gui_set_checked(gui_widget w, bool checked)`
 Sets the checkbox state.
 
 ```c
-gui_checkbox_set_state(check, true);
+gui_set_checked(check, true);
 ```
 
-#### `gui_widget gui_slider_create(double min, double max, double value, gui_event_callback on_change)`
-Creates a slider control.
+#### `gui_widget gui_select(const char* options[], int count)`
+Creates a dropdown/select.
 
 ```c
-gui_widget slider = gui_slider_create(0.0, 100.0, 50.0, [](event e) {
-    double value = gui_event_get_double(e);
-    println("Value: " + value);
-});
+const char* options[] = {"Red", "Green", "Blue"};
+gui_widget select = gui_select(options, 3);
 ```
 
-#### `double gui_slider_get_value(gui_widget slider)`
-Gets the current slider value.
+#### `int gui_get_selected(gui_widget w)`
+Gets the selected index.
 
 ```c
-double val = gui_slider_get_value(slider);
+int index = gui_get_selected(select);
 ```
 
-#### `void gui_slider_set_value(gui_widget slider, double value)`
-Sets the slider value.
+#### `gui_widget gui_slider(double min, double max)`
+Creates a slider.
 
 ```c
-gui_slider_set_value(slider, 75.0);
+gui_widget slider = gui_slider(0, 100);
 ```
 
-#### `gui_widget gui_progress_create(void)`
+#### `double gui_get_value(gui_widget w)`
+Gets slider or progress value.
+
+```c
+double val = gui_get_value(slider);
+```
+
+#### `void gui_set_value(gui_widget w, double value)`
+Sets slider or progress value.
+
+```c
+gui_set_value(slider, 75.0);
+```
+
+#### `gui_widget gui_progress(void)`
 Creates a progress bar.
 
 ```c
-gui_widget progress = gui_progress_create();
+gui_widget progress = gui_progress();
+gui_set_value(progress, 0.5);  // 50%
 ```
 
-#### `void gui_progress_set_value(gui_widget progress, double value)`
-Sets the progress value (0.0 to 1.0).
+### Visual Widgets
+
+#### `gui_widget gui_separator(void)`
+Creates a horizontal separator.
 
 ```c
-gui_progress_set_value(progress, 0.5);  // 50%
+gui_add(gui_separator());
 ```
 
-### Widgets - Graphics
-
-#### `gui_widget gui_image_create(const char* filepath)`
+#### `gui_widget gui_image(const char* path)`
 Creates an image from a file.
 
 ```c
-gui_widget img = gui_image_create("photo.png");
+gui_widget img = gui_image("photo.png");
 ```
 
-#### `void gui_image_set_fill(gui_widget image, int fill_mode)`
-Sets how the image fills its space.
+#### `gui_widget gui_spinner(void)`
+Creates a loading spinner.
 
 ```c
-gui_image_set_fill(img, GUI_IMAGE_FILL_CONTAIN);
-```
-
-Fill modes:
-- `GUI_IMAGE_FILL_ORIGINAL` - Original size
-- `GUI_IMAGE_FILL_STRETCH` - Stretch to fit
-- `GUI_IMAGE_FILL_CONTAIN` - Scale to fit, preserve aspect ratio
-
-#### `gui_widget gui_rectangle_create(uint8_t r, uint8_t g, uint8_t b, uint8_t a)`
-Creates a colored rectangle.
-
-```c
-gui_widget rect = gui_rectangle_create(255, 0, 0, 255);  // Red, fully opaque
-```
-
-#### `gui_widget gui_circle_create(uint8_t r, uint8_t g, uint8_t b, uint8_t a)`
-Creates a colored circle.
-
-```c
-gui_widget circle = gui_circle_create(0, 255, 0, 128);  // Green, semi-transparent
-```
-
-#### `gui_widget gui_line_create(float x1, float y1, float x2, float y2)`
-Creates a line.
-
-```c
-gui_widget line = gui_line_create(0, 0, 100, 100);
-```
-
-#### `void gui_line_set_color(gui_widget line, uint8_t r, uint8_t g, uint8_t b, uint8_t a)`
-Sets the line color.
-
-```c
-gui_line_set_color(line, 0, 0, 255, 255);  // Blue
+gui_widget spinner = gui_spinner();
+gui_spinner_start(spinner);
+// ... load something ...
+gui_spinner_stop(spinner);
 ```
 
 ### Layout Containers
 
-#### `gui_container gui_vbox_create(void)`
+#### `gui_container gui_vbox(void)`
 Creates a vertical box layout.
 
 ```c
-gui_container vbox = gui_vbox_create();
-gui_container_add(vbox, label);
-gui_container_add(vbox, button);
-gui_container_add(vbox, entry);
+gui_container vbox = gui_vbox();
+gui_add_to(vbox, gui_label("First"));
+gui_add_to(vbox, gui_label("Second"));
 ```
 
-#### `gui_container gui_hbox_create(void)`
+#### `gui_container gui_hbox(void)`
 Creates a horizontal box layout.
 
 ```c
-gui_container hbox = gui_hbox_create();
-gui_container_add(hbox, btn1);
-gui_container_add(hbox, btn2);
-gui_container_add(hbox, btn3);
+gui_container hbox = gui_hbox();
+gui_add_to(hbox, gui_button("A", NULL));
+gui_add_to(hbox, gui_button("B", NULL));
 ```
 
-#### `gui_container gui_grid_create(int columns)`
-Creates a grid layout with specified columns.
+#### `gui_container gui_grid(int columns)`
+Creates a grid layout.
 
 ```c
-gui_container grid = gui_grid_create(3);  // 3 columns
+gui_container grid = gui_grid(3);  // 3 columns
 for (int i = 0; i < 9; i++) {
-    gui_container_add(grid, gui_button_create("Btn", NULL));
+    gui_add_to(grid, gui_button("Btn", NULL));
 }
 ```
 
-#### `void gui_container_add(gui_container container, gui_widget widget)`
-Adds a widget to a container.
+#### `gui_container gui_scroll(gui_widget content)`
+Creates a scrollable area.
 
 ```c
-gui_container_add(vbox, my_widget);
+gui_container scroll = gui_scroll(content);
+```
+
+#### `gui_container gui_tabs(void)`
+Creates a tab notebook.
+
+```c
+gui_container tabs = gui_tabs();
+gui_tab_add(tabs, "Tab 1", gui_label("Content 1"));
+gui_tab_add(tabs, "Tab 2", gui_label("Content 2"));
 ```
 
 ### Dialogs
 
-#### `void gui_dialog_info(gui_window parent, const char* title, const char* message)`
+#### `void gui_alert_info(const char* message)`
 Shows an information dialog.
 
 ```c
-gui_dialog_info(w, "Info", "Operation completed successfully!");
+gui_alert_info("Operation completed!");
 ```
 
-#### `void gui_dialog_error(gui_window parent, const char* title, const char* message)`
+#### `void gui_alert_error(const char* message)`
 Shows an error dialog.
 
 ```c
-gui_dialog_error(w, "Error", "Failed to save file!");
+gui_alert_error("Failed to save file!");
 ```
 
-#### `void gui_dialog_confirm(gui_window parent, const char* title, const char* message, gui_event_callback on_result)`
+#### `void gui_alert_warn(const char* message)`
+Shows a warning dialog.
+
+```c
+gui_alert_warn("This action cannot be undone.");
+```
+
+#### `void gui_confirm(const char* message, gui_callback on_result)`
 Shows a confirmation dialog.
 
 ```c
-gui_dialog_confirm(w, "Confirm", "Delete this file?", [](event e) {
-    if (gui_event_get_bool(e)) {
+gui_confirm("Delete this file?", [](gui_event e) {
+    if (e.checked) {
         println("User confirmed");
-    } else {
-        println("User cancelled");
     }
 });
 ```
 
-#### `void gui_dialog_file_open(gui_window parent, gui_event_callback on_result)`
+#### `void gui_pick_file(gui_callback on_result)`
 Shows a file open dialog.
 
 ```c
-gui_dialog_file_open(w, [](event e) {
-    const char* path = gui_event_get_string(e);
-    if (strlen(path) > 0) {
-        println("Selected: " + path);
+gui_pick_file([](gui_event e) {
+    if (e.text) {
+        println("Selected: %s", e.text);
     }
 });
 ```
 
-#### `void gui_dialog_file_save(gui_window parent, gui_event_callback on_result)`
+#### `void gui_save_file(const char* default_name, gui_callback on_result)`
 Shows a file save dialog.
 
 ```c
-gui_dialog_file_save(w, [](event e) {
-    const char* path = gui_event_get_string(e);
-    // Save file...
+gui_save_file("untitled.txt", [](gui_event e) {
+    if (e.text) {
+        // Save file...
+    }
 });
 ```
 
-### Widget Management
-
-#### `void gui_refresh(gui_widget widget)`
-Requests a redraw of a widget.
+#### `void gui_pick_folder(gui_callback on_result)`
+Shows a folder select dialog.
 
 ```c
-gui_refresh(label);
+gui_pick_folder([](gui_event e) {
+    if (e.text) {
+        println("Folder: %s", e.text);
+    }
+});
 ```
 
-#### `void gui_resize(gui_widget widget, float width, float height)`
-Changes the size of a widget.
+### Widget State
+
+#### `void gui_show(gui_widget w)` / `void gui_hide(gui_widget w)`
+Shows or hides a widget.
 
 ```c
-gui_resize(button, 200, 50);
+gui_show(widget);
+gui_hide(widget);
 ```
 
-#### `void gui_move(gui_widget widget, float x, float y)`
-Moves a widget to a position.
-
-```c
-gui_move(label, 100, 50);
-```
-
-#### `void gui_enable(gui_widget widget)`
-Enables a widget.
+#### `void gui_enable(gui_widget w)` / `void gui_disable(gui_widget w)`
+Enables or disables a widget.
 
 ```c
 gui_enable(button);
-```
-
-#### `void gui_disable(gui_widget widget)`
-Disables a widget.
-
-```c
 gui_disable(button);
 ```
 
-#### `bool gui_is_enabled(gui_widget widget)`
-Checks if a widget is enabled.
+#### `void gui_focus(gui_widget w)`
+Gives keyboard focus to a widget.
 
 ```c
-if (gui_is_enabled(button)) {
-    // ...
-}
+gui_focus(entry);
 ```
 
-### Utility Functions
+### Utility
 
-#### `void gui_free_string(char* str)`
+#### `void gui_free(char* str)`
 Frees a string returned by GUI functions.
 
 ```c
-char* text = gui_entry_get_text(entry);
-// ... use text ...
-gui_free_string(text);
+char* text = gui_get_text(entry);
+gui_free(text);
 ```
 
-#### `const char* gui_event_get_string(gui_event event)`
-Extracts string data from an event.
+#### `char* gui_clipboard_get(void)` / `void gui_clipboard_set(const char* text)`
+Clipboard access.
 
 ```c
-const char* text = gui_event_get_string(e);
-```
-
-#### `bool gui_event_get_bool(gui_event event)`
-Extracts boolean data from an event.
-
-```c
-bool checked = gui_event_get_bool(e);
-```
-
-#### `double gui_event_get_double(gui_event event)`
-Extracts numeric data from an event.
-
-```c
-double value = gui_event_get_double(e);
+gui_clipboard_set("Copied text");
 ```
 
 ## Event System
@@ -467,19 +406,33 @@ Events are handled through callbacks that receive a `gui_event` structure:
 
 ```c
 typedef struct {
-    gui_event_type type;
-    int64_t source;
-    void* data;
+    int type;           // Event type
+    int64_t source;     // Widget that triggered
+    double value;       // Numeric value (slider, progress)
+    char* text;         // Text value (entry, file dialog)
+    bool checked;       // Boolean value (checkbox, confirm)
 } gui_event;
 ```
 
 Event types:
-- `GUI_EVENT_CLICK` - Button click
-- `GUI_EVENT_CHANGE` - Value change
-- `GUI_EVENT_KEY` - Keyboard input
-- `GUI_EVENT_MOUSE` - Mouse action
-- `GUI_EVENT_WINDOW` - Window event
-- `GUI_EVENT_CUSTOM` - Custom event
+- `GUI_CLICK` - Button click
+- `GUI_CHANGE` - Value change
+- `GUI_SELECT` - Selection change
+- `GUI_CHECK` - Checkbox toggle
+- `GUI_SUBMIT` - Form submit
+
+## Convenience Macros
+
+One-liners for common patterns:
+
+```c
+gui_add_label("Hello");        // Create and add label
+gui_add_button("Click", cb);   // Create and add button
+gui_add_entry("Type...");      // Create and add entry
+gui_add_check("Option");       // Create and add checkbox
+gui_add_separator();           // Add separator
+gui_add_progress();            // Add progress bar
+```
 
 ## Complete Examples
 
@@ -491,27 +444,24 @@ GUI applications are built the same way as regular Cortex programs:
 
 ```bash
 cortex -i myapp.cx -o myapp
-cortex build -run
+./myapp
 ```
 
 The GUI runtime is automatically linked when GUI functions are detected.
 
 ## Architecture
 
-The GUI system consists of three layers:
+The GUI system consists of two layers:
 
 1. **Cortex Application** - Your code using the `gui_runtime.h` API
-2. **C Runtime** - `gui_runtime.c` provides the C implementation
-3. **Go/Fyne Bridge** - `internal/gui_fyne/` connects to the Fyne toolkit
+2. **GTK4 Backend** - `internal/gui_gtk4/` provides the native implementation
 
 ```
 Cortex Code
     ↓
-C Runtime (gui_runtime.h/c)
+C Runtime (gui_runtime.h)
     ↓
-Go Bridge (internal/gui_fyne/)
-    ↓
-Fyne Toolkit
+GTK4 Backend (internal/gui_gtk4/)
     ↓
 Native Platform (Win/Mac/Linux)
 ```
@@ -519,16 +469,19 @@ Native Platform (Win/Mac/Linux)
 ## Troubleshooting
 
 ### Window doesn't appear
-Make sure to call `gui_window_show()` before `gui_run()`.
+Make sure to call `gui_run()` after adding widgets.
 
 ### Events not firing
-Check that you're passing valid callback functions to widget creation functions.
+Check that you're passing valid callback functions.
 
 ### Memory issues
-Always use `gui_free_string()` for strings returned by GUI functions.
+Always use `gui_free()` for strings returned by GUI functions.
 
-### Compilation errors
-Ensure you're including `<gui_runtime.h>` and linking with the GUI runtime.
+### GTK4 not found
+Install GTK4 development libraries:
+- Linux: `sudo apt install libgtk-4-dev`
+- macOS: `brew install gtk4`
+- Windows: Use MSYS2 or vcpkg
 
 ## License
 

@@ -1,0 +1,1 @@
+void main() { let x = 42; println("let works"); }

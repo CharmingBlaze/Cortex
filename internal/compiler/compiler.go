@@ -80,7 +80,7 @@ var asyncBuiltins = map[string]bool{
 // threadBuiltins are functions that require runtime/thread.h
 var threadBuiltins = map[string]bool{
 	"thread_spawn": true, "thread_join": true, "thread_is_running": true, "thread_id": true, "thread_sleep_ms": true,
-	"channel_create": true, "channel_send": true, "channel_recv": true,
+	"channel_create": true, "channel_of": true, "channel_send": true, "channel_recv": true,
 	"channel_try_send": true, "channel_try_recv": true, "channel_close": true, "channel_is_closed": true, "channel_free": true,
 }
 
@@ -408,6 +408,20 @@ func usesThreadBuiltins(node ast.ASTNode) bool {
 	case *ast.VariableDeclNode:
 		if n.Initializer != nil {
 			return usesThreadBuiltins(n.Initializer)
+		}
+		return false
+	case *ast.CallExprNode:
+		// Check if calling a thread/channel builtin
+		if id, ok := n.Function.(*ast.IdentifierNode); ok {
+			if threadBuiltins[id.Name] {
+				return true
+			}
+		}
+		// Check arguments
+		for _, arg := range n.Args {
+			if usesThreadBuiltins(arg) {
+				return true
+			}
 		}
 		return false
 	default:
@@ -738,7 +752,7 @@ var standardCHeaders = map[string]bool{
 	"stdbool.h": true, "math.h": true, "stddef.h": true, "limits.h": true,
 	"ctype.h": true, "errno.h": true, "assert.h": true, "signal.h": true,
 	"gui_runtime.h": true, "core.h": true, "game.h": true, "network.h": true,
-	"async.h": true,
+	"async.h": true, "thread.h": true, "managed.h": true,
 }
 
 // collectLinkPragmas returns library names from #pragma link, #use, and #include <name.h> (C-style: include implies -l name).
@@ -813,25 +827,34 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 		}
 	}
 	if usesGui {
-		if _, err := os.Stat(guiRuntimeSource); err == nil {
-			args = append(args, guiRuntimeSource)
-		}
-		// Add native Windows GUI implementation
+		// Add runtime directory to include path for gui_runtime.h
+		args = append(args, "-I", runtimeDir)
+		// Use native Windows GUI on Windows, GTK4 on other platforms
 		if isWindows() {
 			guiNativeSource := filepath.Join(runtimeDir, "gui_native.c")
 			if _, err := os.Stat(guiNativeSource); err == nil {
 				args = append(args, guiNativeSource)
 			}
-			// Link Windows GUI libraries (keep -mconsole for main() entry point)
-			args = append(args, "-lgdi32", "-luser32", "-lcomctl32")
+			// Link Windows GUI libraries
+			args = append(args, "-lgdi32", "-luser32", "-lcomctl32", "-lcomdlg32", "-lshell32")
 		} else {
-			// Link the Fyne GUI static archive for non-Windows
-			if exe, err := os.Executable(); err == nil {
-				guiArchive := filepath.Join(filepath.Dir(exe), "cortex_gui.a")
-				if _, err := os.Stat(guiArchive); err == nil {
-					args = append(args, guiArchive)
+			// Include gui_runtime.c for non-Windows
+			if _, err := os.Stat(guiRuntimeSource); err == nil {
+				args = append(args, guiRuntimeSource)
+			}
+			// Add GTK4 GUI implementation for non-Windows
+			guiGtkDir := filepath.Join(runtimeDir, "..", "internal", "gui_gtk4")
+			gtkSources := []string{"gui_core.c", "gui_widgets.c", "gui_containers.c", "gui_dialogs.c"}
+			for _, src := range gtkSources {
+				srcPath := filepath.Join(guiGtkDir, src)
+				if _, err := os.Stat(srcPath); err == nil {
+					args = append(args, srcPath)
 				}
 			}
+			// Link GTK4 libraries
+			args = append(args, "-lgtk-4", "-lgdk-4", "-lpangocairo-1.0", "-lpango-1.0",
+				"-lharfbuzz", "-lcairo", "-lcairo-gobject", "-lgdk_pixbuf-2.0", "-lgio-2.0",
+				"-lgobject-2.0", "-lglib-2.0", "-lgraphene-1.0")
 		}
 	}
 	if usesAsync {

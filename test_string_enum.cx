@@ -1,0 +1,10 @@
+﻿enum Status {
+    "active",
+    "inactive",
+    "pending"
+}
+
+void main() {
+    Status s = "active";
+    println(s);
+}

@@ -840,6 +840,12 @@ func (a *SemanticAnalyzer) RegisterBuiltins() {
 		Node:       nil,
 	})
 	a.globalScope.Define(&Symbol{
+		Name:       "channel_of",
+		Type:       "cortex_channel",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
 		Name:       "channel_send",
 		Type:       "bool",
 		SymbolType: SymbolFunction,
@@ -1089,11 +1095,104 @@ func (a *SemanticAnalyzer) VisitLambda(node *ast.LambdaNode) {
 		})
 	}
 
-	// Visit body
+	// Pre-analyze body to infer parameter types from usage (before full visit)
+	for _, param := range node.Parameters {
+		if param.Type == "var" {
+			inferredType := a.inferParamTypeFromUsage(param.Name, node.Body)
+			if inferredType != "" && inferredType != "unknown" {
+				param.Type = inferredType
+				// Update symbol in scope before body is visited
+				if sym := lambdaScope.Resolve(param.Name); sym != nil {
+					sym.Type = inferredType
+				}
+			}
+		}
+	}
+
+	// Visit body (now with correct parameter types)
 	a.VisitNode(node.Body)
+
+	// Infer return type from body if not explicitly set
+	if node.ReturnType == "" || node.ReturnType == "var" {
+		// Try to infer from the last statement/expression in the body
+		if len(node.Body.Statements) > 0 {
+			lastStmt := node.Body.Statements[len(node.Body.Statements)-1]
+			inferredType := a.GetExpressionType(lastStmt)
+			if inferredType != "" && inferredType != "unknown" && inferredType != "void" {
+				node.ReturnType = inferredType
+			}
+		}
+	}
 
 	// Restore scope
 	a.currentScope = lambdaScope.Parent
+}
+
+// inferParamTypeFromUsage analyzes how a parameter is used in the body to infer its type
+func (a *SemanticAnalyzer) inferParamTypeFromUsage(paramName string, body *ast.BlockNode) string {
+	for _, stmt := range body.Statements {
+		if t := a.inferParamTypeFromNode(paramName, stmt); t != "" {
+			return t
+		}
+	}
+	return ""
+}
+
+func (a *SemanticAnalyzer) inferParamTypeFromNode(paramName string, node ast.ASTNode) string {
+	switch n := node.(type) {
+	case *ast.BinaryExprNode:
+		// Check if param is used in string concatenation
+		if n.Operator == "+" {
+			// Check if param is on left side
+			if leftID, ok := n.Left.(*ast.IdentifierNode); ok && leftID.Name == paramName {
+				// Check if right side is a string literal
+				if lit, ok := n.Right.(*ast.LiteralNode); ok && lit.Type == "string" {
+					return "string"
+				}
+				// Check if right side is another string concatenation
+				if a.isStringExpression(n.Right) {
+					return "string"
+				}
+			}
+			// Check if param is on right side
+			if rightID, ok := n.Right.(*ast.IdentifierNode); ok && rightID.Name == paramName {
+				// Check if left side is a string literal
+				if lit, ok := n.Left.(*ast.LiteralNode); ok && lit.Type == "string" {
+					return "string"
+				}
+				// Check if left side is another string concatenation
+				if a.isStringExpression(n.Left) {
+					return "string"
+				}
+			}
+		}
+		// Recurse into operands
+		if t := a.inferParamTypeFromNode(paramName, n.Left); t != "" {
+			return t
+		}
+		if t := a.inferParamTypeFromNode(paramName, n.Right); t != "" {
+			return t
+		}
+	case *ast.IdentifierNode:
+		// Just a reference, no type info
+	default:
+		// For other node types, we could add more analysis
+	}
+	return ""
+}
+
+// isStringExpression checks if an expression evaluates to a string
+func (a *SemanticAnalyzer) isStringExpression(node ast.ASTNode) bool {
+	switch n := node.(type) {
+	case *ast.LiteralNode:
+		return n.Type == "string"
+	case *ast.BinaryExprNode:
+		if n.Operator == "+" {
+			// String concatenation if either operand is string
+			return a.isStringExpression(n.Left) || a.isStringExpression(n.Right)
+		}
+	}
+	return false
 }
 
 func (a *SemanticAnalyzer) VisitFunctionDecl(node *ast.FunctionDeclNode) {
@@ -1412,7 +1511,12 @@ func (a *SemanticAnalyzer) VisitMatchStmt(node *ast.MatchStmtNode) {
 			}
 			scope.Define(&Symbol{Name: c.VarName, Type: typ, SymbolType: SymbolVariable, Node: c})
 		}
-		a.VisitNode(c.Body)
+		// Handle match expression (ExprBody) or match statement (Body)
+		if c.Body != nil {
+			a.VisitNode(c.Body)
+		} else if c.ExprBody != nil {
+			a.VisitNode(c.ExprBody)
+		}
 		a.currentScope = scope.Parent
 	}
 }
@@ -1561,6 +1665,21 @@ func (a *SemanticAnalyzer) GetExpressionType(expr ast.ASTNode) string {
 			return symbol.Type
 		}
 		return "unknown"
+	case *ast.LambdaNode:
+		// Return a function type signature
+		retType := e.ReturnType
+		if retType == "" || retType == "var" {
+			retType = "double" // Default for dynamically typed lambdas
+		}
+		var paramTypes []string
+		for _, p := range e.Parameters {
+			pt := p.Type
+			if pt == "var" {
+				pt = "double" // Default for dynamically typed parameters
+			}
+			paramTypes = append(paramTypes, pt)
+		}
+		return "fn_" + retType + "_" + strings.Join(paramTypes, "_")
 	case *ast.BinaryExprNode:
 		return a.InferBinaryExpressionType(e)
 	case *ast.UnaryExprNode:
@@ -1633,6 +1752,15 @@ func (a *SemanticAnalyzer) InferBinaryExpressionType(expr *ast.BinaryExprNode) s
 	switch expr.Operator {
 	case "+", "-", "*", "/":
 		// Arithmetic operations: promote to higher precision type
+		// Handle var type - treat as numeric
+		if leftType == "var" || rightType == "var" {
+			// If one operand is string, result is string
+			if leftType == "string" || rightType == "string" {
+				return "string"
+			}
+			// Otherwise assume numeric
+			return "double"
+		}
 		if a.IsNumericType(leftType) && a.IsNumericType(rightType) {
 			return a.GetHigherPrecisionType(leftType, rightType)
 		}
@@ -1654,6 +1782,16 @@ func (a *SemanticAnalyzer) InferBinaryExpressionType(expr *ast.BinaryExprNode) s
 
 func (a *SemanticAnalyzer) IsNumericType(typeName string) bool {
 	return typeName == "int" || typeName == "float" || typeName == "double" || typeName == "size_t" || typeName == "number"
+}
+
+func (a *SemanticAnalyzer) IsStringEnum(typeName string) bool {
+	// Check if the type is an enum with string values
+	if sym := a.globalScope.Resolve(typeName); sym != nil {
+		if enum, ok := sym.Node.(*ast.EnumDeclNode); ok {
+			return len(enum.StringValues) > 0
+		}
+	}
+	return false
 }
 
 func (a *SemanticAnalyzer) GetHigherPrecisionType(type1, type2 string) string {
@@ -1682,7 +1820,8 @@ func (a *SemanticAnalyzer) AreTypesCompatible(type1, type2, operator string) boo
 	case "+", "-", "*", "/":
 		if (a.IsNumericType(type1) && a.IsNumericType(type2)) ||
 			(type1 == "string" || type2 == "string") ||
-			(type1 == "any" || type2 == "any") {
+			(type1 == "any" || type2 == "any") ||
+			(type1 == "var" || type2 == "var") {
 			return true
 		}
 	case "==", "!=", "<", "<=", ">", ">=":
@@ -1730,6 +1869,44 @@ func (a *SemanticAnalyzer) IsAssignableTo(valueType, targetType string) bool {
 	// Allow 'any' to be assigned to any type (dynamic typing)
 	if valueType == "any" {
 		return true
+	}
+	// String enums: string is assignable to string enum type
+	if a.IsStringEnum(targetType) && valueType == "string" {
+		return true
+	}
+	// Union types: value assignable if it matches any type in the union
+	if strings.Contains(targetType, " | ") {
+		unionTypes := strings.Split(targetType, " | ")
+		for _, ut := range unionTypes {
+			ut = strings.TrimSpace(ut)
+			if a.IsAssignableTo(valueType, ut) {
+				return true
+			}
+		}
+		return false
+	}
+	// Optional types: null is assignable to T?
+	if strings.HasSuffix(targetType, "?") {
+		if valueType == "null" {
+			return true
+		}
+		// T is assignable to T? (wrap value in optional)
+		baseType := strings.TrimSuffix(targetType, "?")
+		if valueType == baseType {
+			return true
+		}
+		// Also allow numeric promotion for optional numeric types
+		if a.IsNumericType(baseType) && a.IsNumericType(valueType) {
+			order := map[string]int{"int": 1, "size_t": 1, "float": 2, "double": 3}
+			v, tok := order[valueType], order[baseType]
+			if v == 0 {
+				v = 1
+			}
+			if tok == 0 {
+				tok = 1
+			}
+			return v <= tok
+		}
 	}
 	// Exact match
 	if valueType == targetType {

@@ -1,0 +1,28 @@
+﻿// Test functions and recursion
+int factorial(int n) {
+    if (n <= 1) return 1;
+    return n * factorial(n - 1);
+}
+
+int fibonacci(int n) {
+    if (n <= 1) return n;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+void main() {
+    println("=== Functions and Recursion ===");
+    
+    // Test basic functions
+    printf("factorial(5) = %d\n", factorial(5));
+    printf("fibonacci(10) = %d\n", fibonacci(10));
+    
+    // Test higher-order functions via arrow functions
+    fn apply = (int x, int y, fn op) => op(x, y);
+    fn add = (int a, int b) => a + b;
+    fn sub = (int a, int b) => a - b;
+    
+    printf("apply(10, 5, add) = %d\n", apply(10, 5, add));
+    printf("apply(10, 5, sub) = %d\n", apply(10, 5, sub));
+    
+    println("=== Done ===");
+}

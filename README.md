@@ -484,36 +484,49 @@ void main() {
 
 ## Native GUI System
 
-Build desktop apps with a clean, simple API. No external dependencies.
+Build desktop apps with a clean, simple API. Cross-platform with zero external dependencies on Windows.
 
 ```c
+#include <gui_runtime.h>
+
+void on_click(gui_event e) {
+    gui_alert_info("Button clicked!");
+}
+
 void main() {
-    gui_window win = gui_window_create("My App", 800, 600);
-    gui_window_center(win);
+    // One-line window creation
+    gui_start("My App", 600, 500);
     
-    // Create widgets
-    gui_widget label = gui_label_create("Hello, Cortex!");
-    gui_widget button = gui_button_create("Click Me", [](event e) {
-        println("Clicked!");
-    });
+    // Section headers for organization
+    gui_header("Input Controls");
+    gui_add(gui_entry("Type here..."));
+    gui_add(gui_check("Enable feature"));
     
-    // Layout
-    gui_container vbox = gui_vbox_create();
-    gui_container_add(vbox, label);
-    gui_container_add(vbox, button);
+    // Horizontal button row
+    gui_container row = gui_hbox();
+    gui_add_to(row, gui_button("Save", on_click));
+    gui_add_to(row, gui_button("Load", on_click));
+    gui_end_row();
     
-    // Show and run
-    gui_window_set_content(win, vbox);
-    gui_window_show(win);
+    // Value controls
+    gui_add(gui_slider(0, 100));
+    gui_add(gui_progress());
+    
     gui_run();
 }
 ```
 
-**Widgets:** Buttons, labels, text entries, checkboxes, sliders, progress bars, images, shapes, and more.
+**Widgets:** Labels, buttons, entries, checkboxes, radio buttons, sliders, progress bars, spin controls, list boxes, and more.
 
-**Layouts:** VBox, HBox, Grid for responsive designs.
+**Layouts:** Auto-layout with configurable spacing, VBox, HBox, section headers.
 
-**Cross-platform:** Native look on Windows, macOS, Linux.
+**Cross-platform:** Native WinAPI on Windows (zero dependencies), GTK4 on Linux/macOS.
+
+| Platform | Backend | Dependencies |
+|----------|---------|--------------|
+| Windows | Native WinAPI | None |
+| Linux | GTK4 | libgtk-4-dev |
+| macOS | GTK4 | gtk4 (homebrew) |
 
 ---
 

@@ -55,6 +55,7 @@ const (
 	TokenNull
 	TokenVar
 	TokenLet
+	TokenFn
 	TokenAny
 	TokenConst
 	TokenArray
@@ -112,6 +113,7 @@ const (
 	TokenIncrement
 	TokenDecrement
 	TokenAt
+	TokenUnderscore
 
 	// Delimiters
 	TokenLParen
@@ -219,6 +221,20 @@ func (l *Lexer) Tokenize(input string) ([]Token, error) {
 			charLit := l.ReadChar()
 			tokens = append(tokens, Token{Type: TokenChar, Value: charLit, Line: l.line, Column: l.column})
 			continue
+		}
+
+		// Handle standalone underscore _ (wildcard in match) before identifier parsing
+		if char == '_' {
+			// Check if this is a standalone _ or part of an identifier
+			nextChar := l.PeekChar()
+			if !l.IsIdentifierChar(nextChar) {
+				// Standalone _ - treat as wildcard token
+				tokens = append(tokens, Token{Type: TokenUnderscore, Value: "_", Line: l.line, Column: l.column})
+				l.position++
+				l.column++
+				continue
+			}
+			// Otherwise fall through to identifier parsing
 		}
 
 		if l.IsIdentifierChar(char) {
@@ -532,6 +548,7 @@ func (l *Lexer) GetKeywordType(identifier string) TokenType {
 		"spawn":     TokenSpawn,
 		"var":       TokenVar,
 		"let":       TokenLet,
+		"fn":        TokenFn,
 		"any":       TokenAny,
 		"const":     TokenConst,
 		"extern":    TokenExtern,

@@ -1,0 +1,21 @@
+﻿// Test arrays and collections
+void main() {
+    println("=== Arrays and Collections ===");
+    
+    // Test array declaration and access
+    int[] nums = {1, 2, 3, 4, 5};
+    printf("nums[0] = %d, nums[2] = %d\n", nums[0], nums[2]);
+    
+    // Test array with size
+    int arr[5];
+    arr[0] = 10;
+    arr[1] = 20;
+    arr[2] = 30;
+    printf("arr[0]=%d, arr[1]=%d, arr[2]=%d\n", arr[0], arr[1], arr[2]);
+    
+    // Test string array
+    string[] names = {"Alice", "Bob", "Charlie"};
+    printf("names[0]=%s, names[1]=%s\n", names[0], names[1]);
+    
+    println("=== Done ===");
+}

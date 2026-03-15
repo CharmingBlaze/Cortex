@@ -1,0 +1,65 @@
+// Example: GTK4 GUI + Raylib Integration
+//
+// Shows how to use GTK4 GUI alongside raylib for games/graphics.
+// Uses non-blocking mode so both can run together.
+
+#include <raylib.h>
+#include <gui_runtime.h>
+
+// State shared between GUI and raylib
+int score = 0;
+char score_text[64] = "Score: 0";
+gui_widget score_label;
+
+void on_reset(gui_event e) {
+    score = 0;
+    sprintf(score_text, "Score: %d", score);
+    gui_set_text(score_label, score_text);
+}
+
+void on_quit(gui_event e) {
+    gui_quit();
+}
+
+fn main() {
+    // Initialize raylib window (for game/graphics)
+    InitWindow(400, 300, "Raylib Window");
+    SetTargetFPS(60);
+    
+    // Initialize GTK4 GUI (for controls)
+    gui_start("Game Controls", 300, 200);
+    
+    // Create GUI controls
+    score_label = gui_label(score_text);
+    gui_add(score_label);
+    
+    gui_add(gui_button("Reset Score", on_reset));
+    gui_add(gui_button("Quit", on_quit));
+    
+    // Start GUI in non-blocking mode
+    gui_run_nonblock();
+    
+    // Main loop - handles both raylib and GTK
+    while (!WindowShouldClose() && gui_is_running()) {
+        // Process GTK events
+        gui_update();
+        
+        // Raylib game logic
+        if (IsKeyPressed(KEY_SPACE)) {
+            score += 10;
+            sprintf(score_text, "Score: %d", score);
+            gui_set_text(score_label, score_text);
+        }
+        
+        // Raylib rendering
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        DrawText("Press SPACE to score!", 100, 140, 20, LIGHTGRAY);
+        DrawText(score_text, 160, 100, 30, BLACK);
+        EndDrawing();
+    }
+    
+    // Cleanup
+    gui_quit();
+    CloseWindow();
+}

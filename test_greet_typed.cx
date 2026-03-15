@@ -1,0 +1,4 @@
+﻿void main() {
+    fn(string): string greet = (name) => "Hello, " + name;
+    println(greet("World"));
+}

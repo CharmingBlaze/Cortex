@@ -53,6 +53,25 @@ typedef struct {
     float w;
 } vec4;
 
+/* Optional type support: T? -> cortex_optional_T with has_value flag */
+typedef struct { bool has_value; int value; } cortex_optional_int;
+typedef struct { bool has_value; float value; } cortex_optional_float;
+typedef struct { bool has_value; double value; } cortex_optional_double;
+typedef struct { bool has_value; char value; } cortex_optional_char;
+typedef struct { bool has_value; bool value; } cortex_optional_bool;
+typedef struct { bool has_value; char* value; } cortex_optional_string;
+typedef struct { bool has_value; vec2 value; } cortex_optional_vec2;
+typedef struct { bool has_value; vec3 value; } cortex_optional_vec3;
+typedef struct { bool has_value; void* value; } cortex_optional_ptr;
+
+/* Optional constructors */
+#define optional_none_int() ((cortex_optional_int){.has_value = false})
+#define optional_some_int(v) ((cortex_optional_int){.has_value = true, .value = (v)})
+#define optional_none_float() ((cortex_optional_float){.has_value = false})
+#define optional_some_float(v) ((cortex_optional_float){.has_value = true, .value = (v)})
+#define optional_none_string() ((cortex_optional_string){.has_value = false})
+#define optional_some_string(v) ((cortex_optional_string){.has_value = true, .value = (v)})
+
 /* Forward decl for AnyValue union (dict/array stored as void* to avoid circular deps) */
 struct cortex_dict;
 struct cortex_array;

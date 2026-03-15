@@ -1,0 +1,22 @@
+﻿// Test edge cases
+void main() {
+    // Test empty optional check
+    int? empty;
+    if (!(empty?)) {
+        println("empty optional check works");
+    }
+    
+    // Test match with multiple conditions
+    int val = 5;
+    string res = match val {
+        1 => "one",
+        2 => "two",
+        3 => "three",
+        4 => "four",
+        5 => "five",
+        _ => "other"
+    };
+    printf("match 5 => %s\n", res);
+    
+    println("All edge cases passed!");
+}

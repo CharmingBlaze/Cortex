@@ -1,0 +1,19 @@
+﻿void main() {
+    // Arrow functions
+    var doubleIt = (x) => x * 2;
+    println(doubleIt(21));
+    
+    var greet = (name) => "Hello, " + name;
+    println(greet("World"));
+    
+    // Channels
+    let ch = channel<int>(5);
+    ch.send(100);
+    int val = ch.recv();
+    println(val);
+    
+    // Boolean lambdas
+    var isPositive = (x) => x > 0;
+    println(isPositive(5));
+    println(isPositive(-3));
+}

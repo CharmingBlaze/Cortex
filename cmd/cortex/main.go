@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cortex/cmd/cortex/cli"
 	"cortex/internal/binder"
 	"cortex/internal/compiler"
 	"cortex/internal/config"
@@ -67,8 +68,8 @@ func buildCommand(args []string) {
 	if err != nil {
 		// No cortex.toml - use legacy mode
 		if inputFile == "" {
-			fmt.Fprintln(os.Stderr, "Error: no input file and no cortex.toml found")
-			fmt.Fprintln(os.Stderr, "Usage: cortex build <file.cx>")
+			cli.Colors.PrintError("no input file and no cortex.toml found")
+			cli.Colors.PrintInfo("Usage: cortex build <file.cx>")
 			os.Exit(1)
 		}
 		compileFile(inputFile, outputFile, nil, debug)
@@ -112,8 +113,8 @@ func runCommand(args []string) {
 	if err != nil {
 		// No cortex.toml - use legacy mode
 		if inputFile == "" {
-			fmt.Fprintln(os.Stderr, "Error: no input file and no cortex.toml found")
-			fmt.Fprintln(os.Stderr, "Usage: cortex run <file.cx>")
+			cli.Colors.PrintError("no input file and no cortex.toml found")
+			cli.Colors.PrintInfo("Usage: cortex run <file.cx>")
 			os.Exit(1)
 		}
 		runFile(inputFile, nil, debug)
@@ -123,7 +124,7 @@ func runCommand(args []string) {
 	// Load project config
 	proj, err := config.LoadProject(projectDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		cli.Colors.PrintError("%v", err)
 		os.Exit(1)
 	}
 
@@ -142,7 +143,7 @@ func runCommand(args []string) {
 // newCommand handles: cortex new <project_name>
 func newCommand(args []string) {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "Usage: cortex new <project_name>")
+		cli.Colors.PrintError("Usage: cortex new <project_name>")
 		os.Exit(1)
 	}
 
@@ -150,7 +151,7 @@ func newCommand(args []string) {
 
 	// Create project directory
 	if err := os.MkdirAll(name, 0755); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating project: %v\n", err)
+		cli.Colors.PrintError("creating project: %v", err)
 		os.Exit(1)
 	}
 
@@ -166,7 +167,7 @@ entry = "main.cx"
 `, name)
 
 	if err := os.WriteFile(filepath.Join(name, "cortex.toml"), []byte(tomlContent), 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating cortex.toml: %v\n", err)
+		cli.Colors.PrintError("creating cortex.toml: %v", err)
 		os.Exit(1)
 	}
 
@@ -177,15 +178,15 @@ void main() {
 }
 `
 	if err := os.WriteFile(filepath.Join(name, "main.cx"), []byte(mainContent), 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating main.cx: %v\n", err)
+		cli.Colors.PrintError("creating main.cx: %v", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Created project '%s'\n", name)
-	fmt.Println("")
-	fmt.Println("Next steps:")
-	fmt.Printf("  cd %s\n", name)
-	fmt.Println("  cortex run")
+	cli.Colors.PrintSuccess("Created project '%s'", name)
+	cli.Colors.PrintViolet("")
+	cli.Colors.PrintStep("→", "Next steps:")
+	fmt.Printf("    cd %s\n", name)
+	fmt.Println("    cortex run")
 }
 
 // bindCommand handles: cortex bind <libname> -i <header.h> [-o output.cx]
@@ -199,16 +200,16 @@ func bindCommand(args []string) {
 	// Parse flags first (they can appear anywhere with ParseAll)
 	err := fs.Parse(args)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing flags: %v\n", err)
+		cli.Colors.PrintError("parsing flags: %v", err)
 		os.Exit(1)
 	}
 
 	if fs.NArg() == 0 {
-		fmt.Fprintln(os.Stderr, "Usage: cortex bind <libname> -i <header.h> [-o output.cx]")
-		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, "Examples:")
-		fmt.Fprintln(os.Stderr, "  cortex bind raylib -i third_party/raylib/src/raylib.h")
-		fmt.Fprintln(os.Stderr, "  cortex bind mylib -i mylib.h -o bindings/mylib.cx")
+		cli.Colors.PrintError("Usage: cortex bind <libname> -i <header.h> [-o output.cx]")
+		fmt.Println("")
+		fmt.Println("Examples:")
+		fmt.Println("  cortex bind raylib -i third_party/raylib/src/raylib.h")
+		fmt.Println("  cortex bind mylib -i mylib.h -o bindings/mylib.cx")
 		os.Exit(1)
 	}
 
@@ -230,13 +231,13 @@ func bindCommand(args []string) {
 			}
 		}
 		if headerPath == "" {
-			fmt.Fprintf(os.Stderr, "Error: Could not find header for '%s'. Use -i to specify path.\n", libName)
+			cli.Colors.PrintError("Could not find header for '%s'. Use -i to specify path.", libName)
 			os.Exit(1)
 		}
 	}
 
 	if !exists(headerPath) {
-		fmt.Fprintf(os.Stderr, "Error: Header file '%s' does not exist\n", headerPath)
+		cli.Colors.PrintError("Header file '%s' does not exist", headerPath)
 		os.Exit(1)
 	}
 
@@ -245,36 +246,32 @@ func bindCommand(args []string) {
 		outputPath = filepath.Join("bindings", libName+".cx")
 	}
 
-	fmt.Printf("Binding %s from %s...\n", libName, headerPath)
+	cli.Colors.PrintInfo("Binding %s from %s...", libName, headerPath)
 
 	// Create binder
 	b := binder.NewBinder(libName)
 
 	// Parse header
 	if err := b.ParseHeader(headerPath); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing header: %v\n", err)
+		cli.Colors.PrintError("parsing header: %v", err)
 		os.Exit(1)
 	}
 
 	// Generate bindings
 	if err := b.SaveToFile(outputPath); err != nil {
-		fmt.Fprintf(os.Stderr, "Error saving bindings: %v\n", err)
+		cli.Colors.PrintError("saving bindings: %v", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Generated bindings: %s\n", outputPath)
-	fmt.Println("")
+	cli.Colors.PrintSuccess("Generated bindings: %s", outputPath)
 	fn, st, en, dc := b.Stats()
-	fmt.Println("Functions found:", fn)
-	fmt.Println("Structs found:", st)
-	fmt.Println("Enums found:", en)
-	fmt.Println("Constants found:", dc)
+	cli.Colors.PrintInfo("Functions: %d, Structs: %d, Enums: %d, Constants: %d", fn, st, en, dc)
 }
 
 // compileFile compiles a single file to an executable
 func compileFile(inputFile, outputFile string, cfg *config.Config, debug bool) {
 	if !exists(inputFile) {
-		fmt.Fprintf(os.Stderr, "Error: Input file '%s' does not exist\n", inputFile)
+		cli.Colors.PrintError("Input file '%s' does not exist", inputFile)
 		os.Exit(1)
 	}
 
@@ -290,20 +287,26 @@ func compileFile(inputFile, outputFile string, cfg *config.Config, debug bool) {
 	}
 	cfg.Debug = debug
 
+	// Start progress spinner
+	spinner := cli.NewSpinner("Compiling " + filepath.Base(inputFile))
+	spinner.Start()
+
 	compiler := compiler.NewCompiler(*cfg)
 
 	if err := compiler.CompileMulti([]string{inputFile}, outputFile); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		spinner.Stop(false)
+		cli.Colors.PrintError("%v", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Successfully compiled to '%s'\n", outputFile)
+	spinner.Stop(true)
+	cli.Colors.PrintSuccess("Compiled to '%s'", outputFile)
 }
 
 // runFile compiles and runs a file (temp exe, then delete)
 func runFile(inputFile string, cfg *config.Config, debug bool) {
 	if !exists(inputFile) {
-		fmt.Fprintf(os.Stderr, "Error: Input file '%s' does not exist\n", inputFile)
+		cli.Colors.PrintError("Input file '%s' does not exist", inputFile)
 		os.Exit(1)
 	}
 
@@ -317,12 +320,19 @@ func runFile(inputFile string, cfg *config.Config, debug bool) {
 	}
 	cfg.Debug = debug
 
+	// Start progress spinner
+	spinner := cli.NewSpinner("Compiling " + filepath.Base(inputFile))
+	spinner.Start()
+
 	compiler := compiler.NewCompiler(*cfg)
 
 	if err := compiler.CompileMulti([]string{inputFile}, outputFile); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		spinner.Stop(false)
+		cli.Colors.PrintError("%v", err)
 		os.Exit(1)
 	}
+
+	spinner.Stop(true)
 
 	// Run the executable
 	cmd := exec.Command(outputFile)
@@ -333,7 +343,7 @@ func runFile(inputFile string, cfg *config.Config, debug bool) {
 		if exit, ok := err.(*exec.ExitError); ok {
 			os.Exit(exit.ExitCode())
 		}
-		fmt.Fprintf(os.Stderr, "run failed: %v\n", err)
+		cli.Colors.PrintError("run failed: %v", err)
 		os.Exit(1)
 	}
 	os.Remove(outputFile)

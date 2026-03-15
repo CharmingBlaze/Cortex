@@ -1,0 +1,10 @@
+﻿void main() {
+    int? maybe = 42;
+    if (maybe?) {
+        println(maybe!);
+    }
+    maybe = none;
+    if (!maybe?) {
+        println(0);
+    }
+}

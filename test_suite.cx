@@ -1,0 +1,26 @@
+﻿void main() {
+    println("=== Cortex Tests ===");
+    
+    // Test 1: Basic types
+    int a = 10;
+    float b = 3.14;
+    string s = "hello";
+    printf("Test 1: a=%d b=%.2f s=%s\n", a, b, s);
+    
+    // Test 2: Match expression
+    int n = 2;
+    string result = match n {
+        1 => "one",
+        2 => "two",
+        _ => "other"
+    };
+    printf("Test 2: match 2 => %s\n", result);
+    
+    // Test 3: Optional types
+    int? maybe = 42;
+    if (maybe?) {
+        printf("Test 3: optional %d\n", maybe!);
+    }
+    
+    println("=== Done ===");
+}

@@ -1,0 +1,21 @@
+﻿// Test arrow functions
+void main() {
+    fn add = (int a, int b) => a + b;
+    fn mul = (int a, int b) => a * b;
+    
+    printf("add(3,4)=%d\n", add(3,4));
+    printf("mul(3,4)=%d\n", mul(3,4));
+    
+    // Test nested match
+    int x = 1;
+    int y = 2;
+    string res = match x {
+        1 => match y {
+            1 => "1,1",
+            2 => "1,2",
+            _ => "1,_"
+        },
+        _ => "other"
+    };
+    printf("nested match: %s\n", res);
+}

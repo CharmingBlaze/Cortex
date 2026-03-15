@@ -1,150 +1,164 @@
 # Cortex GUI System Implementation Status
 
 ## Overview
-A complete, cross-platform GUI system for Cortex using the Fyne Go framework has been designed and implemented.
+A complete, cross-platform GUI system for Cortex with:
+- **GTK4 backend** for Linux/macOS
+- **Native Windows backend** using WinAPI for Windows
 
 ## Completed Components
 
-### 1. Core GUI Subsystem (`internal/gui_fyne/`)
-- **gui_fyne.go**: Global GUI state management, handle allocation, event queue, callback registry
-- **api.go**: High-level API wrapping Fyne functionality (windows, widgets, layouts, dialogs)
-- **bridge.go**: cgo bridge exporting Go functions callable from C runtime
-- **gui_fyne_test.go**: Unit tests for handle management and callback registration
+### 1. GTK4 Backend (`internal/gui_gtk4/`)
+- **gui_gtk4_internal.h**: Internal types, widget registry, helper functions
+- **gui_core.c**: Lifecycle, main window, clipboard, utilities
+- **gui_widgets.c**: Labels, buttons, entries, checkboxes, dropdowns, sliders, progress, images
+- **gui_containers.c**: VBox, HBox, Grid, Scroll, Tabs
+- **gui_dialogs.c**: Alerts, confirm, file picker, folder picker
+- **Makefile**: Build configuration for static/shared library
 
-### 2. C Runtime API
-- **runtime/gui_runtime.h**: Public C API header with opaque handle types and function declarations
-- **runtime/gui_runtime.c**: C implementation bridging to Go/Fyne backend
+### 2. Native Windows Backend (`runtime/gui_native.c`)
+- Pure WinAPI implementation for Windows
+- No external dependencies (uses built-in Windows controls)
+- Auto-layout system with proper spacing and margins
+- All standard widgets supported
+- Non-blocking event loop for integration with raylib/SDL/OpenGL
 
-### 3. Documentation
-- **docs/GUI_SYSTEM.md**: Comprehensive API reference, usage examples, architecture overview
+### 3. C Runtime API
+- **runtime/gui_runtime.h**: Simplified public C API header with opaque handle types
+- Auto-managed main window and main container (vbox)
+- Convenience macros for one-liner widget creation
+- Layout controls: `gui_spacing()`, `gui_set_margin()`, `gui_set_spacing()`
+- Section headers: `gui_header()`, `gui_subheader()`
 
-### 4. Example Programs
-- **examples/gui/hello_gui.cx**: Simple window with label and button
-- **examples/gui/form_example.cx**: Form with inputs, validation, and event handling
-- **examples/gui/drawing_example.cx**: Drawing primitives and animations
-- **examples/gui/dialog_example.cx**: Dialogs and file operations
+### 4. Documentation
+- **docs/GUI_SYSTEM.md**: Comprehensive API reference for GTK4-based system
+
+### 5. Example Programs
+- **examples/gui/hello_gui.cx**: Comprehensive demo with all widget types
+- **examples/gui/gui_showcase.cx**: Full feature showcase
+- **examples/gui/gui_raylib_integration.cx**: Integration example
 
 ## Features Implemented
 
 ### Windows
-- Create, show, hide, close windows
-- Set title, center on screen, fullscreen mode
-- Fixed size windows
+- Auto-managed main window via `gui_start()`
+- Set title, size, resizable
+- Simple one-line initialization
+- Cross-platform: GTK4 on Linux/macOS, Native on Windows
 
 ### Widgets
-- Labels, buttons, text entries, text areas
-- Checkboxes, sliders, progress bars
-- Images, rectangles, circles, lines
+- Labels, buttons (including primary style), text entries (single, multi, password)
+- Checkboxes, radio buttons, dropdowns/selects, sliders, progress bars
+- Spin buttons (numeric input), list boxes, group boxes
+- Color buttons, separators, images, spinners
 
 ### Layouts
-- VBox (vertical), HBox (horizontal)
-- Grid containers with columns
-- Border layout
+- VBox (vertical), HBox (horizontal) with proper auto-layout
+- Grid containers with automatic positioning
+- Scroll containers, Tab notebooks
+- Adjustable spacing and margins
+- Section headers for visual organization
 
 ### Dialogs
-- Info, error, confirm dialogs
+- Info, error, warning alerts
+- Confirm dialogs with callbacks
 - File open/save dialogs
+- Folder select dialogs
 
 ### Events
 - Click events on buttons
 - Change events on inputs
-- Key events
-- Mouse events
-- Window events
-- Custom events
+- Select events on dropdowns/lists
+- Check events on checkboxes/radio buttons
 
 ### Memory Management
 - Opaque int64 handles for all GUI objects
 - Automatic cleanup on handle release
 - No raw pointers exposed to Cortex
 
-## Known Issues
+## Platform Support
 
-### 1. Empty Include Generation
-- The lexer/parser generates empty `#include ""` directives in some cases
-- Workaround: Code generator has safeguards to skip empty includes
-- Root cause: Complex interaction between preprocessor directive tokenization and parsing
-- Impact: Compilation errors when empty includes are not filtered
-
-### 2. GUI Runtime Linking
-- GUI runtime (`gui_runtime.c`) is not automatically linked when GUI functions are detected
-- Workaround: Manually add `gui_runtime.c` to compilation
-- Status: Detection logic implemented in compiler, needs integration testing
-
-### 3. Type Mismatches (FIXED)
-- Fixed: `set_env`, `change_dir` return type mismatch (bool vs int)
-- Fixed: `mem_copy`, `mem_move`, `mem_set` return type mismatch (void* vs void)
+| Platform | Backend | Dependencies |
+|----------|---------|--------------|
+| Windows | Native WinAPI | None (built-in) |
+| Linux | GTK4 | libgtk-4-dev |
+| macOS | GTK4 | gtk4 (homebrew) |
 
 ## Build Instructions
 
-### Prerequisites
-- Go 1.24.2 or later
-- CGO enabled (`CGO_ENABLED=1`)
-- Fyne dependency: `fyne.io/fyne/v2 v2.5.1`
-
-### Building
+### Windows
+No prerequisites - uses built-in Windows controls:
 ```bash
-export CGO_ENABLED=1
-go build -o cortex.exe .
+./cortex -i examples/gui/hello_gui.cx -o hello_gui.exe
+./hello_gui.exe
 ```
 
-Or use the provided build script:
+### Linux/macOS (GTK4)
 ```bash
-.\build.sh
-```
+# Install GTK4
+# Linux: sudo apt install libgtk-4-dev
+# macOS: brew install gtk4
 
-## Testing
-
-### Unit Tests
-```bash
-go test ./internal/gui_fyne/...
-```
-
-### Integration Testing
-Compile and run GUI examples:
-```bash
-.\cortex.exe -i examples/gui/hello_gui.cx -o hello_gui.exe
-.\hello_gui.exe
+make -C internal/gui_gtk4
+./cortex -i examples/gui/hello_gui.cx -o hello_gui
+./hello_gui
 ```
 
 ## Architecture
 
+### Cross-Platform Design
+- Single API in `gui_runtime.h`
+- Platform-specific implementations:
+  - Windows: `gui_native.c` (WinAPI)
+  - Linux/macOS: `gui_gtk4/` (GTK4)
+- Compiler automatically selects correct backend
+
+### Auto-Layout System (Windows)
+- Automatic widget positioning with configurable margins and spacing
+- Horizontal box (`gui_hbox`) for button rows
+- `gui_end_row()` to finish horizontal layout
+- Section headers with bold text for visual organization
+
 ### Handle Management
-- Global `GUIState` singleton manages all GUI objects
-- Opaque int64 handles allocated sequentially
+- Internal registry maps int64 handles to widgets
 - Thread-safe handle allocation and retrieval
 
 ### Event System
-- Event queue for asynchronous event processing
 - Callback registry mapping handles to event handlers
-- Fyne events routed through Go bridge to Cortex lambdas
+- Platform signals routed through to Cortex callbacks
 
 ### Memory Safety
 - No raw pointers exposed to Cortex
 - Automatic cleanup when handles are released
 - String management through C runtime
 
-## Next Steps
-
-1. **Fix Empty Include Issue**: Investigate lexer tokenization of preprocessor directives
-2. **Integrate GUI Runtime Linking**: Ensure `gui_runtime.c` is compiled when GUI functions are used
-3. **Comprehensive Testing**: Run all GUI examples and verify functionality
-4. **Performance Optimization**: Profile event routing and callback dispatch
-5. **Extended Features**: Add more widgets, layouts, and event types as needed
-
 ## Files Summary
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| internal/gui_fyne/gui_fyne.go | 290 | Core state management |
-| internal/gui_fyne/api.go | 420 | High-level API |
-| internal/gui_fyne/bridge.go | 316 | cgo bridge |
-| internal/gui_fyne/gui_fyne_test.go | 250+ | Unit tests |
-| runtime/gui_runtime.h | 255 | C API header |
-| runtime/gui_runtime.c | 356 | C API implementation |
-| docs/GUI_SYSTEM.md | 400+ | Documentation |
-| examples/gui/*.cx | 400+ | Example programs |
+| internal/gui_gtk4/gui_gtk4_internal.h | 80 | Internal types and helpers |
+| internal/gui_gtk4/gui_core.c | 200 | Core lifecycle and window |
+| internal/gui_gtk4/gui_widgets.c | 290 | Widget implementations |
+| internal/gui_gtk4/gui_containers.c | 70 | Layout containers |
+| internal/gui_gtk4/gui_dialogs.c | 190 | Dialog functions |
+| runtime/gui_runtime.h | 200 | Public C API header |
+| runtime/gui_native.c | 1500+ | Native Windows backend |
+| docs/GUI_SYSTEM.md | 490 | Documentation |
+
+## Recent Updates
+
+### Native Windows GUI (Latest)
+- ✅ Full WinAPI implementation for Windows
+- ✅ Auto-layout system with proper spacing
+- ✅ All standard widgets (labels, buttons, entries, checkboxes, radio, sliders, progress, spin, list, etc.)
+- ✅ Horizontal box layout for button rows
+- ✅ Section headers with bold styling
+- ✅ Configurable margins and spacing
+- ✅ Non-blocking event loop for game engine integration
 
 ## Conclusion
 
-The Cortex GUI system is architecturally complete and functionally implemented. The remaining issues are primarily build/integration related and can be resolved with focused debugging of the lexer/parser and compiler linking logic.
+The Cortex GUI system is now a clean, native C implementation with:
+- GTK4 for Linux/macOS providing native platform appearance
+- Native WinAPI for Windows with zero external dependencies
+- Unified API across all platforms
+- Auto-layout for professional-looking interfaces

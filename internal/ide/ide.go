@@ -1,7 +1,6 @@
 // Package ide provides IDE-like features for Cortex
 //
 // Integrations:
-// - fyne.io/fyne/v2/data/binding: Reactive data binding for live UI updates
 // - github.com/fsnotify/fsnotify: File watching for hot reload
 // - github.com/spf13/afero: Virtual filesystem for sandboxed projects
 // - github.com/spf13/viper: Configuration management
@@ -12,19 +11,113 @@ import (
 	"sync"
 	"time"
 
-	"fyne.io/fyne/v2/data/binding"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 )
 
 // ============================================
-// Reactive Data Binding (fyne-io/data/binding)
+// Reactive Data Binding (native implementation)
+// ============================================
+
+// StringBinding is a simple reactive string
+type StringBinding struct {
+	mu        sync.RWMutex
+	value     string
+	listeners []func(string)
+}
+
+// NewStringBinding creates a new reactive string
+func NewStringBinding() *StringBinding {
+	return &StringBinding{
+		listeners: make([]func(string), 0),
+	}
+}
+
+// Get returns the current value
+func (b *StringBinding) Get() string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.value
+}
+
+// Set updates the value and notifies listeners
+func (b *StringBinding) Set(v string) {
+	b.mu.Lock()
+	b.value = v
+	listeners := make([]func(string), len(b.listeners))
+	copy(listeners, b.listeners)
+	b.mu.Unlock()
+
+	for _, l := range listeners {
+		l(v)
+	}
+}
+
+// Listen adds a change listener
+func (b *StringBinding) Listen(fn func(string)) {
+	b.mu.Lock()
+	b.listeners = append(b.listeners, fn)
+	b.mu.Unlock()
+}
+
+// StringListBinding is a simple reactive string list
+type StringListBinding struct {
+	mu    sync.RWMutex
+	value []string
+}
+
+// NewStringList creates a new reactive string list
+func NewStringList() *StringListBinding {
+	return &StringListBinding{value: make([]string, 0)}
+}
+
+// Get returns the current value
+func (l *StringListBinding) Get() []string {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.value
+}
+
+// Set updates the value
+func (l *StringListBinding) Set(v []string) {
+	l.mu.Lock()
+	l.value = v
+	l.mu.Unlock()
+}
+
+// BoolBinding is a simple reactive bool
+type BoolBinding struct {
+	mu    sync.RWMutex
+	value bool
+}
+
+// NewBool creates a new reactive bool
+func NewBool() *BoolBinding {
+	return &BoolBinding{}
+}
+
+// Get returns the current value
+func (b *BoolBinding) Get() bool {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.value
+}
+
+// Set updates the value
+func (b *BoolBinding) Set(v bool) {
+	b.mu.Lock()
+	b.value = v
+	b.mu.Unlock()
+}
+
+// ============================================
+// Output Buffer
 // ============================================
 
 // OutputBuffer is a reactive string buffer for compiler output/logs
 type OutputBuffer struct {
-	inner binding.String
+	inner *StringBinding
 	mu    sync.Mutex
 	lines []string
 }
@@ -32,7 +125,7 @@ type OutputBuffer struct {
 // NewOutputBuffer creates a reactive output buffer
 func NewOutputBuffer() *OutputBuffer {
 	return &OutputBuffer{
-		inner: binding.NewString(),
+		inner: NewStringBinding(),
 		lines: make([]string, 0),
 	}
 }
@@ -41,9 +134,8 @@ func NewOutputBuffer() *OutputBuffer {
 func (o *OutputBuffer) Append(line string) {
 	o.mu.Lock()
 	o.lines = append(o.lines, line)
-	text, _ := o.inner.Get()
+	text := o.inner.Get()
 	o.mu.Unlock()
-	// Notify listeners
 	o.inner.Set(text + line + "\n")
 }
 
@@ -56,13 +148,13 @@ func (o *OutputBuffer) Clear() {
 }
 
 // Get returns the current content
-func (o *OutputBuffer) Get() (string, error) {
+func (o *OutputBuffer) Get() string {
 	return o.inner.Get()
 }
 
-// Bind returns the underlying binding for UI connection
-func (o *OutputBuffer) Bind() binding.String {
-	return o.inner
+// Listen adds a change listener
+func (o *OutputBuffer) Listen(fn func(string)) {
+	o.inner.Listen(fn)
 }
 
 // ============================================
@@ -253,8 +345,8 @@ type Project struct {
 	Watcher  *FileWatcher
 	Output   *OutputBuffer
 	Config   *Config
-	Files    binding.StringList
-	Modified binding.Bool
+	Files    *StringListBinding
+	Modified *BoolBinding
 }
 
 // NewProject creates a new project with all IDE integrations
@@ -271,8 +363,8 @@ func NewProject(name, path string) (*Project, error) {
 		Watcher:  watcher,
 		Output:   NewOutputBuffer(),
 		Config:   NewConfig(),
-		Files:    binding.NewStringList(),
-		Modified: binding.NewBool(),
+		Files:    NewStringList(),
+		Modified: NewBool(),
 	}
 
 	// Auto-reload on file change
@@ -290,7 +382,7 @@ func (p *Project) AddFile(name, content string) error {
 	if err := p.FS.WriteFile(name, content); err != nil {
 		return err
 	}
-	files, _ := p.Files.Get()
+	files := p.Files.Get()
 	files = append(files, name)
 	p.Files.Set(files)
 	return nil

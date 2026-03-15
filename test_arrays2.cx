@@ -1,0 +1,12 @@
+﻿// Test arrays
+void main() {
+    // Test array with initializer
+    int[] nums = {1, 2, 3, 4, 5};
+    printf("nums[0] = %d, nums[2] = %d\n", nums[0], nums[2]);
+    
+    // Test string array
+    string[] names = {"Alice", "Bob", "Charlie"};
+    printf("names[0]=%s, names[1]=%s\n", names[0], names[1]);
+    
+    println("Done");
+}

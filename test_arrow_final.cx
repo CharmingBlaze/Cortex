@@ -1,0 +1,22 @@
+﻿void main() {
+    // Basic numeric operations
+    var doubleIt = (x) => x * 2;
+    println(doubleIt(21));
+    
+    // Multiple parameters
+    var add = (a, b) => a + b;
+    println(add(10, 32));
+    
+    // String operations
+    var greet = (name) => "Hello, " + name;
+    println(greet("Cortex"));
+    
+    // Arithmetic
+    var square = (x) => x * x;
+    println(square(7));
+    
+    // Boolean result
+    var isPositive = (x) => x > 0;
+    println(isPositive(5));
+    println(isPositive(-3));
+}

@@ -1,36 +1,67 @@
-// hello_gui.cx - Simple Hello World GUI application
-//
-// This example demonstrates the basics of creating a window,
-// adding widgets, and handling events.
+// hello_gui.cx - Simple GUI Demo
+// 
+// This demonstrates how easy it is to create GUI apps with Cortex + GTK4
+// Just 10 lines of code for a working app!
 
 #include <gui_runtime.h>
 
-void main() {
-    // Create a window with title and size
-    gui_window w = gui_window_create("Hello GUI", 400, 300);
+// Button click handler
+void on_click(gui_event e) {
+    gui_alert_info("Button clicked!");
+}
+
+// Main function
+fn main() {
+    // Create window with title and size - wider for better layout
+    gui_start("Cortex GUI Demo", 600, 700);
+    gui_set_spacing(16);
+    gui_set_margin(25);
     
-    // Create a container for our widgets
-    gui_container box = gui_vbox_create();
+    // === Input Section ===
+    gui_header("Input Controls");
     
-    // Add a label
-    gui_widget label = gui_label_create("Welcome to Cortex GUI!");
-    gui_container_add(box, label);
+    gui_subheader("Text Entry");
+    gui_add(gui_entry("Type something..."));
+    gui_spacing(6);
+    gui_add(gui_entry_secret("Password..."));
     
-    // Add a button with click handler
-    gui_widget button = gui_button_create("Click Me!", [](event e) {
-        gui_dialog_info(0, "Hello", "You clicked the button!");
-    });
-    gui_container_add(box, button);
+    gui_spacing(20);
+    gui_subheader("Selection");
+    gui_add(gui_check("Enable notifications"));
+    gui_add(gui_check("Auto-save"));
     
-    // Set the window content
-    gui_window_set_content(w, box);
+    gui_spacing(10);
+    gui_add(gui_radio("Light theme", 0));
+    gui_add(gui_radio("Dark theme", 0));
+    gui_add(gui_radio("System theme", 0));
     
-    // Show the window
-    gui_window_show(w);
+    // === Buttons Section ===
+    gui_spacing(24);
+    gui_header("Actions");
     
-    // Center on screen
-    gui_window_center(w);
+    // Horizontal button row
+    gui_container row = gui_hbox();
+    gui_add_to(row, gui_button("Save", on_click));
+    gui_add_to(row, gui_button("Load", on_click));
+    gui_add_to(row, gui_button("Clear", on_click));
+    gui_add_to(row, gui_button("Help", on_click));
+    gui_end_row();
     
-    // Run the GUI event loop
+    // === Values Section ===
+    gui_spacing(24);
+    gui_header("Value Controls");
+    
+    gui_subheader("Slider");
+    gui_add(gui_slider(0, 100));
+    
+    gui_spacing(10);
+    gui_subheader("Spin Control");
+    gui_add(gui_spin(0, 100, 1));
+    
+    gui_spacing(10);
+    gui_subheader("Progress");
+    gui_add(gui_progress());
+    
+    // Run the app
     gui_run();
 }

@@ -1,0 +1,23 @@
+﻿void main() {
+    // Create channel
+    let ch = channel<int>(10);
+    
+    // Send values
+    ch.send(1);
+    ch.send(2);
+    ch.send(3);
+    
+    // Receive values
+    int a = ch.recv();
+    int b = ch.recv();
+    int c = ch.recv();
+    
+    println(a);
+    println(b);
+    println(c);
+    
+    // Close channel
+    ch.close();
+    bool closed = ch.is_closed();
+    println(closed);
+}

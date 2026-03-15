@@ -355,6 +355,14 @@ func (g *CodeGenerator) VisitInclude(node *ast.IncludeNode) {
 		return
 	}
 
+	// Skip Cortex runtime headers - they're auto-included
+	if node.Filename == "gui_runtime.h" || node.Filename == "core.h" ||
+		node.Filename == "game.h" || node.Filename == "network.h" ||
+		node.Filename == "async.h" || node.Filename == "thread.h" ||
+		node.Filename == "managed.h" {
+		return
+	}
+
 	// Check for duplicates
 	if g.includedHeaders[node.Filename] {
 		return

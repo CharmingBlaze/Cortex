@@ -1,0 +1,6 @@
+﻿void main() {
+    string a = "Hello";
+    string b = "World";
+    string result = a + b;
+    println(result);
+}

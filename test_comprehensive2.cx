@@ -1,0 +1,46 @@
+﻿// Comprehensive test suite for Cortex language
+
+void main() {
+    println("=== Cortex Language Test Suite ===");
+    
+    // Test 1: Basic types and variables
+    int a = 10;
+    float b = 3.14;
+    string s = "hello";
+    bool flag = true;
+    printf("Test 1 - Basic types: a=%d, b=%.2f, s=%s, flag=%d\n", a, b, s, flag);
+    
+    // Test 2: Match expression
+    int n = 2;
+    string result = match n {
+        1 => "one",
+        2 => "two",
+        _ => "other"
+    };
+    printf("Test 2 - Match expression: n=2 => %s\n", result);
+    
+    // Test 3: Optional types
+    int? maybe = 42;
+    if (maybe?) {
+        printf("Test 3 - Optional: maybe has value %d\n", maybe!);
+    }
+    
+    // Test 4: For-in loop
+    int[] arr = {1, 2, 3, 4, 5};
+    printf("Test 4 - For-in loop: ");
+    for (int x in arr) {
+        printf("%d ", x);
+    }
+    printf("\n");
+    
+    // Test 5: Struct
+    struct Point { int x; int y; };
+    Point p = { .x = 10, .y = 20 };
+    printf("Test 5 - Struct: Point(%d, %d)\n", p.x, p.y);
+    
+    // Test 6: String interpolation
+    string name = "Cortex";
+    printf("Test 6 - String: Hello %s!\n", name);
+    
+    println("=== All tests completed! ===");
+}

@@ -1,0 +1,5 @@
+﻿void main() {
+    var isPositive = (x) => x > 0;
+    println(isPositive(5));
+    println(isPositive(-3));
+}

@@ -1,0 +1,4 @@
+﻿void main() {
+    var greet = (name) => { return "Hello, " + name; };
+    println(greet("World"));
+}

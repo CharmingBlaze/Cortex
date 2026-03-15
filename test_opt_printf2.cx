@@ -1,0 +1,4 @@
+﻿void main() {
+    int? maybe = 42;
+    printf("%d\n", maybe!);
+}
