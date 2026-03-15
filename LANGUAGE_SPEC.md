@@ -33,6 +33,67 @@ This combination makes Cortex easy to learn, pleasant to write, and powerful eno
 
 ---
 
+## Build System
+
+### CLI Commands
+
+Cortex provides a modern, simple CLI inspired by Go and Rust:
+
+| Command | Description |
+|---------|-------------|
+| `cortex new <name>` | Create a new project with cortex.toml |
+| `cortex run [file.cx]` | Compile and run (uses cortex.toml if found) |
+| `cortex build [file.cx] [-o output]` | Compile to executable |
+| `cortex -i file.cx -run` | Legacy: compile and run single file |
+| `cortex -i file.cx -o output -use raylib` | Legacy: compile with library |
+
+### Project Configuration (cortex.toml)
+
+Cortex uses TOML for project configuration. Create a `cortex.toml` in your project root:
+
+```toml
+[project]
+name = "my_game"
+version = "0.1.0"
+entry = "main.cx"           # Entry point (default: main.cx)
+backend = "auto"            # C backend: gcc, tcc, or auto
+
+[project.features]
+async = true                # Enable async/await
+actors = true               # Enable actor model
+qol = true                  # Enable quality-of-life features
+
+[dependencies.raylib]
+path = "third_party/raylib" # Auto-detect include/lib paths
+# Or specify explicitly:
+# include_path = "third_party/raylib/src"
+# lib_path = "third_party/raylib/build/raylib"
+libs = ["raylib", "opengl32", "gdi32", "winmm", "shell32"]
+```
+
+### Automatic Library Detection
+
+When you specify `path` in a dependency, Cortex automatically:
+- Adds `<path>/include` and `<path>/src` to include paths
+- Adds `<path>/lib` and `<path>/build/<libname>` to library paths
+- Links the library and required system libraries
+
+### Example: Raylib Game
+
+```bash
+# Create project
+cortex new my_game
+cd my_game
+
+# Add raylib dependency to cortex.toml
+# Then simply:
+cortex run
+```
+
+No flags. No paths. No pain.
+
+---
+
 ## Overview
 Cortex is a modern systems programming language that combines C's performance with modern ergonomics. It removes pointers and manual memory management while adding TypeScript-style type features, Go-style concurrency, and Swift-style readability.
 

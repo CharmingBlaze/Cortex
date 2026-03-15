@@ -101,11 +101,47 @@ void main() {
 
 ## Quick Start
 
-```bash
-# Install (download from releases)
-cortex -i hello.cx -run
+### Simple Commands (Recommended)
 
-# Or build from source
+```bash
+# Create a new project
+cortex new my_game
+cd my_game
+cortex run
+
+# Or run a single file
+cortex run hello.cx
+
+# Build to executable
+cortex build game.cx -o game.exe
+```
+
+### Project Configuration (cortex.toml)
+
+Create a `cortex.toml` in your project root:
+
+```toml
+[project]
+name = "my_game"
+version = "0.1.0"
+entry = "main.cx"
+
+[dependencies.raylib]
+include_path = "third_party/raylib/src"
+lib_path = "third_party/raylib/build/raylib"
+libs = ["raylib", "opengl32", "gdi32", "winmm", "shell32"]
+```
+
+Then just run:
+```bash
+cortex run
+```
+
+No flags. No paths. No pain.
+
+### Install from Source
+
+```bash
 git clone https://github.com/CharmingBlaze/Cortex.git
 cd Cortex
 go build -o cortex.exe ./cmd/cortex
@@ -136,6 +172,18 @@ int calculate(int a, int b) {
     return a + b;
 }
 ```
+
+---
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `cortex new <name>` | Create a new project with cortex.toml |
+| `cortex run [file.cx]` | Compile and run (uses cortex.toml if found) |
+| `cortex build [file.cx] [-o output]` | Compile to executable |
+| `cortex -i file.cx -run` | Legacy: compile and run single file |
+| `cortex -i file.cx -o output -use raylib` | Legacy: compile with library |
 
 ---
 

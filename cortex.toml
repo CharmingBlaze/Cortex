@@ -1,0 +1,9 @@
+[project]
+name = "raylib_examples"
+version = "0.1.0"
+entry = "examples/raylib/raylib_bouncing_ball.cx"
+
+[dependencies.raylib]
+include_path = "third_party/raylib/src"
+lib_path = "third_party/raylib/build/raylib"
+libs = ["raylib", "opengl32", "gdi32", "winmm", "shell32"]

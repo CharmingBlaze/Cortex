@@ -24,6 +24,236 @@ func (s *stringList) Set(v string) error {
 }
 
 func main() {
+	// Check for subcommands (build, run)
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "build":
+			buildCommand(os.Args[2:])
+			return
+		case "run":
+			runCommand(os.Args[2:])
+			return
+		case "new":
+			newCommand(os.Args[2:])
+			return
+		}
+	}
+
+	// Legacy flag-based mode
+	legacyMode()
+}
+
+// buildCommand handles: cortex build [file.cx]
+func buildCommand(args []string) {
+	fs := flag.NewFlagSet("build", flag.ExitOnError)
+	var outputFile string
+	var debug bool
+	fs.StringVar(&outputFile, "o", "", "Output executable file")
+	fs.BoolVar(&debug, "debug", false, "Enable debug output")
+	fs.Parse(args)
+
+	inputFile := ""
+	if fs.NArg() > 0 {
+		inputFile = fs.Arg(0)
+	}
+
+	// Find project directory and load cortex.toml
+	cwd, _ := os.Getwd()
+	projectDir, err := config.FindProjectDir(cwd)
+	if err != nil {
+		// No cortex.toml - use legacy mode
+		if inputFile == "" {
+			fmt.Fprintln(os.Stderr, "Error: no input file and no cortex.toml found")
+			fmt.Fprintln(os.Stderr, "Usage: cortex build <file.cx>")
+			os.Exit(1)
+		}
+		compileFile(inputFile, outputFile, nil, debug)
+		return
+	}
+
+	// Load project config
+	proj, err := config.LoadProject(projectDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Determine input file
+	if inputFile == "" {
+		inputFile = proj.Project.Entry
+	}
+
+	// Convert project config to compiler config
+	cfg := proj.ToConfig()
+	cfg.Debug = debug
+
+	compileFile(inputFile, outputFile, cfg, debug)
+}
+
+// runCommand handles: cortex run [file.cx]
+func runCommand(args []string) {
+	fs := flag.NewFlagSet("run", flag.ExitOnError)
+	var debug bool
+	fs.BoolVar(&debug, "debug", false, "Enable debug output")
+	fs.Parse(args)
+
+	inputFile := ""
+	if fs.NArg() > 0 {
+		inputFile = fs.Arg(0)
+	}
+
+	// Find project directory and load cortex.toml
+	cwd, _ := os.Getwd()
+	projectDir, err := config.FindProjectDir(cwd)
+	if err != nil {
+		// No cortex.toml - use legacy mode
+		if inputFile == "" {
+			fmt.Fprintln(os.Stderr, "Error: no input file and no cortex.toml found")
+			fmt.Fprintln(os.Stderr, "Usage: cortex run <file.cx>")
+			os.Exit(1)
+		}
+		runFile(inputFile, nil, debug)
+		return
+	}
+
+	// Load project config
+	proj, err := config.LoadProject(projectDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Determine input file
+	if inputFile == "" {
+		inputFile = proj.Project.Entry
+	}
+
+	// Convert project config to compiler config
+	cfg := proj.ToConfig()
+	cfg.Debug = debug
+
+	runFile(inputFile, cfg, debug)
+}
+
+// newCommand handles: cortex new <project_name>
+func newCommand(args []string) {
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "Usage: cortex new <project_name>")
+		os.Exit(1)
+	}
+
+	name := args[0]
+
+	// Create project directory
+	if err := os.MkdirAll(name, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating project: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Create cortex.toml
+	tomlContent := fmt.Sprintf(`[project]
+name = "%s"
+version = "0.1.0"
+entry = "main.cx"
+
+[dependencies]
+# Add libraries here, e.g.:
+# raylib = { path = "third_party/raylib" }
+`, name)
+
+	if err := os.WriteFile(filepath.Join(name, "cortex.toml"), []byte(tomlContent), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating cortex.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Create main.cx
+	mainContent := `// Cortex Project
+void main() {
+    println("Hello from Cortex!");
+}
+`
+	if err := os.WriteFile(filepath.Join(name, "main.cx"), []byte(mainContent), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating main.cx: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Created project '%s'\n", name)
+	fmt.Println("")
+	fmt.Println("Next steps:")
+	fmt.Printf("  cd %s\n", name)
+	fmt.Println("  cortex run")
+}
+
+// compileFile compiles a single file to an executable
+func compileFile(inputFile, outputFile string, cfg *config.Config, debug bool) {
+	if !exists(inputFile) {
+		fmt.Fprintf(os.Stderr, "Error: Input file '%s' does not exist\n", inputFile)
+		os.Exit(1)
+	}
+
+	if outputFile == "" {
+		base := filepath.Base(inputFile)
+		outputFile = strings.TrimSuffix(base, filepath.Ext(base)) + ".exe"
+	}
+
+	if cfg == nil {
+		cfg = &config.Config{}
+		cfg.Features = config.DefaultFeatures()
+		cfg.Backend = "auto"
+	}
+	cfg.Debug = debug
+
+	compiler := compiler.NewCompiler(*cfg)
+
+	if err := compiler.CompileMulti([]string{inputFile}, outputFile); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Successfully compiled to '%s'\n", outputFile)
+}
+
+// runFile compiles and runs a file (temp exe, then delete)
+func runFile(inputFile string, cfg *config.Config, debug bool) {
+	if !exists(inputFile) {
+		fmt.Fprintf(os.Stderr, "Error: Input file '%s' does not exist\n", inputFile)
+		os.Exit(1)
+	}
+
+	// Create temp output
+	outputFile := filepath.Join(os.TempDir(), "cortex_run_"+strings.TrimSuffix(filepath.Base(inputFile), filepath.Ext(filepath.Base(inputFile)))+".exe")
+
+	if cfg == nil {
+		cfg = &config.Config{}
+		cfg.Features = config.DefaultFeatures()
+		cfg.Backend = "auto"
+	}
+	cfg.Debug = debug
+
+	compiler := compiler.NewCompiler(*cfg)
+
+	if err := compiler.CompileMulti([]string{inputFile}, outputFile); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+
+	// Run the executable
+	cmd := exec.Command(outputFile)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		if exit, ok := err.(*exec.ExitError); ok {
+			os.Exit(exit.ExitCode())
+		}
+		fmt.Fprintf(os.Stderr, "run failed: %v\n", err)
+		os.Exit(1)
+	}
+	os.Remove(outputFile)
+}
+
+// legacyMode handles the old flag-based CLI
+func legacyMode() {
 	var inputFiles stringList
 	var outputFile string
 	var runMode bool

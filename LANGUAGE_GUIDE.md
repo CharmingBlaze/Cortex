@@ -17,6 +17,57 @@ You write **one or more `.cx` files**, run the **Cortex compiler**, and get an e
 
 ---
 
+## Running Cortex Programs
+
+### Simple Commands (Recommended)
+
+```bash
+# Create a new project
+cortex new my_game
+cd my_game
+cortex run
+
+# Run a single file
+cortex run hello.cx
+
+# Build to executable
+cortex build game.cx -o game.exe
+```
+
+### Project Configuration (cortex.toml)
+
+For projects with dependencies, create a `cortex.toml`:
+
+```toml
+[project]
+name = "my_game"
+version = "0.1.0"
+entry = "main.cx"
+
+[dependencies.raylib]
+include_path = "third_party/raylib/src"
+lib_path = "third_party/raylib/build/raylib"
+libs = ["raylib", "opengl32", "gdi32", "winmm", "shell32"]
+```
+
+Then just run:
+```bash
+cortex run
+```
+
+### Legacy Commands
+
+```bash
+# Compile and run in one step
+cortex -i hello.cx -run
+
+# Compile to executable
+cortex -i hello.cx -o hello
+./hello
+```
+
+---
+
 ## Your First Program
 
 Every Cortex program has a **`main`** function. Execution starts there.
@@ -27,22 +78,9 @@ void main() {
 }
 ```
 
-- `void` = this function doesn’t return a value  
+- `void` = this function doesn't return a value  
 - `main` = the entry point  
 - `println("...")` = print a line of text and a newline  
-
-**Run it:**
-
-```bash
-cortex -i hello.cx -o hello
-./hello
-```
-
-Or compile and run in one step:
-
-```bash
-cortex -i hello.cx -run
-```
 
 ---
 
