@@ -802,7 +802,9 @@ func (g *CodeGenerator) VisitForStmt(node *ast.ForStmtNode) {
 	}
 	g.Write("; ")
 	if node.Increment != nil {
+		g.omitTrailingSemicolon = true
 		g.VisitNode(node.Increment)
+		g.omitTrailingSemicolon = false
 	}
 	g.Write(") ")
 	g.VisitNode(node.Body)
@@ -1939,7 +1941,9 @@ func (g *CodeGenerator) VisitIncrement(node *ast.IncrementNode) {
 			g.Write("--")
 		}
 	}
-	g.Write(";")
+	if !g.omitTrailingSemicolon {
+		g.Write(";")
+	}
 }
 
 func (g *CodeGenerator) GetArrayAccessBase(node *ast.ArrayAccessNode) *ast.IdentifierNode {

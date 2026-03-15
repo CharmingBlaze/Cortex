@@ -28,6 +28,7 @@ Cortex is a **systems programming language** that compiles to C. Think of it as 
 - **No manual memory management** - automatic cleanup
 - **Native performance** - compiles to optimized C code
 - **Easy C interop** - use any C library directly
+- **Zero external dependencies** - Zig CC bundled in releases
 
 ### Why Cortex Instead of C?
 
@@ -38,29 +39,13 @@ Cortex is a **systems programming language** that compiles to C. Think of it as 
 | No string interpolation | `"Hello ${name}!"` |
 | Complex build systems | Simple `cortex run` and `cortex build` |
 | Hard to use libraries | `#include` and `cortex bind` |
-
-### How Cortex Works
-
-```
-Your Cortex Code (.cx)
-        ↓
-    Cortex Compiler
-        ↓
-    C Source Code (.c)
-        ↓
-    C Compiler (GCC/TCC)
-        ↓
-    Native Executable
-```
-
-This means:
-- You get native performance
-- You can use any C library
-- The output is readable C code you can inspect
+| Need to install GCC/Clang | Zig CC bundled - no external compiler needed |
 
 ---
 
 ## Installation
+
+**No external dependencies required!** Cortex releases include Zig CC, a complete C compiler.
 
 ### Windows
 
@@ -68,7 +53,7 @@ This means:
 
 2. **Extract** to a folder like `C:\Cortex`
 
-3. **Install** by running `install.bat` (adds Cortex to PATH)
+3. **Install** by running `install.bat` (adds Cortex and Zig to PATH)
 
 4. **Verify** installation:
    ```cmd
@@ -83,11 +68,11 @@ This means:
 wget https://github.com/CharmingBlaze/Cortex/releases/download/v0.1.0/cortex-0.1.0-linux-amd64.tar.gz
 tar -xzf cortex-*.tar.gz
 
-# Add to PATH
-export PATH="$PWD/cortex-0.1.0-linux-amd64/bin:$PATH"
+# Add to PATH (includes bundled Zig)
+export PATH="$PWD/cortex-0.1.0-linux-amd64/bin:$PWD/cortex-0.1.0-linux-amd64/zig:$PATH"
 
 # Add to your shell profile for persistence
-echo 'export PATH="$HOME/cortex-0.1.0-linux-amd64/bin:$PATH"' >> ~/.bashrc
+echo 'export PATH="$HOME/cortex-0.1.0-linux-amd64/bin:$HOME/cortex-0.1.0-linux-amd64/zig:$PATH"' >> ~/.bashrc
 
 # Verify
 cortex --version
@@ -96,15 +81,15 @@ cortex --version
 ### macOS
 
 ```bash
-# Download and extract
+# Download and extract (choose arm64 for M1/M2, amd64 for Intel)
 curl -LO https://github.com/CharmingBlaze/Cortex/releases/download/v0.1.0/cortex-0.1.0-darwin-arm64.tar.gz
 tar -xzf cortex-*.tar.gz
 
-# Add to PATH
-export PATH="$PWD/cortex-0.1.0-darwin-arm64/bin:$PATH"
+# Add to PATH (includes bundled Zig)
+export PATH="$PWD/cortex-0.1.0-darwin-arm64/bin:$PWD/cortex-0.1.0-darwin-arm64/zig:$PATH"
 
 # Add to your shell profile
-echo 'export PATH="$HOME/cortex-0.1.0-darwin-arm64/bin:$PATH"' >> ~/.zshrc
+echo 'export PATH="$HOME/cortex-0.1.0-darwin-arm64/bin:$HOME/cortex-0.1.0-darwin-arm64/zig:$PATH"' >> ~/.zshrc
 
 # Verify
 cortex --version
@@ -112,18 +97,19 @@ cortex --version
 
 ### Requirements
 
-Cortex needs a C compiler to build executables:
+**None!** Cortex releases include Zig CC, a complete C compiler. Just download and run.
 
-| Platform | Recommended Compiler |
-|----------|---------------------|
-| Windows | TCC (bundled) or MinGW |
-| Linux | GCC (`sudo apt install gcc`) |
-| macOS | Clang (Xcode Command Line Tools) |
+If you want to use a different C compiler, Cortex will auto-detect:
+- **Bundled Zig CC** (included in releases) - used automatically
+- **System Zig** - if installed separately
+- **TCC** - if available
+- **GCC/Clang** - fallback options
 
-**Install Xcode Command Line Tools (macOS):**
-```bash
-xcode-select --install
-```
+| Platform | Bundled Compiler | Alternative |
+|----------|------------------|-------------|
+| Windows | Zig CC (included) | MinGW, TCC |
+| Linux | Zig CC (included) | GCC |
+| macOS | Zig CC (included) | Xcode Clang |
 
 ---
 
