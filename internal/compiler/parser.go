@@ -814,6 +814,9 @@ func (p *Parser) ParseStatement() (ast.ASTNode, error) {
 	if p.Match(TokenIf) {
 		return p.ParseIfStatement()
 	}
+	if p.Match(TokenUnless) {
+		return p.ParseUnlessStatement()
+	}
 	if p.Match(TokenDo) {
 		return p.ParseDoWhileStatement()
 	}
@@ -900,6 +903,11 @@ func (p *Parser) ParseStatement() (ast.ASTNode, error) {
 }
 
 func (p *Parser) ParseIfStatement() (ast.ASTNode, error) {
+	// Check for if let pattern matching
+	if p.Match(TokenLet) {
+		return p.ParseIfLetStatement()
+	}
+
 	// Optional parentheses around condition
 	var condition ast.ASTNode
 	var err error
@@ -952,7 +960,106 @@ func (p *Parser) ParseIfStatement() (ast.ASTNode, error) {
 				BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: elseNode.GetLine(), Column: elseNode.GetColumn()},
 				Statements: []ast.ASTNode{elseNode},
 			}
+		} else if p.Check(TokenElif) {
+			// elif is sugar for else if
+			p.Advance() // consume "elif"
+			elseNode, err := p.ParseIfStatement()
+			if err != nil {
+				return nil, err
+			}
+			elseBranch = &ast.BlockNode{
+				BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: elseNode.GetLine(), Column: elseNode.GetColumn()},
+				Statements: []ast.ASTNode{elseNode},
+			}
 		} else if p.Check(TokenLBrace) {
+			elseBlock, err := p.ParseBlock()
+			if err != nil {
+				return nil, err
+			}
+			elseBranch = elseBlock.(*ast.BlockNode)
+		} else {
+			// Single statement else
+			elseStmt, err := p.ParseStatement()
+			if err != nil {
+				return nil, err
+			}
+			elseBranch = &ast.BlockNode{
+				BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: elseStmt.GetLine(), Column: elseStmt.GetColumn()},
+				Statements: []ast.ASTNode{elseStmt},
+			}
+		}
+	} else if p.Match(TokenElif) {
+		// elif without else (elif as direct continuation)
+		elseNode, err := p.ParseIfStatement()
+		if err != nil {
+			return nil, err
+		}
+		elseBranch = &ast.BlockNode{
+			BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: elseNode.GetLine(), Column: elseNode.GetColumn()},
+			Statements: []ast.ASTNode{elseNode},
+		}
+	}
+
+	return &ast.IfStmtNode{
+		BaseNode:   ast.BaseNode{Type: ast.NodeIfStmt, Line: condition.GetLine(), Column: condition.GetColumn()},
+		Condition:  condition,
+		ThenBranch: thenBranch,
+		ElseBranch: elseBranch,
+	}, nil
+}
+
+func (p *Parser) ParseUnlessStatement() (ast.ASTNode, error) {
+	// unless condition { } is sugar for if !(condition) { }
+	// Optional parentheses around condition
+	var condition ast.ASTNode
+	var err error
+
+	if p.Match(TokenLParen) {
+		// Traditional: unless (condition) { ... }
+		condition, err = p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		p.Consume(TokenRParen, "Expected ')' after unless condition")
+	} else {
+		// Modern: unless condition { ... }
+		condition, err = p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Wrap condition in logical NOT
+	negatedCondition := &ast.UnaryExprNode{
+		BaseNode: ast.BaseNode{Type: ast.NodeUnaryExpr, Line: condition.GetLine(), Column: condition.GetColumn()},
+		Operator: "!",
+		Operand:  condition,
+	}
+
+	// Body can be a block { } or a single statement
+	var thenBranch *ast.BlockNode
+	if p.Check(TokenLBrace) {
+		body, err := p.ParseBlock()
+		if err != nil {
+			return nil, err
+		}
+		thenBranch = body.(*ast.BlockNode)
+	} else {
+		// Single statement body
+		stmt, err := p.ParseStatement()
+		if err != nil {
+			return nil, err
+		}
+		thenBranch = &ast.BlockNode{
+			BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: stmt.GetLine(), Column: stmt.GetColumn()},
+			Statements: []ast.ASTNode{stmt},
+		}
+	}
+
+	// unless can have else (but not elif, since that would be confusing)
+	var elseBranch *ast.BlockNode
+	if p.Match(TokenElse) {
+		if p.Check(TokenLBrace) {
 			elseBlock, err := p.ParseBlock()
 			if err != nil {
 				return nil, err
@@ -973,6 +1080,98 @@ func (p *Parser) ParseIfStatement() (ast.ASTNode, error) {
 
 	return &ast.IfStmtNode{
 		BaseNode:   ast.BaseNode{Type: ast.NodeIfStmt, Line: condition.GetLine(), Column: condition.GetColumn()},
+		Condition:  negatedCondition,
+		ThenBranch: thenBranch,
+		ElseBranch: elseBranch,
+	}, nil
+}
+
+func (p *Parser) ParseIfLetStatement() (ast.ASTNode, error) {
+	// if let value = optional { ... }
+	// Parse pattern: identifier = expression
+	line, col := p.Peek().Line, p.Peek().Column
+
+	// Get the variable name
+	varNameTok := p.Consume(TokenIdentifier, "Expected variable name after 'let'")
+	varName := varNameTok.Value
+
+	p.Consume(TokenAssign, "Expected '=' after variable name in if let")
+
+	// Parse the expression being matched
+	expr, err := p.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a condition that checks if the expression is not null/none
+	// For now, we'll create a simple binary expression: expr != null
+	nullLiteral := &ast.LiteralNode{
+		BaseNode: ast.BaseNode{Type: ast.NodeLiteral, Line: line, Column: col},
+		Value:    nil,
+		Type:     "null",
+	}
+
+	condition := &ast.BinaryExprNode{
+		BaseNode: ast.BaseNode{Type: ast.NodeBinaryExpr, Line: line, Column: col},
+		Left:     expr,
+		Operator: "!=",
+		Right:    nullLiteral,
+	}
+
+	// Body can be a block { } or a single statement
+	var thenBranch *ast.BlockNode
+	if p.Check(TokenLBrace) {
+		body, err := p.ParseBlock()
+		if err != nil {
+			return nil, err
+		}
+		thenBranch = body.(*ast.BlockNode)
+	} else {
+		// Single statement body
+		stmt, err := p.ParseStatement()
+		if err != nil {
+			return nil, err
+		}
+		thenBranch = &ast.BlockNode{
+			BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: stmt.GetLine(), Column: stmt.GetColumn()},
+			Statements: []ast.ASTNode{stmt},
+		}
+	}
+
+	// Prepend a variable declaration to the then branch
+	// var varName = expr (casted/unwrapped)
+	varDecl := &ast.VariableDeclNode{
+		BaseNode:    ast.BaseNode{Type: ast.NodeVarDecl, Line: line, Column: col},
+		Name:        varName,
+		Initializer: expr,
+	}
+
+	// Insert at beginning of then branch
+	thenBranch.Statements = append([]ast.ASTNode{varDecl}, thenBranch.Statements...)
+
+	// else branch is optional
+	var elseBranch *ast.BlockNode
+	if p.Match(TokenElse) {
+		if p.Check(TokenLBrace) {
+			elseBlock, err := p.ParseBlock()
+			if err != nil {
+				return nil, err
+			}
+			elseBranch = elseBlock.(*ast.BlockNode)
+		} else {
+			elseStmt, err := p.ParseStatement()
+			if err != nil {
+				return nil, err
+			}
+			elseBranch = &ast.BlockNode{
+				BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: elseStmt.GetLine(), Column: elseStmt.GetColumn()},
+				Statements: []ast.ASTNode{elseStmt},
+			}
+		}
+	}
+
+	return &ast.IfStmtNode{
+		BaseNode:   ast.BaseNode{Type: ast.NodeIfStmt, Line: line, Column: col},
 		Condition:  condition,
 		ThenBranch: thenBranch,
 		ElseBranch: elseBranch,

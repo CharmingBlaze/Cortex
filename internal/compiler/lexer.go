@@ -33,7 +33,9 @@ const (
 	TokenChannel
 	TokenSpawn
 	TokenIf
+	TokenElif
 	TokenElse
+	TokenUnless
 	TokenFor
 	TokenWhile
 	TokenLoop
@@ -52,6 +54,7 @@ const (
 	TokenFalse
 	TokenNull
 	TokenVar
+	TokenLet
 	TokenAny
 	TokenConst
 	TokenArray
@@ -528,6 +531,7 @@ func (l *Lexer) GetKeywordType(identifier string) TokenType {
 		"channel":   TokenChannel,
 		"spawn":     TokenSpawn,
 		"var":       TokenVar,
+		"let":       TokenLet,
 		"any":       TokenAny,
 		"const":     TokenConst,
 		"extern":    TokenExtern,
@@ -536,7 +540,9 @@ func (l *Lexer) GetKeywordType(identifier string) TokenType {
 		"module":    TokenModule,
 		"cleanup":   TokenCleanup,
 		"if":        TokenIf,
+		"elif":      TokenElif,
 		"else":      TokenElse,
+		"unless":    TokenUnless,
 		"for":       TokenFor,
 		"while":     TokenWhile,
 		"loop":      TokenLoop,

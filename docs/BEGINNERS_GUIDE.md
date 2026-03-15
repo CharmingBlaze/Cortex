@@ -525,6 +525,33 @@ if x > 10 {
 // Single-line if
 if x > 0 println("positive");
 
+// elif - cleaner than else if
+if x == 5 {
+    println("five");
+} elif x == 10 {
+    println("ten");
+} elif x == 15 {
+    println("fifteen");
+} else {
+    println("other");
+}
+
+// unless - inverse of if (runs when condition is false)
+unless x < 0 {
+    println("x is non-negative");
+}
+
+// unless with single statement
+unless x > 100 println("x is not huge");
+
+// if let - pattern matching for optionals
+string maybe_name = get_name();
+if let name = maybe_name {
+    println("Hello, ${name}!");
+} else {
+    println("No name");
+}
+
 // While loop
 while (x > 0) {
     x--;

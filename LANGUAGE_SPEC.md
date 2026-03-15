@@ -194,6 +194,69 @@ if x > 0 println("positive");
 
 This keeps simple logic compact.
 
+#### elif - Sugar for else if
+Cortex provides `elif` as cleaner syntax for `else if` chains:
+
+```c
+if x == 5 {
+    println("five");
+} elif x == 10 {
+    println("ten");
+} elif x == 15 {
+    println("fifteen");
+} else {
+    println("other");
+}
+```
+
+This matches Python, Swift, and Kotlin style.
+
+#### unless - Inverse of if
+`unless` executes its body when the condition is **false**:
+
+```c
+unless x > 5 {
+    println("x is NOT greater than 5");
+}
+
+// Equivalent to:
+if !(x > 5) {
+    println("x is NOT greater than 5");
+}
+```
+
+`unless` supports single-statement bodies and `else`:
+
+```c
+unless x < 0 println("x is non-negative");
+
+unless x == 10 {
+    println("x is NOT 10");
+} else {
+    println("x IS 10");
+}
+```
+
+#### if let - Pattern Matching for Optionals
+`if let` binds a value only if it exists (not null):
+
+```c
+string maybe_name = get_name();
+if let name = maybe_name {
+    println("Hello, ${name}!");
+} else {
+    println("No name provided");
+}
+```
+
+This is sugar for:
+```c
+if maybe_name != null {
+    var name = maybe_name;
+    println("Hello, ${name}!");
+}
+```
+
 #### Else and Else-If
 All combinations are allowed:
 
@@ -220,22 +283,37 @@ if x == 5 {
 
 #### Full Example
 ```c
-// Traditional (C-style)
-if (x > 5) {
-    println("x > 5");
+void main() {
+    int x = 10;
+
+    // Traditional (C-style)
+    if (x > 5) {
+        println("x > 5");
+    }
+
+    // Modern Cortex style — no parentheses
+    if x > 5 {
+        println("x > 5");
+    }
+
+    // Single-statement body
+    if x > 0 println("positive");
+
+    // Mixed style is allowed
+    if (x < 20) println("x < 20");
+
+    // elif chain
+    if x == 5 {
+        println("five");
+    } elif x == 10 {
+        println("ten");
+    } else {
+        println("other");
+    }
+
+    // unless
+    unless x < 0 println("non-negative");
 }
-
-// Modern Cortex style — no parentheses
-if x > 5 {
-    println("x > 5");
-}
-
-// Single-statement body
-if x > 0 println("positive");
-
-// Mixed style is allowed
-if (x < 20) println("x < 20");
-```
 
 ### Constants
 ```c

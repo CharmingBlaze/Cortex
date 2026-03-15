@@ -1,0 +1,54 @@
+// Test all if statement improvements
+void main() {
+    int x = 10;
+
+    // Traditional (C-style)
+    if (x > 5) {
+        println("x > 5 (traditional)");
+    }
+
+    // Modern Cortex style — no parentheses
+    if x > 5 {
+        println("x > 5 (modern)");
+    }
+
+    // Single-statement body
+    if x > 0 println("x is positive");
+
+    // Mixed style is allowed
+    if (x < 20) println("x < 20");
+
+    // elif sugar for else if
+    if x == 5 {
+        println("x is 5");
+    } elif x == 10 {
+        println("x is 10 (elif)");
+    } elif x == 15 {
+        println("x is 15");
+    } else {
+        println("x is something else");
+    }
+
+    // elif with single statement
+    if x < 0 {
+        println("negative");
+    } elif x == 0 println("zero");
+    elif x > 0 println("positive");
+
+    // unless as inverse of if
+    unless x < 5 {
+        println("x is NOT less than 5 (unless)");
+    }
+
+    // unless with single statement
+    unless x > 100 println("x is NOT greater than 100");
+
+    // unless with else
+    unless x == 10 {
+        println("x is NOT 10");
+    } else {
+        println("x IS 10 (unless else)");
+    }
+
+    println("All if improvements passed!");
+}
