@@ -1,34 +1,23 @@
 // ============================================
 // Cortex Language - Complete Feature Demo
 // ============================================
-// This example demonstrates all major Cortex features
-// in clean, modern, multi-line style.
-
-// ============================================
-// User-Defined Types (TYPE...ENDTYPE)
-// ============================================
-
-TYPE Vec2
-    x AS float;
-    y AS float;
-ENDTYPE
-
-TYPE Player
-    name AS string;
-    health AS int;
-    position AS Vec2;
-    score AS int;
-ENDTYPE
-
-TYPE Enemy
-    name AS string;
-    damage AS int;
-    position AS Vec2;
-ENDTYPE
 
 // ============================================
 // Structs (C-style)
 // ============================================
+
+struct Point
+{
+    float x;
+    float y;
+}
+
+struct Player
+{
+    string name;
+    int health;
+    int score;
+}
 
 struct GameState
 {
@@ -49,20 +38,11 @@ enum Direction
     West
 }
 
-enum GameStateType
-{
-    Menu,
-    Playing,
-    Paused,
-    GameOver
-}
-
 // ============================================
-// Public/Private Visibility
+// Functions
 // ============================================
 
-// Public function - accessible from other modules
-public fn initialize_game() -> GameState
+fn initialize_game() -> GameState
 {
     GameState state;
     state.level = 1;
@@ -71,456 +51,90 @@ public fn initialize_game() -> GameState
     return state;
 }
 
-// Private function - internal use only
-private fn calculate_damage(int base, int modifier) -> int
-{
-    return base + modifier;
-}
-
-// ============================================
-// Functions with Named Parameters
-// ============================================
-
-fn create_player(string name, int health: 100, int score: 0) -> Player
+fn create_player(string name, int health) -> Player
 {
     Player p;
     p.name = name;
     p.health = health;
-    p.score = score;
-    p.position.x = 0.0;
-    p.position.y = 0.0;
+    p.score = 0;
     return p;
-}
-
-// ============================================
-// String Operations
-// ============================================
-
-fn format_score(string name, int score) -> string
-{
-    // String concatenation
-    return "Player: " + name + " | Score: " + score;
 }
 
 fn greet_player(Player p) -> string
 {
-    // String interpolation
-    return "Welcome, {p.name}! Health: {p.health}";
+    return "Welcome, " + p.name + "!";
 }
 
-// ============================================
-// C-Style Switch Statement
-// ============================================
-
-fn get_direction_name(Direction dir) -> string
+fn describe_score(int val) -> string
 {
-    switch (dir)
+    if (val >= 90)
     {
-        case Direction.North:
-        {
-            return "North";
-        }
-        case Direction.South:
-        {
-            return "South";
-        }
-        case Direction.East:
-        {
-            return "East";
-        }
-        case Direction.West:
-        {
-            return "West";
-        }
-        default:
-        {
-            return "Unknown";
-        }
+        return "Excellent";
     }
-}
-
-fn get_state_name(GameStateType state) -> string
-{
-    switch (state)
+    else if (val >= 70)
     {
-        case GameStateType.Menu:
-        {
-            return "Main Menu";
-        }
-        case GameStateType.Playing:
-        {
-            return "Currently Playing";
-        }
-        case GameStateType.Paused:
-        {
-            return "Game Paused";
-        }
-        case GameStateType.GameOver:
-        {
-            return "Game Over";
-        }
-        default:
-        {
-            return "Invalid State";
-        }
+        return "Good";
     }
-}
-
-// ============================================
-// BASIC-Style SELECT CASE
-// ============================================
-
-fn describe_score(int score) -> string
-{
-    SELECT CASE score
-        CASE 0
-            return "No points yet!";
-        CASE 1, 2, 3
-            return "Just getting started!";
-        CASE 4 TO 10
-            return "Making progress!";
-        CASE 11 TO 50
-            return "Getting better!";
-        CASE 51 TO 100
-            return "Halfway there!";
-        CASE ELSE
-            return "Amazing score!";
-    END SELECT
-}
-
-fn classify_health(int health) -> string
-{
-    SELECT CASE health
-        CASE 0
-            return "Dead";
-        CASE 1 TO 25
-            return "Critical";
-        CASE 26 TO 50
-            return "Injured";
-        CASE 51 TO 75
-            return "Hurt";
-        CASE 76 TO 100
-            return "Healthy";
-        CASE ELSE
-            return "Invalid health";
-    END SELECT
-}
-
-// ============================================
-// Control Flow
-// ============================================
-
-fn test_if_else(int value) -> string
-{
-    if (value < 0)
+    else if (val >= 50)
     {
-        return "Negative";
-    }
-    elif (value == 0)
-    {
-        return "Zero";
+        return "Average";
     }
     else
     {
-        return "Positive";
+        return "Needs improvement";
     }
 }
-
-fn test_unless(bool condition) -> string
-{
-    unless (condition)
-    {
-        return "Condition was false";
-    }
-    return "Condition was true";
-}
-
-// ============================================
-// Loops
-// ============================================
 
 fn count_to_ten() -> int
 {
     int sum = 0;
-    for (int i = 1; i <= 10; i++)
+    int i = 1;
+    while (i <= 10)
     {
         sum = sum + i;
+        i = i + 1;
     }
     return sum;
-}
-
-fn countdown(int start) -> int
-{
-    int count = start;
-    while (count > 0)
-    {
-        show("Countdown: " + count);
-        count = count - 1;
-    }
-    return count;
 }
 
 fn loop_example() -> int
 {
-    int i = 0;
+    int counter = 0;
     loop
     {
-        i = i + 1;
-        if (i >= 5)
+        counter = counter + 1;
+        if (counter >= 5)
         {
             break;
         }
     }
-    return i;
-}
-
-fn for_in_example(array numbers) -> int
-{
-    int total = 0;
-    for (n in numbers)
-    {
-        total = total + n;
-    }
-    return total;
-}
-
-// ============================================
-// Pattern Matching
-// ============================================
-
-fn match_direction(Direction dir) -> string
-{
-    match (dir)
-    {
-        case Direction.North:
-        {
-            return "Heading up";
-        }
-        case Direction.South:
-        {
-            return "Heading down";
-        }
-        case Direction.East:
-        {
-            return "Heading right";
-        }
-        case Direction.West:
-        {
-            return "Heading left";
-        }
-        default:
-        {
-            return "Staying put";
-        }
-    }
-}
-
-// ============================================
-// Error Handling
-// ============================================
-
-fn divide_safely(int a, int b) -> result
-{
-    if (b == 0)
-    {
-        return result_err("Division by zero");
-    }
-    return result_ok(a / b);
+    return counter;
 }
 
 fn test_division(int a, int b) -> string
 {
-    result r = divide_safely(a, b);
-    
-    match (r)
+    if (b == 0)
     {
-        case Ok(value):
-        {
-            int v = as_int(value);
-            return "Result: " + v;
-        }
-        case Err(msg):
-        {
-            return "Error: " + msg;
-        }
+        return "Cannot divide by zero";
     }
+    int result = a / b;
+    return "Result: " + result;
 }
 
-// ============================================
-// Null Coalescing and Optional Chaining
-// ============================================
-
-fn safe_get_name(Player p) -> string
+fn test_if_else(int value) -> string
 {
-    // Use null coalescing for default
-    string name = p.name ?? "Unknown";
-    return name;
-}
-
-fn safe_health_check(Player p) -> int
-{
-    // Optional chaining - returns 0 if p is null
-    return p?.health ?? 0;
-}
-
-// ============================================
-// Range Operators
-// ============================================
-
-fn test_ranges() -> string
-{
-    // Inclusive range: 1..10 includes 10
-    int inclusive = 0;
-    for (i in 1..10)
+    if (value > 0)
     {
-        inclusive = inclusive + 1;
+        return "Positive";
     }
-    
-    // Exclusive range: 1..<10 excludes 10
-    int exclusive = 0;
-    for (i in 1..<10)
+    else if (value < 0)
     {
-        exclusive = exclusive + 1;
+        return "Negative";
     }
-    
-    return "Inclusive: {inclusive}, Exclusive: {exclusive}";
-}
-
-// ============================================
-// Arrays and Collections
-// ============================================
-
-fn array_operations() -> int
-{
-    // Create array
-    array numbers = [1, 2, 3, 4, 5];
-    
-    // Push and pop
-    numbers.push(6);
-    int last = numbers.pop();
-    
-    // Length
-    int len = numbers.len();
-    
-    // Iterate
-    int sum = 0;
-    for (n in numbers)
+    else
     {
-        sum = sum + n;
+        return "Zero";
     }
-    
-    return sum;
-}
-
-fn dict_operations() -> string
-{
-    // Create dictionary
-    dict scores = {
-        "Alice": 100,
-        "Bob": 85,
-        "Charlie": 92
-    };
-    
-    // Access values
-    int alice_score = scores.get("Alice");
-    
-    // Set value
-    scores.set("David", 78);
-    
-    // Check if key exists
-    bool has_eve = scores.has("Eve");
-    
-    return "Alice scored {alice_score}, Eve exists: {has_eve}";
-}
-
-// ============================================
-// Vector<T> Generic Types
-// ============================================
-
-fn vector_example() -> int
-{
-    vector<int> nums = vector_create_int();
-    nums.push(10);
-    nums.push(20);
-    nums.push(30);
-
-    int total = 0;
-    int i = 0;
-    while (i < nums.len())
-    {
-        total = total + nums.get(i);
-        i = i + 1;
-    }
-
-    nums.free();
-    return total;
-}
-
-// ============================================
-// Async/Await
-// ============================================
-
-async fn fetch_data(string url) -> string
-{
-    // Simulate async operation
-    yield;
-    return "Data from " + url;
-}
-
-async fn process_items(array items) -> int
-{
-    int count = 0;
-    for (item in items)
-    {
-        count = count + 1;
-        yield;
-    }
-    return count;
-}
-
-fn run_async_tasks() -> string
-{
-    async t1 = fetch_data("https://api.example.com");
-    async t2 = process_items([1, 2, 3, 4, 5]);
-    
-    // Run all tasks
-    async_run_all();
-    
-    return "Tasks completed";
-}
-
-// ============================================
-// Channels for Message Passing
-// ============================================
-
-fn channel_example() -> string
-{
-    channel<int> ch = channel<int>(10);
-    
-    // Send values
-    ch.send(1);
-    ch.send(2);
-    ch.send(3);
-    
-    // Receive values
-    int first = ch.recv();
-    int second = ch.recv();
-    
-    ch.close();
-    
-    return "Received: {first}, {second}";
-}
-
-// ============================================
-// Modules
-// ============================================
-
-module "game";
-
-fn game_update(GameState state) -> GameState
-{
-    state.score = state.score + 1;
-    return state;
 }
 
 // ============================================
@@ -534,20 +148,12 @@ void main()
     show("Game initialized at level " + state.level);
     
     // Create player
-    Player hero = create_player("Hero", 100, 0);
+    Player hero = create_player("Hero", 100);
     show(greet_player(hero));
     
-    // Test switch statement
-    Direction dir = Direction.North;
-    show("Direction: " + get_direction_name(dir));
-    
-    // Test SELECT CASE
-    show("Score description: " + describe_score(25));
-    show("Health status: " + classify_health(75));
-    
-    // Test control flow
+    // Test conditionals
+    show("Score description: " + describe_score(75));
     show("Value classification: " + test_if_else(-5));
-    show("Unless test: " + test_unless(false));
     
     // Test loops
     show("Sum 1-10: " + count_to_ten());
@@ -556,23 +162,6 @@ void main()
     // Test error handling
     show("Division test: " + test_division(10, 2));
     show("Division by zero: " + test_division(10, 0));
-    
-    // Test ranges
-    show("Range test: " + test_ranges());
-    
-    // Test collections
-    show("Array sum: " + array_operations());
-    show("Dict test: " + dict_operations());
-    
-    // Test vector
-    show("Vector sum: " + vector_example());
-    
-    // Test channels
-    show("Channel test: " + channel_example());
-    
-    // Final score
-    string score_msg = format_score(hero.name, hero.score);
-    show(score_msg);
     
     show("=== Cortex Feature Demo Complete ===");
 }

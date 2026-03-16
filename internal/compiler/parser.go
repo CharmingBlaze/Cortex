@@ -250,13 +250,7 @@ func (p *Parser) ParseDeclaration() (ast.ASTNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Default to void return type for fn
-		fn.(*ast.FunctionDeclNode).ReturnType = "void"
-		// Check for explicit return type
-		if p.Match(TokenArrow) {
-			returnTypeTok := p.ConsumeType("Expected return type after ->")
-			fn.(*ast.FunctionDeclNode).ReturnType = returnTypeTok.Value
-		}
+		// ParseFunctionDeclaration already handles -> returnType, so we don't need to override here
 		return fn, nil
 	}
 
@@ -527,7 +521,13 @@ func (p *Parser) ParseExternDeclaration() (ast.ASTNode, error) {
 }
 
 func (p *Parser) ParseStructDeclaration() (ast.ASTNode, error) {
-	nameToken := p.Consume(TokenIdentifier, "Expected struct name")
+	// Accept identifier or type token as struct name (e.g., Vec2 is a type token but valid struct name)
+	var nameToken Token
+	if p.Check(TokenIdentifier) || p.IsTypeToken(p.Peek().Type) {
+		nameToken = p.Advance()
+	} else {
+		nameToken = p.Consume(TokenIdentifier, "Expected struct name")
+	}
 	p.Consume(TokenLBrace, "Expected '{' after struct name")
 
 	var fields []*ast.VariableDeclNode

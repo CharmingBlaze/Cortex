@@ -1,0 +1,10 @@
+fn get_value() -> int
+{
+    return 42;
+}
+
+void main()
+{
+    int x = get_value();
+    show("Result: " + x);
+}

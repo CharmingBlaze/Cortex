@@ -1365,11 +1365,8 @@ func (a *SemanticAnalyzer) VisitStructDecl(node *ast.StructDeclNode) {
 		a.AddError(err)
 	}
 
-	// Visit field declarations
-	for _, field := range node.Fields {
-		a.VisitNode(field)
-	}
-	// Visit method bodies with a scope that includes struct fields (so x, y etc. resolve)
+	// Don't visit field declarations - they are part of struct definition, not separate variables
+	// Only visit method bodies with a scope that includes struct fields
 	for _, m := range node.Methods {
 		scope := NewScope(a.currentScope)
 		for _, f := range node.Fields {
