@@ -72,6 +72,43 @@ typedef struct { bool has_value; void* value; } cortex_optional_ptr;
 #define optional_none_string() ((cortex_optional_string){.has_value = false})
 #define optional_some_string(v) ((cortex_optional_string){.has_value = true, .value = (v)})
 
+/* Vector<T> generic type support: typed dynamic arrays */
+typedef struct { int* data; int size; int capacity; } cortex_vector_int;
+typedef struct { float* data; int size; int capacity; } cortex_vector_float;
+typedef struct { double* data; int size; int capacity; } cortex_vector_double;
+typedef struct { char** data; int size; int capacity; } cortex_vector_string;
+typedef struct { bool* data; int size; int capacity; } cortex_vector_bool;
+typedef struct { vec2* data; int size; int capacity; } cortex_vector_vec2;
+typedef struct { vec3* data; int size; int capacity; } cortex_vector_vec3;
+typedef struct { void** data; int size; int capacity; } cortex_vector_ptr;
+
+/* Vector constructors and methods */
+#define vector_create_int() ((cortex_vector_int){.data = NULL, .size = 0, .capacity = 0})
+#define vector_create_float() ((cortex_vector_float){.data = NULL, .size = 0, .capacity = 0})
+#define vector_create_string() ((cortex_vector_string){.data = NULL, .size = 0, .capacity = 0})
+
+/* Vector operations - implemented in vector.c */
+void vector_push_int(cortex_vector_int* v, int val);
+int vector_pop_int(cortex_vector_int* v);
+int vector_get_int(cortex_vector_int* v, int idx);
+void vector_set_int(cortex_vector_int* v, int idx, int val);
+int vector_len_int(cortex_vector_int* v);
+void vector_free_int(cortex_vector_int* v);
+
+void vector_push_float(cortex_vector_float* v, float val);
+float vector_pop_float(cortex_vector_float* v);
+float vector_get_float(cortex_vector_float* v, int idx);
+void vector_set_float(cortex_vector_float* v, int idx, float val);
+int vector_len_float(cortex_vector_float* v);
+void vector_free_float(cortex_vector_float* v);
+
+void vector_push_string(cortex_vector_string* v, char* val);
+char* vector_pop_string(cortex_vector_string* v);
+char* vector_get_string(cortex_vector_string* v, int idx);
+void vector_set_string(cortex_vector_string* v, int idx, char* val);
+int vector_len_string(cortex_vector_string* v);
+void vector_free_string(cortex_vector_string* v);
+
 /* Forward decl for AnyValue union (dict/array stored as void* to avoid circular deps) */
 struct cortex_dict;
 struct cortex_array;

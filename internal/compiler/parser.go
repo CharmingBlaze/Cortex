@@ -3057,6 +3057,14 @@ func (p *Parser) ConsumeTypeOrVar() Token {
 	for _, tokenType := range typeTokens {
 		if p.Check(tokenType) {
 			tok := p.Advance()
+			// Check for generic type parameters: vector<T> or optional<T>
+			if p.Check(TokenLess) {
+				p.Advance() // consume '<'
+				// Parse type parameter
+				typeParam := p.ConsumeType("Expected type parameter after '<'")
+				p.Consume(TokenGreater, "Expected '>' after type parameter")
+				tok.Value = tok.Value + "<" + typeParam.Value + ">"
+			}
 			// Check for optional type suffix: int? means optional int
 			if p.Check(TokenQuestion) {
 				p.Advance() // consume '?'
@@ -3075,6 +3083,13 @@ func (p *Parser) ConsumeTypeOrVar() Token {
 	}
 	if p.Check(TokenIdentifier) {
 		tok := p.Advance()
+		// Check for generic type parameters on identifier types: MyStruct<T>
+		if p.Check(TokenLess) {
+			p.Advance() // consume '<'
+			typeParam := p.ConsumeType("Expected type parameter after '<'")
+			p.Consume(TokenGreater, "Expected '>' after type parameter")
+			tok.Value = tok.Value + "<" + typeParam.Value + ">"
+		}
 		// Check for union type with identifier types
 		for p.Check(TokenPipe) {
 			p.Advance() // consume '|'
@@ -3092,6 +3107,13 @@ func (p *Parser) ConsumeType(errorMessage string) Token {
 	for _, tokenType := range typeTokens {
 		if p.Check(tokenType) {
 			tok := p.Advance()
+			// Check for generic type parameters: vector<T> or optional<T>
+			if p.Check(TokenLess) {
+				p.Advance() // consume '<'
+				typeParam := p.ConsumeType("Expected type parameter after '<'")
+				p.Consume(TokenGreater, "Expected '>' after type parameter")
+				tok.Value = tok.Value + "<" + typeParam.Value + ">"
+			}
 			// Check for optional type suffix: int? means optional int
 			if p.Check(TokenQuestion) {
 				p.Advance() // consume '?'
@@ -3110,6 +3132,13 @@ func (p *Parser) ConsumeType(errorMessage string) Token {
 	}
 
 	tok := p.Consume(TokenIdentifier, errorMessage)
+	// Check for generic type parameters on identifier types: MyStruct<T>
+	if p.Check(TokenLess) {
+		p.Advance() // consume '<'
+		typeParam := p.ConsumeType("Expected type parameter after '<'")
+		p.Consume(TokenGreater, "Expected '>' after type parameter")
+		tok.Value = tok.Value + "<" + typeParam.Value + ">"
+	}
 	// Check for optional type suffix on identifier types (struct names)
 	if p.Check(TokenQuestion) {
 		p.Advance() // consume '?'

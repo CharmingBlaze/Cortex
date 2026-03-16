@@ -2708,6 +2708,23 @@ func (g *CodeGenerator) VisitThrowStmt(node *ast.ThrowStmtNode) {
 }
 
 func (g *CodeGenerator) ConvertType(cortexType string) string {
+	// Handle generic types: vector<T> and optional<T>
+	if strings.HasPrefix(cortexType, "vector<") {
+		// Extract type parameter: vector<int> -> int
+		innerType := strings.TrimPrefix(cortexType, "vector<")
+		innerType = strings.TrimSuffix(innerType, ">")
+		innerCType := g.ConvertType(innerType)
+		// Generate a typed vector struct
+		return "cortex_vector_" + strings.ReplaceAll(innerCType, "*", "_ptr")
+	}
+	if strings.HasPrefix(cortexType, "optional<") {
+		// Extract type parameter: optional<int> -> int
+		innerType := strings.TrimPrefix(cortexType, "optional<")
+		innerType = strings.TrimSuffix(innerType, ">")
+		innerCType := g.ConvertType(innerType)
+		// Generate a typed optional struct
+		return "cortex_optional_" + strings.ReplaceAll(innerCType, "*", "_ptr")
+	}
 	// Handle union types: A | B -> AnyValue (dynamic type)
 	if strings.Contains(cortexType, " | ") {
 		return "AnyValue"

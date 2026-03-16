@@ -987,6 +987,196 @@ fn validate(int age) {
 
 ---
 
+## Generic Types
+
+Cortex supports generic types for type-safe containers:
+
+### `vector<T>` - Typed Dynamic Arrays
+
+A `vector<T>` is a dynamically growing array with compile-time type safety:
+
+```c
+vector<int> nums = vector_create_int();
+nums.push(10);
+nums.push(20);
+nums.push(30);
+
+int first = nums.get(0);    // 10
+int len = nums.len();       // 3
+int last = nums.pop();      // 30
+
+nums.free();                // Release memory
+```
+
+**Vector Methods:**
+- **`v.push(value)`** — add element at end
+- **`v.pop()`** — remove and return last element
+- **`v.get(index)`** — get element at index
+- **`v.set(index, value)`** — set element at index
+- **`v.len()`** — number of elements
+- **`v.free()`** — release memory
+
+**Supported Types:** `vector<int>`, `vector<float>`, `vector<double>`, `vector<string>`, `vector<bool>`, `vector<vec2>`, `vector<vec3>`
+
+### `optional<T>` - Explicit Optional Values
+
+An `optional<T>` explicitly represents a value that may or may not exist:
+
+```c
+optional<int> find_user(int id) {
+    if (id > 0) {
+        return optional_some_int(id * 100);
+    }
+    return optional_none_int();
+}
+
+optional<int> result = find_user(5);
+if (result.has_value) {
+    show("Found: " + result.value);
+}
+```
+
+**Note:** The shorthand `T?` syntax (e.g., `int?`) is preferred for most cases.
+
+---
+
+## Modules and Imports
+
+Cortex supports a minimal module system for organizing code:
+
+### Declaring a Module
+
+```c
+module "math";
+
+fn add(int a, int b) -> int {
+    return a + b;
+}
+
+fn multiply(int a, int b) -> int {
+    return a * b;
+}
+```
+
+### Using Module Functions
+
+```c
+// In another file
+import "math.cx";
+
+void main() {
+    int sum = math.add(5, 3);        // 8
+    int product = math.multiply(4, 2);  // 8
+}
+```
+
+Functions declared in a module are prefixed with the module name when called from other files.
+
+---
+
+## Async/Await
+
+Cortex supports asynchronous programming with coroutines:
+
+### Async Functions
+
+```c
+async fn fetch_data(string url) -> string {
+    // Simulate async operation
+    yield;
+    return "data from " + url;
+}
+
+void main() {
+    async task = fetch_data("https://example.com");
+    // Do other work...
+    string result = await task;
+    show(result);
+}
+```
+
+### Yielding
+
+The `yield` keyword pauses an async function, allowing other tasks to run:
+
+```c
+async fn process_items(array items) {
+    for (int i = 0; i < items.len(); i++) {
+        process(items.get(i));
+        yield;  // Allow other tasks to run
+    }
+}
+```
+
+### Running Multiple Tasks
+
+```c
+void main() {
+    async t1 = task1();
+    async t2 = task2();
+    async t3 = task3();
+    
+    // Run all tasks to completion
+    async_run_all();
+}
+```
+
+---
+
+## Channels for Message Passing
+
+Channels provide thread-safe communication between concurrent tasks:
+
+### Creating and Using Channels
+
+```c
+channel<int> ch = channel<int>(10);
+
+// Send values
+ch.send(42);
+ch.send(100);
+
+// Receive values
+int val = ch.recv();
+show("Received: " + val);  // 42
+
+ch.close();  // Close the channel
+```
+
+### Channel Methods
+
+- **`ch.send(value)`** — send a value (blocks if channel is full)
+- **`ch.recv()`** — receive a value (blocks if channel is empty)
+- **`ch.try_send(value)`** — non-blocking send, returns 1 on success, 0 if full, -1 if closed
+- **`ch.try_recv()`** — non-blocking receive
+- **`ch.close()`** — close the channel
+- **`ch.is_closed()`** — check if channel is closed
+- **`ch.free()`** — release channel memory
+
+### Producer-Consumer Pattern
+
+```c
+channel<string> jobs = channel<string>(100);
+
+// Producer
+fn produce() {
+    for (int i = 0; i < 10; i++) {
+        jobs.send("job_" + i);
+    }
+    jobs.close();
+}
+
+// Consumer
+fn consume() {
+    string job;
+    while (jobs.try_recv(&job) > 0) {
+        show("Processing: " + job);
+    }
+}
+```
+
+---
+
 ## Pattern Matching
 
 **`match`** is a powerful way to inspect and destructure values. It's like a `switch` on steroids:

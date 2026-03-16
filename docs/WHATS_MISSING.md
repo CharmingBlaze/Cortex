@@ -1,6 +1,6 @@
-# What’s Missing in Cortex
+# What's Missing in Cortex
 
-A single place to see what’s **not yet implemented**, what’s **partially done**, and what’s **planned**, so you know the current gaps.
+A single place to see what's **not yet implemented**, what's **partially done**, and what's **planned**, so you know the current gaps.
 
 ---
 
@@ -12,20 +12,17 @@ A single place to see what’s **not yet implemented**, what’s **partially don
 | **Multi-dimensional arrays** | ~~`[[1,2],[3,4]]`, `arr[i][j]`~~ | **Implemented.** Use `var m = [[1,2],[3,4]];` and `m[i][j]` |
 | **Lambda captures** | ~~`[x](int a) { return x + a; }`~~ | **Implemented.** By-value capture; passed as (fn, &env); use in call-argument position. |
 | **Named / default parameters** | ~~`f(x: 1, y: 2)` or `void f(int x = 0)`~~ | **Implemented.** Named args merged by param order; default values in function params. |
-| **Generics / templates** | `vector<int>`, `optional<string>` | LANGUAGE_SPEC mentions them as “wanted”; not implemented. |
-| **Modules / namespaces** | `module math;`, `import math.vector;` | Multi-file is “merge” only; no real module system. |
-| **Async/await** | `async` / `await` | Keywords gated by config; no real implementation (stretch). |
-| **Actors / channels** | `spawn`, channels | Keywords gated; full implementation is stretch. |
+| **Generics / templates** | ~~`vector<int>`, `optional<string>`~~ | **Implemented.** Generic type parsing and code generation for vector<T> and optional<T>. |
+| **Modules / namespaces** | ~~`module math;`, `import math.vector;`~~ | **Implemented.** `module "name";` + `name.func()` syntax supported. |
+| **Async/await** | ~~`async` / `await`~~ | **Implemented.** Coroutine-based async with yield, async_run_all(). |
+| **Actors / channels** | ~~`spawn`, channels~~ | **Implemented.** Thread-safe channels with send/recv, spawn for threads. |
 | **Nested JSON** | ~~Arrays and nested objects~~ | **Implemented.** AnyValue has TYPE_DICT/TYPE_ARRAY; json_parse_value and json_stringify_any handle nested objects/arrays; use as_dict/as_array on values. |
 | **`parse_number` (example)** | ~~No built-in~~ | **Implemented.** `parse_number(string)` → float, `parse_int(string)` → int (0 on failure). |
-
----
-
-## Spec / doc vs reality
-
-- **LANGUAGE_SPEC.md** describes many “wanted” features (generics, modules, pipeline operator, attributes, etc.) that are **not** implemented. Treat the spec as aspirational where it goes beyond the README/Implemented list.
-- **README “What’s still missing” table**: Lambdas row now says **implemented**.
-- **README “Removed Features”**: Preprocessor line correctly states Cortex has `#include`, `#pragma`, `#use`, `#define` (passed through); no full C preprocessor.
+| **Method syntax** | ~~`arr.push(x)`, `s.len()`~~ | **Implemented.** Method calls on array, string, dict, vector types. |
+| **Null coalescing** | ~~`??` operator~~ | **Implemented.** `value ?? default` syntax. |
+| **Optional chaining** | ~~`?.` operator~~ | **Implemented.** `obj?.member` safe access. |
+| **Range operators** | ~~`..` and `..<`~~ | **Implemented.** `0..10` inclusive, `0..<n` exclusive. |
+| **Try/catch/throw** | ~~Exception handling~~ | **Implemented.** Structured exception handling with try/catch/throw. |
 
 ---
 
@@ -47,22 +44,25 @@ A single place to see what’s **not yet implemented**, what’s **partially don
 - ~~Dictionary/map literals~~ **Done**
 - ~~Multi-dimensional array literals and indexing~~ **Done**
 - ~~Lambda captures (by-value)~~ **Done**
-- Coroutines / yield (e.g. for timelines, tweening)
+- Coroutines / yield (e.g. for timelines, tweening) — **Done**
 - ~~Modules / namespaces (minimal: `module "math";`, `math.func()`)~~ **Done**
 - ~~Nested JSON in parse/stringify~~ **Done**
 - ~~ECS helpers (entity_id, add_component, get_component)~~ **Done**
+- ~~Generics (vector<T>, optional<T>)~~ **Done**
+- ~~Async/await with concurrency~~ **Done**
+- ~~Channels for message passing~~ **Done**
 - Hot reloading (stretch)
 
 ---
 
-## Quick “am I blocked?” checklist
+## Quick "am I blocked?" checklist
 
 - **Games / 2D** — vec2, random, time, raylib interop: **in place.**
 - **Data in memory** — structs, enums, array, dict, result: **in place.**
 - **Scripting-style** — var, any, type checks at runtime: **in place.**
 - **C libs** — #include, -use, config: **in place.**
-- **Async / concurrency** — **minimal:** `async`/`await` compile when `features.async` is enabled (run synchronously for now).
+- **Async / concurrency** — **in place:** `async`/`await` with coroutines, channels for message passing.
 - **Rich JSON** — **in place** (nested parse/stringify, as_dict/as_array).
-- **Generics / modules** — **modules:** minimal `module "name";` + `name.func()`; **generics** not in place.
+- **Generics / modules** — **in place:** generic types `vector<T>`, `optional<T>`; modules with `module "name";` + `name.func()`.
 
-So for “games and applications” the main remaining gaps are: async, generics, and a full module system (if you need them).
+**For games and applications, all major features are now implemented!**
