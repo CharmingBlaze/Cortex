@@ -756,9 +756,9 @@ Cortex also supports a more readable TYPE block syntax for defining custom types
 
 ```c
 TYPE AccountEntry
-    Number AS int
-    Name AS string
-    Amount AS float
+    Number AS int;
+    Name AS string;
+    Amount AS float;
 ENDTYPE
 
 void main() {
@@ -772,8 +772,9 @@ void main() {
 
 **Rules:**
 - Fields without `AS` default to `int`
-- `AS` specifies the type: `FieldName AS Type`
+- `AS` specifies the type: `FieldName AS Type;`
 - Types can be built-in (`int`, `float`, `string`) or other user-defined types
+- Semicolons after each field (C-style consistency)
 
 ### Nested Types
 
@@ -781,15 +782,15 @@ You can nest types within types for complex data structures:
 
 ```c
 TYPE Amounts
-    CurrentBalance AS float
-    SavingsBalance AS float
-    CreditCardBalance AS float
+    CurrentBalance AS float;
+    SavingsBalance AS float;
+    CreditCardBalance AS float;
 ENDTYPE
 
 TYPE AccountEntry
-    Number AS int
-    Name AS string
-    Amount AS Amounts
+    Number AS int;
+    Name AS string;
+    Amount AS Amounts;
 ENDTYPE
 
 void main() {

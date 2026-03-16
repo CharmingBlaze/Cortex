@@ -9,21 +9,21 @@
 // ============================================
 
 TYPE Vec2
-    x AS float
-    y AS float
+    x AS float;
+    y AS float;
 ENDTYPE
 
 TYPE Player
-    name AS string
-    health AS int
-    position AS Vec2
-    score AS int
+    name AS string;
+    health AS int;
+    position AS Vec2;
+    score AS int;
 ENDTYPE
 
 TYPE Enemy
-    name AS string
-    damage AS int
-    position AS Vec2
+    name AS string;
+    damage AS int;
+    position AS Vec2;
 ENDTYPE
 
 // ============================================
