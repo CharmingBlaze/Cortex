@@ -1500,6 +1500,35 @@ func (a *SemanticAnalyzer) VisitDeferStmt(node *ast.DeferStmtNode) {
 
 func (a *SemanticAnalyzer) VisitMatchStmt(node *ast.MatchStmtNode) {
 	a.VisitNode(node.Value)
+
+	// Track covered enum values for exhaustiveness checking
+	coveredEnumValues := make(map[string]bool)
+	var enumType *ast.EnumDeclNode
+	hasDefault := false
+
+	// Try to determine if we're matching on an enum
+	if id, ok := node.Value.(*ast.IdentifierNode); ok {
+		if sym := a.currentScope.Resolve(id.Name); sym != nil {
+			if sym.Node != nil {
+				if enumDecl, ok := sym.Node.(*ast.EnumDeclNode); ok {
+					enumType = enumDecl
+				}
+			}
+		}
+	}
+	// Also check for enum type from member access like Direction.North
+	if member, ok := node.Value.(*ast.MemberExprNode); ok {
+		if id, ok := member.Object.(*ast.IdentifierNode); ok {
+			if sym := a.currentScope.Resolve(id.Name); sym != nil {
+				if sym.Node != nil {
+					if enumDecl, ok := sym.Node.(*ast.EnumDeclNode); ok {
+						enumType = enumDecl
+					}
+				}
+			}
+		}
+	}
+
 	for _, c := range node.Cases {
 		scope := NewScope(a.currentScope)
 		a.currentScope = scope
@@ -1513,6 +1542,31 @@ func (a *SemanticAnalyzer) VisitMatchStmt(node *ast.MatchStmtNode) {
 			}
 			scope.Define(&Symbol{Name: c.VarName, Type: typ, SymbolType: SymbolVariable, Node: c})
 		}
+
+		// Track enum value coverage
+		if c.Literal != nil {
+			if id, ok := c.Literal.(*ast.IdentifierNode); ok {
+				coveredEnumValues[id.Name] = true
+			} else if member, ok := c.Literal.(*ast.MemberExprNode); ok {
+				coveredEnumValues[member.Property] = true
+			}
+		}
+		if c.Pattern != nil {
+			// Check for underscore (wildcard/default)
+			if id, ok := c.Pattern.(*ast.IdentifierNode); ok {
+				if id.Name == "_" {
+					hasDefault = true
+				}
+			}
+			// Check for enum variant pattern
+			if member, ok := c.Pattern.(*ast.MemberExprNode); ok {
+				coveredEnumValues[member.Property] = true
+			}
+		}
+		if c.TypeName == "_" {
+			hasDefault = true
+		}
+
 		// Handle match expression (ExprBody) or match statement (Body)
 		if c.Body != nil {
 			a.VisitNode(c.Body)
@@ -1520,6 +1574,16 @@ func (a *SemanticAnalyzer) VisitMatchStmt(node *ast.MatchStmtNode) {
 			a.VisitNode(c.ExprBody)
 		}
 		a.currentScope = scope.Parent
+	}
+
+	// Check exhaustiveness for enum types
+	if enumType != nil && !hasDefault {
+		for _, enumValue := range enumType.Values {
+			if !coveredEnumValues[enumValue] {
+				a.AddError(fmt.Errorf("non-exhaustive match: enum value '%s' not covered at line %d (add case for '%s' or use '_' as default)",
+					enumValue, node.Line, enumValue))
+			}
+		}
 	}
 }
 
