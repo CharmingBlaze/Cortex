@@ -1,0 +1,482 @@
+// empire_builder.cx - An Epic Incremental Empire Builder!
+// Build your empire from a small village to a galactic civilization!
+
+#include <gui_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// ============== GAME STATE ==============
+double gold = 0.0;
+double gold_per_click = 1.0;
+double gold_per_second = 0.0;
+int total_clicks = 0;
+int total_gold_earned = 0;
+
+double gems = 0.0;
+int prestige_level = 0;
+double prestige_multiplier = 1.0;
+
+// Achievement tracking
+int achievements_unlocked = 0;
+int achievement_clicks = 0;
+int achievement_gold = 0;
+int achievement_buildings = 0;
+
+// Building counts
+int peasants = 0;
+int merchants = 0;
+int workshops = 0;
+int markets = 0;
+int castles = 0;
+int cathedrals = 0;
+int palaces = 0;
+int factories = 0;
+int skyscrapers = 0;
+int spaceports = 0;
+
+// Building costs
+double peasant_cost = 10.0;
+double merchant_cost = 100.0;
+double workshop_cost = 500.0;
+double market_cost = 2500.0;
+double castle_cost = 15000.0;
+double cathedral_cost = 100000.0;
+double palace_cost = 500000.0;
+double factory_cost = 2500000.0;
+double skyscraper_cost = 15000000.0;
+double spaceport_cost = 100000000.0;
+
+// GUI widgets
+gui_widget gold_label;
+gui_widget gps_label;
+gui_widget gems_label;
+gui_widget achievement_label;
+gui_widget progress_bar;
+gui_widget peasant_btn;
+gui_widget merchant_btn;
+gui_widget workshop_btn;
+gui_widget market_btn;
+gui_widget castle_btn;
+gui_widget cathedral_btn;
+gui_widget palace_btn;
+gui_widget factory_btn;
+gui_widget skyscraper_btn;
+gui_widget spaceport_btn;
+
+// ============== HELPERS ==============
+
+void format_number(double amount, char* buffer) {
+    if (amount >= 1000000000000.0) {
+        sprintf(buffer, "%.2f T", amount / 1000000000000.0);
+    } else if (amount >= 1000000000.0) {
+        sprintf(buffer, "%.2f B", amount / 1000000000.0);
+    } else if (amount >= 1000000.0) {
+        sprintf(buffer, "%.2f M", amount / 1000000.0);
+    } else if (amount >= 1000.0) {
+        sprintf(buffer, "%.2f K", amount / 1000.0);
+    } else {
+        sprintf(buffer, "%.1f", amount);
+    }
+}
+
+void check_achievements() {
+    int new_achievements = 0;
+    
+    if (total_clicks >= 100 && achievement_clicks < 1) { achievement_clicks = 1; new_achievements++; }
+    if (total_clicks >= 1000 && achievement_clicks < 2) { achievement_clicks = 2; new_achievements++; }
+    if (total_clicks >= 10000 && achievement_clicks < 3) { achievement_clicks = 3; new_achievements++; }
+    
+    if (total_gold_earned >= 10000 && achievement_gold < 1) { achievement_gold = 1; new_achievements++; }
+    if (total_gold_earned >= 1000000 && achievement_gold < 2) { achievement_gold = 2; new_achievements++; }
+    if (total_gold_earned >= 100000000 && achievement_gold < 3) { achievement_gold = 3; new_achievements++; }
+    
+    int total_buildings = peasants + merchants + workshops + markets + castles + cathedrals + palaces + factories + skyscrapers + spaceports;
+    if (total_buildings >= 10 && achievement_buildings < 1) { achievement_buildings = 1; new_achievements++; }
+    if (total_buildings >= 50 && achievement_buildings < 2) { achievement_buildings = 2; new_achievements++; }
+    if (total_buildings >= 200 && achievement_buildings < 3) { achievement_buildings = 3; new_achievements++; }
+    
+    achievements_unlocked = achievement_clicks + achievement_gold + achievement_buildings;
+    
+    if (new_achievements > 0) {
+        char msg[128];
+        sprintf(msg, "Achievement Unlocked! (%d total)", achievements_unlocked);
+        gui_alert_info(msg);
+    }
+}
+
+void update_display() {
+    char buf[128];
+    char display[256];
+    
+    format_number(gold, buf);
+    sprintf(display, "Gold: %s", buf);
+    gui_set_text(gold_label, display);
+    
+    format_number(gold_per_second * prestige_multiplier, buf);
+    sprintf(display, "%.1f gold/sec (x%.1f prestige)", gold_per_second * prestige_multiplier, prestige_multiplier);
+    gui_set_text(gps_label, display);
+    
+    sprintf(display, "Gems: %.0f (Prestige Lv %d)", gems, prestige_level);
+    gui_set_text(gems_label, display);
+    
+    sprintf(display, "Achievements: %d/9", achievements_unlocked);
+    gui_set_text(achievement_label, display);
+    
+    double progress = 0.0;
+    if (gold_per_second > 0) {
+        progress = 0.5;
+    }
+    gui_set_value(progress_bar, progress);
+    
+    // Update building buttons
+    char cost_buf[64];
+    format_number(peasant_cost, cost_buf);
+    sprintf(display, "Peasant (%s) x%d", cost_buf, peasants);
+    gui_set_text(peasant_btn, display);
+    
+    format_number(merchant_cost, cost_buf);
+    sprintf(display, "Merchant (%s) x%d", cost_buf, merchants);
+    gui_set_text(merchant_btn, display);
+    
+    format_number(workshop_cost, cost_buf);
+    sprintf(display, "Workshop (%s) x%d", cost_buf, workshops);
+    gui_set_text(workshop_btn, display);
+    
+    format_number(market_cost, cost_buf);
+    sprintf(display, "Market (%s) x%d", cost_buf, markets);
+    gui_set_text(market_btn, display);
+    
+    format_number(castle_cost, cost_buf);
+    sprintf(display, "Castle (%s) x%d", cost_buf, castles);
+    gui_set_text(castle_btn, display);
+    
+    format_number(cathedral_cost, cost_buf);
+    sprintf(display, "Cathedral (%s) x%d", cost_buf, cathedrals);
+    gui_set_text(cathedral_btn, display);
+    
+    format_number(palace_cost, cost_buf);
+    sprintf(display, "Palace (%s) x%d", cost_buf, palaces);
+    gui_set_text(palace_btn, display);
+    
+    format_number(factory_cost, cost_buf);
+    sprintf(display, "Factory (%s) x%d", cost_buf, factories);
+    gui_set_text(factory_btn, display);
+    
+    format_number(skyscraper_cost, cost_buf);
+    sprintf(display, "Skyscraper (%s) x%d", cost_buf, skyscrapers);
+    gui_set_text(skyscraper_btn, display);
+    
+    format_number(spaceport_cost, cost_buf);
+    sprintf(display, "Spaceport (%s) x%d", cost_buf, spaceports);
+    gui_set_text(spaceport_btn, display);
+}
+
+// ============== CALLBACKS ==============
+
+void on_click(gui_event e) {
+    gold = gold + (gold_per_click * prestige_multiplier);
+    total_clicks++;
+    total_gold_earned = total_gold_earned + (int)(gold_per_click * prestige_multiplier);
+    check_achievements();
+    update_display();
+}
+
+void on_buy_peasant(gui_event e) {
+    if (gold >= peasant_cost) {
+        gold = gold - peasant_cost;
+        peasants++;
+        gold_per_second = gold_per_second + 0.5;
+        peasant_cost = peasant_cost * 1.15;
+        check_achievements();
+        update_display();
+    }
+}
+
+void on_buy_merchant(gui_event e) {
+    if (gold >= merchant_cost) {
+        gold = gold - merchant_cost;
+        merchants++;
+        gold_per_second = gold_per_second + 2.0;
+        merchant_cost = merchant_cost * 1.15;
+        check_achievements();
+        update_display();
+    }
+}
+
+void on_buy_workshop(gui_event e) {
+    if (gold >= workshop_cost) {
+        gold = gold - workshop_cost;
+        workshops++;
+        gold_per_second = gold_per_second + 10.0;
+        workshop_cost = workshop_cost * 1.15;
+        check_achievements();
+        update_display();
+    }
+}
+
+void on_buy_market(gui_event e) {
+    if (gold >= market_cost) {
+        gold = gold - market_cost;
+        markets++;
+        gold_per_second = gold_per_second + 50.0;
+        market_cost = market_cost * 1.15;
+        check_achievements();
+        update_display();
+    }
+}
+
+void on_buy_castle(gui_event e) {
+    if (gold >= castle_cost) {
+        gold = gold - castle_cost;
+        castles++;
+        gold_per_second = gold_per_second + 250.0;
+        castle_cost = castle_cost * 1.15;
+        check_achievements();
+        update_display();
+    }
+}
+
+void on_buy_cathedral(gui_event e) {
+    if (gold >= cathedral_cost) {
+        gold = gold - cathedral_cost;
+        cathedrals++;
+        gold_per_second = gold_per_second + 1000.0;
+        cathedral_cost = cathedral_cost * 1.15;
+        check_achievements();
+        update_display();
+    }
+}
+
+void on_buy_palace(gui_event e) {
+    if (gold >= palace_cost) {
+        gold = gold - palace_cost;
+        palaces++;
+        gold_per_second = gold_per_second + 5000.0;
+        palace_cost = palace_cost * 1.15;
+        check_achievements();
+        update_display();
+    }
+}
+
+void on_buy_factory(gui_event e) {
+    if (gold >= factory_cost) {
+        gold = gold - factory_cost;
+        factories++;
+        gold_per_second = gold_per_second + 25000.0;
+        factory_cost = factory_cost * 1.15;
+        check_achievements();
+        update_display();
+    }
+}
+
+void on_buy_skyscraper(gui_event e) {
+    if (gold >= skyscraper_cost) {
+        gold = gold - skyscraper_cost;
+        skyscrapers++;
+        gold_per_second = gold_per_second + 100000.0;
+        skyscraper_cost = skyscraper_cost * 1.15;
+        check_achievements();
+        update_display();
+    }
+}
+
+void on_buy_spaceport(gui_event e) {
+    if (gold >= spaceport_cost) {
+        gold = gold - spaceport_cost;
+        spaceports++;
+        gold_per_second = gold_per_second + 500000.0;
+        spaceport_cost = spaceport_cost * 1.15;
+        check_achievements();
+        update_display();
+    }
+}
+
+void on_prestige_confirm(gui_event e) {
+    if (e.checked) {
+        double gems_earned = gold / 1000000.0;
+        if (gems_earned < 1.0) gems_earned = 0.0;
+        
+        gems = gems + gems_earned;
+        prestige_level++;
+        double level_bonus = prestige_level * 0.5;
+        double gem_bonus = gems * 0.1;
+        prestige_multiplier = 1.0 + level_bonus + gem_bonus;
+        
+        gold = 0.0;
+        gold_per_click = 1.0;
+        gold_per_second = 0.0;
+        peasants = 0;
+        merchants = 0;
+        workshops = 0;
+        markets = 0;
+        castles = 0;
+        cathedrals = 0;
+        palaces = 0;
+        factories = 0;
+        skyscrapers = 0;
+        spaceports = 0;
+        peasant_cost = 10.0;
+        merchant_cost = 100.0;
+        workshop_cost = 500.0;
+        market_cost = 2500.0;
+        castle_cost = 15000.0;
+        cathedral_cost = 100000.0;
+        palace_cost = 500000.0;
+        factory_cost = 2500000.0;
+        skyscraper_cost = 15000000.0;
+        spaceport_cost = 100000000.0;
+        
+        char msg[128];
+        sprintf(msg, "Prestige! Earned %.0f gems! Multiplier now x%.1f", gems_earned, prestige_multiplier);
+        gui_alert_info(msg);
+        update_display();
+    }
+}
+
+void on_prestige(gui_event e) {
+    double gems_earned = gold / 1000000.0;
+    if (gems_earned < 1.0) {
+        gui_alert_info("Need at least 1M gold to prestige!");
+        return;
+    }
+    char msg[128];
+    sprintf(msg, "Prestige for %.0f gems? This resets buildings!", gems_earned);
+    gui_confirm(msg, on_prestige_confirm);
+}
+
+void on_achievements(gui_event e) {
+    char msg[1024];
+    strcpy(msg, "ACHIEVEMENTS:\n\n");
+    
+    if (achievement_clicks >= 1) {
+        strcat(msg, "[X] Clicker Novice (100 clicks)\n");
+    } else {
+        strcat(msg, "[ ] Clicker Novice (100 clicks)\n");
+    }
+    if (achievement_clicks >= 2) {
+        strcat(msg, "[X] Clicker Pro (1K clicks)\n");
+    } else {
+        strcat(msg, "[ ] Clicker Pro (1K clicks)\n");
+    }
+    if (achievement_clicks >= 3) {
+        strcat(msg, "[X] Clicker Master (10K clicks)\n\n");
+    } else {
+        strcat(msg, "[ ] Clicker Master (10K clicks)\n\n");
+    }
+    
+    if (achievement_gold >= 1) {
+        strcat(msg, "[X] Gold Hoarder (10K gold)\n");
+    } else {
+        strcat(msg, "[ ] Gold Hoarder (10K gold)\n");
+    }
+    if (achievement_gold >= 2) {
+        strcat(msg, "[X] Gold Baron (1M gold)\n");
+    } else {
+        strcat(msg, "[ ] Gold Baron (1M gold)\n");
+    }
+    if (achievement_gold >= 3) {
+        strcat(msg, "[X] Gold Emperor (100M gold)\n\n");
+    } else {
+        strcat(msg, "[ ] Gold Emperor (100M gold)\n\n");
+    }
+    
+    if (achievement_buildings >= 1) {
+        strcat(msg, "[X] Builder (10 buildings)\n");
+    } else {
+        strcat(msg, "[ ] Builder (10 buildings)\n");
+    }
+    if (achievement_buildings >= 2) {
+        strcat(msg, "[X] Architect (50 buildings)\n");
+    } else {
+        strcat(msg, "[ ] Architect (50 buildings)\n");
+    }
+    if (achievement_buildings >= 3) {
+        strcat(msg, "[X] Empire Builder (200 buildings)");
+    } else {
+        strcat(msg, "[ ] Empire Builder (200 buildings)");
+    }
+    
+    gui_alert_info(msg);
+}
+
+// ============== MAIN ==============
+
+fn main() {
+    gui_start("Empire Builder", 500, 700);
+    gui_set_spacing(8);
+    gui_set_margin(15);
+    
+    gui_add(gui_header("EMPIRE BUILDER"));
+    gui_add(gui_label("Build your empire from village to galaxy!"));
+    gui_add(gui_separator());
+    
+    gold_label = gui_label("Gold: 0");
+    gui_add(gold_label);
+    
+    gps_label = gui_label("0 gold/sec (x1.0 prestige)");
+    gui_add(gps_label);
+    
+    gems_label = gui_label("Gems: 0 (Prestige Lv 0)");
+    gui_add(gems_label);
+    
+    achievement_label = gui_label("Achievements: 0/9");
+    gui_add(achievement_label);
+    
+    progress_bar = gui_progress();
+    gui_add(progress_bar);
+    
+    gui_add(gui_separator());
+    
+    gui_add(gui_button("MINE GOLD!", on_click));
+    gui_add(gui_button("View Achievements", on_achievements));
+    gui_add(gui_button("Prestige (Reset for Gems)", on_prestige));
+    
+    gui_add(gui_separator());
+    gui_add(gui_header("BUILDINGS"));
+    
+    gui_container row1 = gui_hbox();
+    peasant_btn = gui_button("Peasant (10) x0", on_buy_peasant);
+    gui_add_to(row1, peasant_btn);
+    merchant_btn = gui_button("Merchant (100) x0", on_buy_merchant);
+    gui_add_to(row1, merchant_btn);
+    gui_add(row1);
+    
+    gui_container row2 = gui_hbox();
+    workshop_btn = gui_button("Workshop (500) x0", on_buy_workshop);
+    gui_add_to(row2, workshop_btn);
+    market_btn = gui_button("Market (2.5K) x0", on_buy_market);
+    gui_add_to(row2, market_btn);
+    gui_add(row2);
+    
+    gui_container row3 = gui_hbox();
+    castle_btn = gui_button("Castle (15K) x0", on_buy_castle);
+    gui_add_to(row3, castle_btn);
+    cathedral_btn = gui_button("Cathedral (100K) x0", on_buy_cathedral);
+    gui_add_to(row3, cathedral_btn);
+    gui_add(row3);
+    
+    gui_container row4 = gui_hbox();
+    palace_btn = gui_button("Palace (500K) x0", on_buy_palace);
+    gui_add_to(row4, palace_btn);
+    factory_btn = gui_button("Factory (2.5M) x0", on_buy_factory);
+    gui_add_to(row4, factory_btn);
+    gui_add(row4);
+    
+    gui_container row5 = gui_hbox();
+    skyscraper_btn = gui_button("Skyscraper (15M) x0", on_buy_skyscraper);
+    gui_add_to(row5, skyscraper_btn);
+    spaceport_btn = gui_button("Spaceport (100M) x0", on_buy_spaceport);
+    gui_add_to(row5, spaceport_btn);
+    gui_add(row5);
+    
+    gui_add(gui_separator());
+    
+    gui_add(gui_subheader("Production Rates:"));
+    gui_add(gui_label("Peasant: 0.5/s | Merchant: 2/s | Workshop: 10/s"));
+    gui_add(gui_label("Market: 50/s | Castle: 250/s | Cathedral: 1K/s"));
+    gui_add(gui_label("Palace: 5K/s | Factory: 25K/s | Skyscraper: 100K/s"));
+    gui_add(gui_label("Spaceport: 500K/s"));
+    
+    gui_run();
+}
