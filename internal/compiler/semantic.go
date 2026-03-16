@@ -516,6 +516,186 @@ func (a *SemanticAnalyzer) RegisterBuiltins() {
 		Node:       nil,
 	})
 	a.globalScope.Define(&Symbol{
+		Name:       "gui_start",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_run",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_quit",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_add",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_add_to",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_label",
+		Type:       "gui_widget",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_button",
+		Type:       "gui_widget",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_button_ok",
+		Type:       "gui_widget",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_entry",
+		Type:       "gui_widget",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_check",
+		Type:       "gui_widget",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_slider",
+		Type:       "gui_widget",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_progress",
+		Type:       "gui_widget",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_separator",
+		Type:       "gui_widget",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_hbox",
+		Type:       "gui_container",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_vbox",
+		Type:       "gui_container",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_set_text",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_get_text",
+		Type:       "string",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_set_value",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_get_value",
+		Type:       "double",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_spacing",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_set_spacing",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_set_margin",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_alert_info",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_alert_error",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_confirm",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_header",
+		Type:       "gui_widget",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_subheader",
+		Type:       "gui_widget",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_label_create",
+		Type:       "gui_widget",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_button_create",
+		Type:       "gui_widget",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "gui_container_add",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
 		Name:       "gui_dialog_info",
 		Type:       "void",
 		SymbolType: SymbolFunction,

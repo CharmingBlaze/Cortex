@@ -1,0 +1,278 @@
+// coin_clicker_console.cx - Console Incremental Game!
+// A fun clicker game that runs in the terminal
+
+#include <stdio.h>
+#include <stdlib.h>
+
+// ============== GAME STATE ==============
+double coins = 0.0;
+double coins_per_click = 1.0;
+double coins_per_second = 0.0;
+int total_clicks = 0;
+
+// Upgrade counts
+int cursors = 0;
+int grandmas = 0;
+int farms = 0;
+int mines = 0;
+int factories = 0;
+int banks = 0;
+int temples = 0;
+
+// Upgrade costs
+double cursor_cost = 15.0;
+double grandma_cost = 100.0;
+double farm_cost = 1100.0;
+double mine_cost = 12000.0;
+double factory_cost = 130000.0;
+double bank_cost = 1400000.0;
+double temple_cost = 20000000.0;
+
+// ============== HELPERS ==============
+
+void format_coins(double amount, char* buffer) {
+    if (amount >= 1000000000.0) {
+        sprintf(buffer, "%.2f B", amount / 1000000000.0);
+    } else if (amount >= 1000000.0) {
+        sprintf(buffer, "%.2f M", amount / 1000000.0);
+    } else if (amount >= 1000.0) {
+        sprintf(buffer, "%.2f K", amount / 1000.0);
+    } else {
+        sprintf(buffer, "%.1f", amount);
+    }
+}
+
+void clear_screen() {
+    system("cls");
+}
+
+void show_header() {
+    printf("========================================\n");
+    printf("       COIN CLICKER - Console Edition\n");
+    printf("========================================\n\n");
+}
+
+void show_stats() {
+    char buffer[64];
+    format_coins(coins, buffer);
+    
+    printf("========================================\n");
+    printf("  COINS: %s\n", buffer);
+    printf("  PER SECOND: %.1f\n", coins_per_second);
+    printf("  TOTAL CLICKS: %d\n", total_clicks);
+    printf("========================================\n\n");
+}
+
+void show_upgrades() {
+    char buf[64];
+    
+    printf("UPGRADES:\n");
+    printf("----------------------------------------\n");
+    
+    format_coins(cursor_cost, buf);
+    printf("  [1] Cursor      (x%d) - %s coins  +0.1/s\n", cursors, buf);
+    
+    format_coins(grandma_cost, buf);
+    printf("  [2] Grandma     (x%d) - %s coins  +1/s\n", grandmas, buf);
+    
+    format_coins(farm_cost, buf);
+    printf("  [3] Farm        (x%d) - %s coins  +8/s\n", farms, buf);
+    
+    format_coins(mine_cost, buf);
+    printf("  [4] Mine        (x%d) - %s coins +47/s\n", mines, buf);
+    
+    format_coins(factory_cost, buf);
+    printf("  [5] Factory     (x%d) - %s coins +260/s\n", factories, buf);
+    
+    format_coins(bank_cost, buf);
+    printf("  [6] Bank        (x%d) - %s coins +1.4K/s\n", banks, buf);
+    
+    format_coins(temple_cost, buf);
+    printf("  [7] Temple      (x%d) - %s coins +7.7K/s\n", temples, buf);
+    
+    printf("----------------------------------------\n\n");
+}
+
+void show_instructions() {
+    printf("CONTROLS:\n");
+    printf("  [C] = Click for coins!\n");
+    printf("  [1-7] = Buy upgrade\n");
+    printf("  [R] = Reset game\n");
+    printf("  [Q] = Quit\n\n");
+}
+
+int can_afford(double cost) {
+    return coins >= cost;
+}
+
+void buy_cursor() {
+    if (can_afford(cursor_cost)) {
+        coins -= cursor_cost;
+        cursors++;
+        coins_per_second += 0.1;
+        cursor_cost *= 1.15;
+        printf(">> Hired a Cursor! +0.1 coins/sec\n");
+    } else {
+        printf(">> Not enough coins!\n");
+    }
+}
+
+void buy_grandma() {
+    if (can_afford(grandma_cost)) {
+        coins -= grandma_cost;
+        grandmas++;
+        coins_per_second += 1.0;
+        grandma_cost *= 1.15;
+        printf(">> Hired a Grandma! +1 coin/sec\n");
+    } else {
+        printf(">> Not enough coins!\n");
+    }
+}
+
+void buy_farm() {
+    if (can_afford(farm_cost)) {
+        coins -= farm_cost;
+        farms++;
+        coins_per_second += 8.0;
+        farm_cost *= 1.15;
+        printf(">> Built a Farm! +8 coins/sec\n");
+    } else {
+        printf(">> Not enough coins!\n");
+    }
+}
+
+void buy_mine() {
+    if (can_afford(mine_cost)) {
+        coins -= mine_cost;
+        mines++;
+        coins_per_second += 47.0;
+        mine_cost *= 1.15;
+        printf(">> Opened a Mine! +47 coins/sec\n");
+    } else {
+        printf(">> Not enough coins!\n");
+    }
+}
+
+void buy_factory() {
+    if (can_afford(factory_cost)) {
+        coins -= factory_cost;
+        factories++;
+        coins_per_second += 260.0;
+        factory_cost *= 1.15;
+        printf(">> Built a Factory! +260 coins/sec\n");
+    } else {
+        printf(">> Not enough coins!\n");
+    }
+}
+
+void buy_bank() {
+    if (can_afford(bank_cost)) {
+        coins -= bank_cost;
+        banks++;
+        coins_per_second += 1400.0;
+        bank_cost *= 1.15;
+        printf(">> Opened a Bank! +1.4K coins/sec\n");
+    } else {
+        printf(">> Not enough coins!\n");
+    }
+}
+
+void buy_temple() {
+    if (can_afford(temple_cost)) {
+        coins -= temple_cost;
+        temples++;
+        coins_per_second += 7700.0;
+        temple_cost *= 1.15;
+        printf(">> Built a Temple! +7.7K coins/sec\n");
+    } else {
+        printf(">> Not enough coins!\n");
+    }
+}
+
+void do_click() {
+    coins += coins_per_click;
+    total_clicks++;
+    char buffer[64];
+    format_coins(coins, buffer);
+    printf(">> CLICK! Coins: %s (+%.1f this click)\n", buffer, coins_per_click);
+}
+
+void reset_game() {
+    coins = 0.0;
+    coins_per_click = 1.0;
+    coins_per_second = 0.0;
+    total_clicks = 0;
+    cursors = 0;
+    grandmas = 0;
+    farms = 0;
+    mines = 0;
+    factories = 0;
+    banks = 0;
+    temples = 0;
+    cursor_cost = 15.0;
+    grandma_cost = 100.0;
+    farm_cost = 1100.0;
+    mine_cost = 12000.0;
+    factory_cost = 130000.0;
+    bank_cost = 1400000.0;
+    temple_cost = 20000000.0;
+    printf(">> Game Reset!\n");
+}
+
+void main() {
+    char input[10];
+    int running = 1;
+    
+    while (running == 1) {
+        clear_screen();
+        show_header();
+        show_stats();
+        show_upgrades();
+        show_instructions();
+        
+        printf("Enter command: ");
+        scanf("%s", input);
+        
+        if (input[0] == 'q') {
+            running = 0;
+            printf("\nThanks for playing! Final coins: ");
+            char buf[64];
+            format_coins(coins, buf);
+            printf("%s\n", buf);
+        } else if (input[0] == 'Q') {
+            running = 0;
+            printf("\nThanks for playing! Final coins: ");
+            char buf[64];
+            format_coins(coins, buf);
+            printf("%s\n", buf);
+        } else if (input[0] == 'c') {
+            do_click();
+        } else if (input[0] == 'C') {
+            do_click();
+        } else if (input[0] == 'r') {
+            reset_game();
+        } else if (input[0] == 'R') {
+            reset_game();
+        } else if (input[0] == '1') {
+            buy_cursor();
+        } else if (input[0] == '2') {
+            buy_grandma();
+        } else if (input[0] == '3') {
+            buy_farm();
+        } else if (input[0] == '4') {
+            buy_mine();
+        } else if (input[0] == '5') {
+            buy_factory();
+        } else if (input[0] == '6') {
+            buy_bank();
+        } else if (input[0] == '7') {
+            buy_temple();
+        }
+        
+        if (running == 1) {
+            printf("\nPress Enter to continue...");
+            getchar();
+            getchar();
+        }
+    }
+}

@@ -843,6 +843,9 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 			args = append(args, "-I", msysInclude+"/glib-2.0")
 			args = append(args, "-I", msysLib+"/glib-2.0/include")
 			args = append(args, "-I", msysInclude+"/harfbuzz")
+			args = append(args, "-I", msysInclude+"/freetype2")
+			args = append(args, "-I", msysInclude+"/libpng16")
+			args = append(args, "-I", msysInclude+"/pixman-1")
 			args = append(args, "-L", msysLib)
 		}
 		// Add GTK4 GUI implementation for all platforms
@@ -854,7 +857,7 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 				args = append(args, srcPath)
 			}
 		}
-		// Link GTK4 libraries (from pkg-config --libs gtk4)
+		// Link GTK4 libraries
 		args = append(args, "-lgtk-4", "-lpangocairo-1.0", "-lpangowin32-1.0", "-lpango-1.0",
 			"-lgdk_pixbuf-2.0", "-lcairo-gobject", "-lcairo", "-lharfbuzz", "-lvulkan-1",
 			"-lgraphene-1.0", "-lgio-2.0", "-lgobject-2.0", "-lglib-2.0", "-lintl")

@@ -1,0 +1,233 @@
+// coin_clicker_gui.cx - A Fun Incremental Game with Internal GUI!
+// Click your way to riches!
+
+#include <gui_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+// ============== GAME STATE ==============
+double coins = 0.0;
+double coins_per_click = 1.0;
+double coins_per_second = 0.0;
+int total_clicks = 0;
+
+int cursors = 0;
+int grandmas = 0;
+int farms = 0;
+int mines = 0;
+int factories = 0;
+
+double cursor_cost = 15.0;
+double grandma_cost = 100.0;
+double farm_cost = 1100.0;
+double mine_cost = 12000.0;
+double factory_cost = 130000.0;
+
+// GUI widgets for updating display
+gui_widget coin_label;
+gui_widget cps_label;
+gui_widget cursor_btn;
+gui_widget grandma_btn;
+gui_widget farm_btn;
+gui_widget mine_btn;
+gui_widget factory_btn;
+
+// ============== HELPERS ==============
+
+void format_coins(double amount, char* buffer) {
+    if (amount >= 1000000000.0) {
+        sprintf(buffer, "%.2f B", amount / 1000000000.0);
+    } else if (amount >= 1000000.0) {
+        sprintf(buffer, "%.2f M", amount / 1000000.0);
+    } else if (amount >= 1000.0) {
+        sprintf(buffer, "%.2f K", amount / 1000.0);
+    } else {
+        sprintf(buffer, "%.1f", amount);
+    }
+}
+
+void update_display() {
+    char buf[128];
+    char cost_buf[64];
+    
+    // Update coin display
+    format_coins(coins, buf);
+    char display[256];
+    sprintf(display, "Coins: %s", buf);
+    gui_set_text(coin_label, display);
+    
+    // Update CPS display
+    sprintf(display, "%.1f coins/sec | Clicks: %d", coins_per_second, total_clicks);
+    gui_set_text(cps_label, display);
+    
+    // Update button costs
+    format_coins(cursor_cost, cost_buf);
+    sprintf(display, "Cursor (%s) x%d", cost_buf, cursors);
+    gui_set_text(cursor_btn, display);
+    
+    format_coins(grandma_cost, cost_buf);
+    sprintf(display, "Grandma (%s) x%d", cost_buf, grandmas);
+    gui_set_text(grandma_btn, display);
+    
+    format_coins(farm_cost, cost_buf);
+    sprintf(display, "Farm (%s) x%d", cost_buf, farms);
+    gui_set_text(farm_btn, display);
+    
+    format_coins(mine_cost, cost_buf);
+    sprintf(display, "Mine (%s) x%d", cost_buf, mines);
+    gui_set_text(mine_btn, display);
+    
+    format_coins(factory_cost, cost_buf);
+    sprintf(display, "Factory (%s) x%d", cost_buf, factories);
+    gui_set_text(factory_btn, display);
+}
+
+// ============== CALLBACKS ==============
+
+void on_click(gui_event e) {
+    coins = coins + coins_per_click;
+    total_clicks = total_clicks + 1;
+    update_display();
+}
+
+void on_buy_cursor(gui_event e) {
+    if (coins >= cursor_cost) {
+        coins = coins - cursor_cost;
+        cursors = cursors + 1;
+        coins_per_second = coins_per_second + 0.1;
+        cursor_cost = cursor_cost * 1.15;
+        update_display();
+        gui_alert_info("Hired a Cursor! +0.1 coins/sec");
+    } else {
+        gui_alert_info("Not enough coins!");
+    }
+}
+
+void on_buy_grandma(gui_event e) {
+    if (coins >= grandma_cost) {
+        coins = coins - grandma_cost;
+        grandmas = grandmas + 1;
+        coins_per_second = coins_per_second + 1.0;
+        grandma_cost = grandma_cost * 1.15;
+        update_display();
+        gui_alert_info("Hired a Grandma! +1 coin/sec");
+    } else {
+        gui_alert_info("Not enough coins!");
+    }
+}
+
+void on_buy_farm(gui_event e) {
+    if (coins >= farm_cost) {
+        coins = coins - farm_cost;
+        farms = farms + 1;
+        coins_per_second = coins_per_second + 8.0;
+        farm_cost = farm_cost * 1.15;
+        update_display();
+        gui_alert_info("Built a Farm! +8 coins/sec");
+    } else {
+        gui_alert_info("Not enough coins!");
+    }
+}
+
+void on_buy_mine(gui_event e) {
+    if (coins >= mine_cost) {
+        coins = coins - mine_cost;
+        mines = mines + 1;
+        coins_per_second = coins_per_second + 47.0;
+        mine_cost = mine_cost * 1.15;
+        update_display();
+        gui_alert_info("Opened a Mine! +47 coins/sec");
+    } else {
+        gui_alert_info("Not enough coins!");
+    }
+}
+
+void on_buy_factory(gui_event e) {
+    if (coins >= factory_cost) {
+        coins = coins - factory_cost;
+        factories = factories + 1;
+        coins_per_second = coins_per_second + 260.0;
+        factory_cost = factory_cost * 1.15;
+        update_display();
+        gui_alert_info("Built a Factory! +260 coins/sec");
+    } else {
+        gui_alert_info("Not enough coins!");
+    }
+}
+
+void on_reset_confirm(gui_event e) {
+    if (e.checked) {
+        coins = 0.0;
+        coins_per_click = 1.0;
+        coins_per_second = 0.0;
+        total_clicks = 0;
+        cursors = 0;
+        grandmas = 0;
+        farms = 0;
+        mines = 0;
+        factories = 0;
+        cursor_cost = 15.0;
+        grandma_cost = 100.0;
+        farm_cost = 1100.0;
+        mine_cost = 12000.0;
+        factory_cost = 130000.0;
+        update_display();
+        gui_alert_info("Game Reset!");
+    }
+}
+
+void on_reset(gui_event e) {
+    gui_confirm("Reset all progress?", on_reset_confirm);
+}
+
+// ============== MAIN ==============
+
+fn main() {
+    gui_start("Coin Clicker!", 400, 600);
+    gui_set_spacing(12);
+    gui_set_margin(20);
+    
+    // Title
+    gui_add(gui_label("=== COIN CLICKER ==="));
+    gui_add(gui_separator());
+    
+    // Stats display
+    coin_label = gui_label("Coins: 0");
+    gui_add(coin_label);
+    
+    cps_label = gui_label("0.0 coins/sec | Clicks: 0");
+    gui_add(cps_label);
+    
+    gui_add(gui_separator());
+    
+    // Main click button
+    gui_add(gui_label("Click to earn coins:"));
+    gui_add(gui_button("CLICK!", on_click));
+    
+    gui_add(gui_separator());
+    
+    // Upgrades
+    gui_add(gui_label("=== UPGRADES ==="));
+    
+    cursor_btn = gui_button("Cursor (15) x0", on_buy_cursor);
+    gui_add(cursor_btn);
+    
+    grandma_btn = gui_button("Grandma (100) x0", on_buy_grandma);
+    gui_add(grandma_btn);
+    
+    farm_btn = gui_button("Farm (1.1K) x0", on_buy_farm);
+    gui_add(farm_btn);
+    
+    mine_btn = gui_button("Mine (12K) x0", on_buy_mine);
+    gui_add(mine_btn);
+    
+    factory_btn = gui_button("Factory (130K) x0", on_buy_factory);
+    gui_add(factory_btn);
+    
+    gui_add(gui_separator());
+    
+    // Reset
+    gui_add(gui_button("Reset Game", on_reset));
+    
+    gui_run();
+}
