@@ -567,6 +567,120 @@ Use **`break;`** to exit a loop and **`continue;`** to skip to the next iteratio
 
 ---
 
+## Switch and Select Case
+
+Cortex provides two styles of multi-way branching: C-style `switch` and BASIC-style `SELECT CASE`.
+
+### C-Style Switch
+
+Classic C-style switch with `case`, `default`, and `break`:
+
+```c
+int day = 3;
+string day_name;
+
+switch (day)
+{
+    case 1:
+    {
+        day_name = "Monday";
+        break;
+    }
+    case 2:
+    {
+        day_name = "Tuesday";
+        break;
+    }
+    case 3:
+    {
+        day_name = "Wednesday";
+        break;
+    }
+    default:
+    {
+        day_name = "Other day";
+    }
+}
+
+show(day_name);  // "Wednesday"
+```
+
+**Rules:**
+- Each `case` needs a constant value (no expressions)
+- `default` handles unmatched values
+- Use `break` to prevent fallthrough (required in Cortex)
+
+### BASIC-Style SELECT CASE
+
+More readable syntax with ranges and multiple values:
+
+```c
+int score = 75;
+string grade;
+
+SELECT CASE score
+    CASE 0
+        grade = "No score";
+    CASE 1, 2, 3
+        grade = "Low";
+    CASE 4 TO 10
+        grade = "Fair";
+    CASE 11 TO 50
+        grade = "Good";
+    CASE 51 TO 100
+        grade = "Excellent";
+    CASE ELSE
+        grade = "Invalid";
+END SELECT
+
+show(grade);  // "Excellent"
+```
+
+**Features:**
+- Multiple values: `CASE 1, 2, 3`
+- Ranges: `CASE 10 TO 20`
+- Default case: `CASE ELSE`
+- No fallthrough (each case is separate)
+
+### Named and Default Parameters
+
+Functions can have named parameters with default values:
+
+```c
+int create_player(string name, int health: 100, int score: 0)
+{
+    show("Created " + name + " with " + health + " HP");
+    return score;
+}
+
+void main()
+{
+    create_player("Hero");                    // health=100, score=0
+    create_player("Tank", health: 200);       // score=0
+    create_player("Pro", score: 5000);        // health=100
+}
+```
+
+### Public and Private Visibility
+
+Control which functions are accessible from other modules:
+
+```c
+// Public - can be called from other modules
+public fn api_get_data() -> string
+{
+    return "data";
+}
+
+// Private - only accessible within this module
+private fn helper_function() -> int
+{
+    return 42;
+}
+```
+
+---
+
 ## Functions
 
 Define a function with **return type**, **name**, **parameters**, and a **body**:

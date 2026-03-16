@@ -49,6 +49,7 @@ const (
 	TokenBreak
 	TokenContinue
 	TokenSwitch
+	TokenSelect
 	TokenIn
 	TokenTrue
 	TokenFalse
@@ -72,6 +73,9 @@ const (
 	TokenTypeKeyword
 	TokenEndType
 	TokenAs
+	TokenEnd
+	TokenPublic
+	TokenPrivate
 
 	// Preprocessor
 	TokenInclude
@@ -602,6 +606,7 @@ func (l *Lexer) GetKeywordType(identifier string) TokenType {
 		"break":     TokenBreak,
 		"continue":  TokenContinue,
 		"switch":    TokenSwitch,
+		"select":    TokenSelect,
 		"in":        TokenIn,
 		"true":      TokenTrue,
 		"false":     TokenFalse,
@@ -618,7 +623,10 @@ func (l *Lexer) GetKeywordType(identifier string) TokenType {
 		"throw":     TokenThrow,
 		"type":      TokenTypeKeyword,
 		"endtype":   TokenEndType,
+		"end":       TokenEnd,
 		"as":        TokenAs,
+		"public":    TokenPublic,
+		"private":   TokenPrivate,
 	}
 
 	if tokenType, exists := keywords[lowerIdent]; exists {

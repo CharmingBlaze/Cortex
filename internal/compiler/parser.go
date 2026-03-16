@@ -728,6 +728,13 @@ func (p *Parser) ParseFunctionDeclaration(typeToken, nameToken Token) (ast.ASTNo
 	line, col := p.Peek().Line, p.Peek().Column
 	isAsync := p.Match(TokenAsync)
 	isCoroutine := p.Match(TokenCoroutine)
+
+	// Check for visibility modifiers (public/private)
+	isPublic := p.Match(TokenPublic)
+	isPrivate := p.Match(TokenPrivate)
+	_ = isPublic // Track visibility for semantic analysis
+	_ = isPrivate
+
 	p.Consume(TokenLParen, "Expected '(' after function name")
 
 	var parameters []*ast.ParameterNode
@@ -954,6 +961,9 @@ func (p *Parser) ParseStatement() (ast.ASTNode, error) {
 	}
 	if p.Match(TokenSwitch) {
 		return p.ParseSwitchStatement()
+	}
+	if p.Match(TokenSelect) {
+		return p.ParseSelectStatement()
 	}
 	if p.Match(TokenTest) {
 		return p.ParseTestStatement()
@@ -1465,6 +1475,114 @@ func (p *Parser) ParseSwitchStatement() (ast.ASTNode, error) {
 		}
 	}
 	p.Consume(TokenRBrace, "Expected '}' after switch")
+	return &ast.SwitchStmtNode{
+		BaseNode: ast.BaseNode{Type: ast.NodeSwitchStmt, Line: value.GetLine(), Column: value.GetColumn()},
+		Value:    value,
+		Cases:    cases,
+	}, nil
+}
+
+// ParseSelectStatement parses BASIC-style SELECT CASE statements
+// Syntax: SELECT CASE expression
+//
+//	  CASE value1, value2
+//	    statements
+//	  CASE start TO end
+//	    statements
+//	  CASE ELSE
+//	    statements
+//	END SELECT
+func (p *Parser) ParseSelectStatement() (ast.ASTNode, error) {
+	p.Consume(TokenCase, "Expected 'CASE' after 'SELECT'")
+	value, err := p.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	var cases []*ast.SwitchCaseNode
+
+	for !p.Check(TokenEnd) && !p.IsAtEnd() {
+		if !p.Match(TokenCase) {
+			// Check for CASE ELSE
+			if p.Check(TokenElse) {
+				p.Advance()
+				body, err := p.ParseBlock()
+				if err != nil {
+					return nil, err
+				}
+				cases = append(cases, &ast.SwitchCaseNode{
+					BaseNode: ast.BaseNode{Type: ast.NodeSwitchCase, Line: p.Previous().Line, Column: p.Previous().Column},
+					Constant: nil, // default case
+					Body:     body.(*ast.BlockNode),
+				})
+				break
+			}
+			return nil, fmt.Errorf("expected 'CASE' in select statement at line %d", p.Peek().Line)
+		}
+
+		// Parse case values (can be multiple: CASE 1, 2, 3)
+		// Or ranges: CASE 1 TO 10
+		var constants []ast.ASTNode
+
+		for {
+			// Check for range: value TO value
+			startConst, err := p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+			constants = append(constants, startConst)
+
+			// Check for TO (range)
+			if p.Check(TokenIdentifier) && p.Peek().Value == "to" {
+				p.Advance() // consume 'to'
+				endConst, err := p.ParseExpression()
+				if err != nil {
+					return nil, err
+				}
+				// Create a range expression node
+				constants = append(constants, &ast.BinaryExprNode{
+					BaseNode: ast.BaseNode{Type: ast.NodeBinaryExpr, Line: startConst.GetLine(), Column: startConst.GetColumn()},
+					Left:     startConst,
+					Operator: "..",
+					Right:    endConst,
+				})
+			}
+
+			// Check for comma (multiple values)
+			if !p.Match(TokenComma) {
+				break
+			}
+		}
+
+		// Parse body until next CASE or END SELECT
+		var statements []ast.ASTNode
+		for !p.Check(TokenCase) && !p.Check(TokenEnd) && !p.Check(TokenElse) && !p.IsAtEnd() {
+			stmt, err := p.ParseStatement()
+			if err != nil {
+				return nil, err
+			}
+			statements = append(statements, stmt)
+		}
+
+		body := &ast.BlockNode{
+			BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: constants[0].GetLine(), Column: constants[0].GetColumn()},
+			Statements: statements,
+		}
+
+		// Add each constant as a separate case (or range as single case)
+		for _, c := range constants {
+			cases = append(cases, &ast.SwitchCaseNode{
+				BaseNode: ast.BaseNode{Type: ast.NodeSwitchCase, Line: c.GetLine(), Column: c.GetColumn()},
+				Constant: c,
+				Body:     body,
+			})
+		}
+	}
+
+	// Consume END SELECT
+	p.Consume(TokenEnd, "Expected 'END' to close select statement")
+	p.Consume(TokenSelect, "Expected 'SELECT' after 'END'")
+
 	return &ast.SwitchStmtNode{
 		BaseNode: ast.BaseNode{Type: ast.NodeSwitchStmt, Line: value.GetLine(), Column: value.GetColumn()},
 		Value:    value,
