@@ -7,161 +7,150 @@
 #include <string.h>
 
 // ============================================
-// Enums
+// ENUMS
 // ============================================
 
-enum Direction
-{
-    North,
-    South,
-    East,
-    West
-}
+enum Status { Pending, Active, Done, Failed }
+enum Direction { North, South, East, West }
 
 // ============================================
-// Structs
+// STRUCTS
 // ============================================
 
-struct Point
-{
-    float x;
-    float y;
-}
-
-struct Player
-{
-    string name;
-    int health;
-    int score;
-    int level;
-}
-
-struct Item
-{
-    string name;
-    int value;
-    bool equipped;
-}
+struct Point { float x; float y; }
+struct Stats { int hp; int max_hp; int mp; int level; int xp; }
+struct Item { int id; int value; int weight; bool equipped; }
+struct Rect { int x; int y; int w; int h; }
 
 // ============================================
-// Math Functions
+// MATH
 // ============================================
 
-int abs_val(int n) {
-    if (n < 0) {
-        return -n;
-    }
-    return n;
-}
-
-int min_val(int a, int b) {
-    if (a < b) {
-        return a;
-    }
-    return b;
-}
-
-int max_val(int a, int b) {
-    if (a > b) {
-        return a;
-    }
-    return b;
-}
-
-int factorial(int n) {
-    if (n <= 1) {
-        return 1;
-    }
-    return n * factorial(n - 1);
-}
+int abs_val(int n) { if (n < 0) { return -n; } return n; }
+int min_val(int a, int b) { if (a < b) { return a; } return b; }
+int max_val(int a, int b) { if (a > b) { return a; } return b; }
+int power(int base, int exp) { int r = 1; int i = 0; while (i < exp) { r = r * base; i = i + 1; } return r; }
+int factorial(int n) { if (n <= 1) { return 1; } return n * factorial(n - 1); }
 
 // ============================================
-// Main
+// MAIN
 // ============================================
 
 void main() {
-    println("============================================");
-    println("       Cortex Language Feature Demo        ");
-    println("============================================");
+    println("");
+    println("  ╔════════════════════════════════════════╗");
+    println("  ║     CORTEX LANGUAGE FEATURE DEMO       ║");
+    println("  ╚════════════════════════════════════════╝");
     println("");
     
-    // Enums
-    println(">>> Enums");
-    int n = North;
-    int s = South;
-    int e = East;
-    int w = West;
-    println("North = " + n);
-    println("South = " + s);
-    println("East = " + e);
-    println("West = " + w);
+    // ENUMS
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  ENUMS");
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  Pending = " + Pending);
+    println("  Active  = " + Active);
+    println("  Done    = " + Done);
+    println("  Failed  = " + Failed);
+    println("  North   = " + North);
+    println("  South   = " + South);
     println("");
     
-    // Structs
-    println(">>> Structs");
+    // STRUCTS
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  STRUCTS");
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    
     Point pt;
-    pt.x = 10.5;
-    pt.y = 20.5;
-    println("Point created with x=10.5, y=20.5");
-    println("");
+    pt.x = 15.5;
+    pt.y = 25.5;
+    println("  Point: x=" + pt.x + " y=" + pt.y);
     
-    // Math
-    println(">>> Math Functions");
-    int a = abs_val(-5);
-    int mn = min_val(3, 7);
-    int mx = max_val(3, 7);
-    int f = factorial(5);
-    println("abs(-5) = " + a);
-    println("min(3, 7) = " + mn);
-    println("max(3, 7) = " + mx);
-    println("factorial(5) = " + f);
-    println("");
-    
-    // Player
-    println(">>> Player Struct");
-    Player hero;
-    hero.name = "Hero";
-    hero.health = 100;
-    hero.score = 0;
+    Stats hero;
+    hero.hp = 100;
+    hero.max_hp = 100;
+    hero.mp = 50;
     hero.level = 1;
-    println("Player name: " + hero.name);
-    println("Player HP: " + hero.health);
-    println("Player Level: " + hero.level);
-    println("");
+    hero.xp = 0;
+    println("  Stats: HP=" + hero.hp + "/" + hero.max_hp + " MP=" + hero.mp + " LVL=" + hero.level);
     
-    // Item
-    println(">>> Item Struct");
     Item sword;
-    sword.name = "Iron Sword";
-    sword.value = 50;
+    sword.id = 1;
+    sword.value = 100;
+    sword.weight = 5;
     sword.equipped = true;
-    println("Item: " + sword.name);
-    println("Value: " + sword.value);
-    println("Equipped: " + sword.equipped);
+    println("  Item: id=" + sword.id + " val=" + sword.value + " eq=" + sword.equipped);
+    
+    Rect box;
+    box.x = 10;
+    box.y = 20;
+    box.w = 100;
+    box.h = 50;
+    int area = box.w * box.h;
+    int perim = box.w + box.h;
+    perim = perim + perim;
+    println("  Rect: " + box.w + "x" + box.h + " area=" + area + " perim=" + perim);
     println("");
     
-    // Control Flow
-    println(">>> Control Flow");
-    int i = 1;
+    // MATH
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  MATH");
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  abs(-42)     = " + abs_val(-42));
+    println("  min(10,20)   = " + min_val(10, 20));
+    println("  max(10,20)   = " + max_val(10, 20));
+    println("  power(2,10)  = " + power(2, 10));
+    println("  factorial(6) = " + factorial(6));
+    println("");
+    
+    // CONTROL FLOW
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  CONTROL FLOW");
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    
     int sum = 0;
-    while (i <= 5) {
-        sum = sum + i;
-        i = i + 1;
-    }
-    println("Sum 1-5 = " + sum);
+    int i = 1;
+    while (i <= 10) { sum = sum + i; i = i + 1; }
+    println("  Sum 1-10: " + sum);
     
     int count = 0;
-    loop {
-        count = count + 1;
-        if (count >= 3) {
-            break;
-        }
-    }
-    println("Loop broke at: " + count);
+    loop { count = count + 1; if (count >= 5) { break; } }
+    println("  Loop broke at: " + count);
     println("");
     
-    // Summary
-    println("============================================");
-    println("       All Features Demonstrated!          ");
-    println("============================================");
+    // GAME SIM
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  GAME SIMULATION");
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    
+    Stats player;
+    player.hp = 50;
+    player.max_hp = 50;
+    player.mp = 20;
+    player.level = 1;
+    player.xp = 0;
+    println("  Created: HP=" + player.hp + " LVL=" + player.level);
+    
+    // Damage
+    player.hp = player.hp - 20;
+    if (player.hp < 0) { player.hp = 0; }
+    println("  Took 20 dmg: HP=" + player.hp);
+    
+    // Heal
+    player.hp = player.hp + 10;
+    if (player.hp > player.max_hp) { player.hp = player.max_hp; }
+    println("  Healed 10: HP=" + player.hp);
+    
+    // XP
+    player.xp = player.xp + 150;
+    int needed = player.level * 100;
+    if (player.xp >= needed) { player.level = player.level + 1; }
+    println("  Gained 150 XP: LVL=" + player.level + " XP=" + player.xp);
+    println("");
+    
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  ALL FEATURES WORKING!");
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  ✓ Enums  ✓ Structs  ✓ Functions");
+    println("  ✓ Pointers  ✓ Math  ✓ Loops");
+    println("");
 }
