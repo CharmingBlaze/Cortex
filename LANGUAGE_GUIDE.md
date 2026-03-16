@@ -135,18 +135,34 @@ Use `const` for:
 
 ### Extern declarations
 
-**`extern`** declares functions from C libraries:
+**`extern`** declares functions from C libraries. However, many common C functions are **automatically available** without needing `extern`:
+
+**Auto-available functions (no extern needed):**
+- Memory: `malloc`, `free`, `calloc`, `realloc`
+- Memory ops: `memcpy`, `memset`, `memmove`, `memcmp`
+- Strings: `strlen`, `strcpy`, `strncpy`, `strcat`, `strncat`, `strcmp`, `strncmp`, `strdup`
+- I/O: `printf`, `sprintf`, `snprintf`, `fprintf`, `fopen`, `fclose`, `fread`, `fwrite`, `fgets`, `fputs`
+- Utility: `exit`, `atoi`, `atof`, `rand`, `srand`, `time`, `sleep`, `getenv`, `system`
 
 ```c
-// Declare C functions you want to call
-extern void* malloc(int size);
-extern void free(void* ptr);
-extern int printf(string format, ...);
-
+// These work directly - no extern needed!
 void main() {
     var buf = malloc(1024);
     printf("Buffer allocated\n");
     free(buf);
+}
+```
+
+**For other C functions, use extern:**
+
+```c
+// Declare C functions that aren't auto-available
+extern int my_custom_func(int x, int y);
+extern void* custom_alloc(int size) cleanup(free);
+
+void main() {
+    int result = my_custom_func(10, 20);
+    var buf = custom_alloc(1024);  // Auto-freed on scope exit!
 }
 ```
 

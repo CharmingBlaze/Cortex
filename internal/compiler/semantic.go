@@ -207,7 +207,228 @@ func (a *SemanticAnalyzer) RegisterBuiltins() {
 	})
 	a.globalScope.Define(&Symbol{
 		Name:       "printf",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+
+	// Standard C library functions (auto-available, no extern needed)
+	// Memory allocation
+	a.globalScope.Define(&Symbol{
+		Name:       "malloc",
+		Type:       "void*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "free",
 		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "calloc",
+		Type:       "void*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "realloc",
+		Type:       "void*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+
+	// Memory operations
+	a.globalScope.Define(&Symbol{
+		Name:       "memcpy",
+		Type:       "void*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "memset",
+		Type:       "void*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "memmove",
+		Type:       "void*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "memcmp",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+
+	// String operations
+	a.globalScope.Define(&Symbol{
+		Name:       "strlen",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "strcpy",
+		Type:       "char*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "strncpy",
+		Type:       "char*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "strcat",
+		Type:       "char*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "strncat",
+		Type:       "char*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "strcmp",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "strncmp",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "strdup",
+		Type:       "char*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+
+	// I/O functions
+	a.globalScope.Define(&Symbol{
+		Name:       "sprintf",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "snprintf",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "fprintf",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "fopen",
+		Type:       "void*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "fclose",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "fread",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "fwrite",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "fgets",
+		Type:       "char*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "fputs",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+
+	// Utility functions
+	a.globalScope.Define(&Symbol{
+		Name:       "exit",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "atoi",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "atof",
+		Type:       "double",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "itoa",
+		Type:       "char*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "rand",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "srand",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "time",
+		Type:       "int",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "sleep",
+		Type:       "void",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "getenv",
+		Type:       "char*",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
+	a.globalScope.Define(&Symbol{
+		Name:       "system",
+		Type:       "int",
 		SymbolType: SymbolFunction,
 		Node:       nil,
 	})

@@ -741,17 +741,40 @@ fn main() {
 
 Cortex works seamlessly with C libraries:
 
-### Including C Headers
+### Auto-Available C Functions
+
+Many common C functions are **automatically available** without needing `extern` declarations:
+
+**Memory:** `malloc`, `free`, `calloc`, `realloc`
+**Memory ops:** `memcpy`, `memset`, `memmove`, `memcmp`
+**Strings:** `strlen`, `strcpy`, `strncpy`, `strcat`, `strncat`, `strcmp`, `strncmp`, `strdup`
+**I/O:** `printf`, `sprintf`, `snprintf`, `fprintf`, `fopen`, `fclose`, `fread`, `fwrite`, `fgets`, `fputs`
+**Utility:** `exit`, `atoi`, `atof`, `rand`, `srand`, `time`, `sleep`, `getenv`, `system`
+
 ```c
-#include <stdio.h>
+fn main() {
+    var buf = malloc(1024);  // Works directly!
+    printf("Buffer allocated\n");
+    free(buf);
+}
+```
+
+### Including C Headers
+
+For other C libraries, include headers and link:
+
+```c
 #include <math.h>
 #pragma link("m")
 ```
 
 ### External Function Declarations
+
+For C functions that aren't auto-available, declare them with `extern`:
+
 ```c
-extern int printf(string fmt, ...);
 extern double sqrt(double x);
+extern int my_custom_func(int a, int b);
 ```
 
 ### Managed C Handles
