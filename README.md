@@ -372,6 +372,40 @@ void main() {
 }
 ```
 
+**Exhaustiveness Checking:** Cortex warns you if a match doesn't cover all enum values.
+
+### Switch and SELECT CASE
+
+Cortex offers two styles of branching:
+
+```c
+// C-style switch
+switch (day) {
+    case 1: { day_name = "Monday"; break; }
+    case 2: { day_name = "Tuesday"; break; }
+    default: { day_name = "Other"; }
+}
+
+// BASIC-style SELECT CASE with ranges
+SELECT CASE score
+    CASE 0
+        grade = "None";
+    CASE 1, 2, 3
+        grade = "Low";
+    CASE 4 TO 10
+        grade = "Fair";
+    CASE ELSE
+        grade = "Invalid";
+END SELECT
+```
+
+### Public/Private Visibility
+
+```c
+public fn api_function() -> int   // Accessible from other modules
+private fn helper() -> int        // Internal only
+```
+
 ### Defer for Clean Code
 
 ```c

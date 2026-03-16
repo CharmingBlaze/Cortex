@@ -23,6 +23,11 @@ A single place to see what's **not yet implemented**, what's **partially done**,
 | **Optional chaining** | ~~`?.` operator~~ | **Implemented.** `obj?.member` safe access. |
 | **Range operators** | ~~`..` and `..<`~~ | **Implemented.** `0..10` inclusive, `0..<n` exclusive. |
 | **Try/catch/throw** | ~~Exception handling~~ | **Implemented.** Structured exception handling with try/catch/throw. |
+| **User-defined types** | ~~TYPE...ENDTYPE~~ | **Implemented.** `TYPE Name ... field AS Type ... ENDTYPE` syntax with nested types. |
+| **C-style switch** | ~~switch/case~~ | **Implemented.** `switch (v) { case n: { ... } default: { ... } }` |
+| **BASIC SELECT CASE** | ~~SELECT CASE~~ | **Implemented.** `SELECT CASE v ... CASE x TO y ... CASE ELSE ... END SELECT` with ranges and multiple values. |
+| **Visibility modifiers** | ~~public/private~~ | **Implemented.** `public fn ...` and `private fn ...` for module visibility. |
+| **Exhaustiveness checking** | ~~Pattern match checking~~ | **Implemented.** Compiler warns when match on enum doesn't cover all values. |
 
 ---
 
