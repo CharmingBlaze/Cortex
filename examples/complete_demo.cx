@@ -2,29 +2,9 @@
 // Cortex Language - Complete Feature Demo
 // ============================================
 
-// ============================================
-// Structs (C-style)
-// ============================================
-
-struct Point
-{
-    float x;
-    float y;
-}
-
-struct Player
-{
-    string name;
-    int health;
-    int score;
-}
-
-struct GameState
-{
-    int level;
-    int score;
-    bool is_running;
-}
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 // ============================================
 // Enums
@@ -39,129 +19,149 @@ enum Direction
 }
 
 // ============================================
-// Functions
+// Structs
 // ============================================
 
-fn initialize_game() -> GameState
+struct Point
 {
-    GameState state;
-    state.level = 1;
-    state.score = 0;
-    state.is_running = true;
-    return state;
+    float x;
+    float y;
 }
 
-fn create_player(string name, int health) -> Player
+struct Player
 {
-    Player p;
-    p.name = name;
-    p.health = health;
-    p.score = 0;
-    return p;
+    string name;
+    int health;
+    int score;
+    int level;
 }
 
-fn greet_player(Player p) -> string
+struct Item
 {
-    return "Welcome, " + p.name + "!";
+    string name;
+    int value;
+    bool equipped;
 }
 
-fn describe_score(int val) -> string
-{
-    if (val >= 90)
-    {
-        return "Excellent";
+// ============================================
+// Math Functions
+// ============================================
+
+int abs_val(int n) {
+    if (n < 0) {
+        return -n;
     }
-    else if (val >= 70)
-    {
-        return "Good";
-    }
-    else if (val >= 50)
-    {
-        return "Average";
-    }
-    else
-    {
-        return "Needs improvement";
-    }
+    return n;
 }
 
-fn count_to_ten() -> int
-{
-    int sum = 0;
+int min_val(int a, int b) {
+    if (a < b) {
+        return a;
+    }
+    return b;
+}
+
+int max_val(int a, int b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+// ============================================
+// Main
+// ============================================
+
+void main() {
+    println("============================================");
+    println("       Cortex Language Feature Demo        ");
+    println("============================================");
+    println("");
+    
+    // Enums
+    println(">>> Enums");
+    int n = North;
+    int s = South;
+    int e = East;
+    int w = West;
+    println("North = " + n);
+    println("South = " + s);
+    println("East = " + e);
+    println("West = " + w);
+    println("");
+    
+    // Structs
+    println(">>> Structs");
+    Point pt;
+    pt.x = 10.5;
+    pt.y = 20.5;
+    println("Point created with x=10.5, y=20.5");
+    println("");
+    
+    // Math
+    println(">>> Math Functions");
+    int a = abs_val(-5);
+    int mn = min_val(3, 7);
+    int mx = max_val(3, 7);
+    int f = factorial(5);
+    println("abs(-5) = " + a);
+    println("min(3, 7) = " + mn);
+    println("max(3, 7) = " + mx);
+    println("factorial(5) = " + f);
+    println("");
+    
+    // Player
+    println(">>> Player Struct");
+    Player hero;
+    hero.name = "Hero";
+    hero.health = 100;
+    hero.score = 0;
+    hero.level = 1;
+    println("Player name: " + hero.name);
+    println("Player HP: " + hero.health);
+    println("Player Level: " + hero.level);
+    println("");
+    
+    // Item
+    println(">>> Item Struct");
+    Item sword;
+    sword.name = "Iron Sword";
+    sword.value = 50;
+    sword.equipped = true;
+    println("Item: " + sword.name);
+    println("Value: " + sword.value);
+    println("Equipped: " + sword.equipped);
+    println("");
+    
+    // Control Flow
+    println(">>> Control Flow");
     int i = 1;
-    while (i <= 10)
-    {
+    int sum = 0;
+    while (i <= 5) {
         sum = sum + i;
         i = i + 1;
     }
-    return sum;
-}
-
-fn loop_example() -> int
-{
-    int counter = 0;
-    loop
-    {
-        counter = counter + 1;
-        if (counter >= 5)
-        {
+    println("Sum 1-5 = " + sum);
+    
+    int count = 0;
+    loop {
+        count = count + 1;
+        if (count >= 3) {
             break;
         }
     }
-    return counter;
-}
-
-fn test_division(int a, int b) -> string
-{
-    if (b == 0)
-    {
-        return "Cannot divide by zero";
-    }
-    int result = a / b;
-    return "Result: " + result;
-}
-
-fn test_if_else(int value) -> string
-{
-    if (value > 0)
-    {
-        return "Positive";
-    }
-    else if (value < 0)
-    {
-        return "Negative";
-    }
-    else
-    {
-        return "Zero";
-    }
-}
-
-// ============================================
-// Main Entry Point
-// ============================================
-
-void main()
-{
-    // Initialize game state
-    GameState state = initialize_game();
-    show("Game initialized at level " + state.level);
+    println("Loop broke at: " + count);
+    println("");
     
-    // Create player
-    Player hero = create_player("Hero", 100);
-    show(greet_player(hero));
-    
-    // Test conditionals
-    show("Score description: " + describe_score(75));
-    show("Value classification: " + test_if_else(-5));
-    
-    // Test loops
-    show("Sum 1-10: " + count_to_ten());
-    show("Loop example result: " + loop_example());
-    
-    // Test error handling
-    show("Division test: " + test_division(10, 2));
-    show("Division by zero: " + test_division(10, 0));
-    
-    show("=== Cortex Feature Demo Complete ===");
+    // Summary
+    println("============================================");
+    println("       All Features Demonstrated!          ");
+    println("============================================");
 }
