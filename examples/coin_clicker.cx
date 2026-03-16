@@ -1,0 +1,216 @@
+// coin_clicker.cx - A Fun GUI Incremental Game!
+// 
+// Click your way to riches! Buy upgrades and watch the coins roll in.
+// Run with: cortex run coin_clicker.cx
+
+#include <gui_runtime.h>
+
+// ============== GAME STATE ==============
+double coins = 0.0;
+double coins_per_click = 1.0;
+double coins_per_second = 0.0;
+int total_clicks = 0;
+
+// Upgrade counts
+int cursors = 0;
+int grandmas = 0;
+int farms = 0;
+int mines = 0;
+int factories = 0;
+
+// Upgrade costs (scale with purchases)
+double cursor_cost = 15.0;
+double grandma_cost = 100.0;
+double farm_cost = 1100.0;
+double mine_cost = 12000.0;
+double factory_cost = 130000.0;
+
+// ============== GAME LOGIC ==============
+
+void format_coins(double amount, char* buffer) {
+    if (amount >= 1000000000.0) {
+        sprintf(buffer, "%.2f B", amount / 1000000000.0);
+    } else if (amount >= 1000000.0) {
+        sprintf(buffer, "%.2f M", amount / 1000000.0);
+    } else if (amount >= 1000.0) {
+        sprintf(buffer, "%.2f K", amount / 1000.0);
+    } else {
+        sprintf(buffer, "%.1f", amount);
+    }
+}
+
+void show_status() {
+    char buffer[64];
+    format_coins(coins, buffer);
+    char msg[128];
+    sprintf(msg, "🪙 Coins: %s | ⚡ %.1f/sec | Clicks: %d", buffer, coins_per_second, total_clicks);
+    gui_alert_info(msg);
+}
+
+int can_afford(double cost) {
+    return coins >= cost;
+}
+
+void buy_cursor(gui_event e) {
+    if (can_afford(cursor_cost)) {
+        coins -= cursor_cost;
+        cursors++;
+        coins_per_second += 0.1;
+        cursor_cost = cursor_cost * 1.15;
+        gui_alert_info("👋 Cursor hired! +0.1 coins/sec");
+    } else {
+        gui_alert_info("Not enough coins!");
+    }
+}
+
+void buy_grandma(gui_event e) {
+    if (can_afford(grandma_cost)) {
+        coins -= grandma_cost;
+        grandmas++;
+        coins_per_second += 1.0;
+        grandma_cost = grandma_cost * 1.15;
+        gui_alert_info("👵 Grandma hired! +1 coin/sec");
+    } else {
+        gui_alert_info("Not enough coins!");
+    }
+}
+
+void buy_farm(gui_event e) {
+    if (can_afford(farm_cost)) {
+        coins -= farm_cost;
+        farms++;
+        coins_per_second += 8.0;
+        farm_cost = farm_cost * 1.15;
+        gui_alert_info("🌾 Farm built! +8 coins/sec");
+    } else {
+        gui_alert_info("Not enough coins!");
+    }
+}
+
+void buy_mine(gui_event e) {
+    if (can_afford(mine_cost)) {
+        coins -= mine_cost;
+        mines++;
+        coins_per_second += 47.0;
+        mine_cost = mine_cost * 1.15;
+        gui_alert_info("⛏️ Mine opened! +47 coins/sec");
+    } else {
+        gui_alert_info("Not enough coins!");
+    }
+}
+
+void buy_factory(gui_event e) {
+    if (can_afford(factory_cost)) {
+        coins -= factory_cost;
+        factories++;
+        coins_per_second += 260.0;
+        factory_cost = factory_cost * 1.15;
+        gui_alert_info("🏭 Factory built! +260 coins/sec");
+    } else {
+        gui_alert_info("Not enough coins!");
+    }
+}
+
+void on_click(gui_event e) {
+    coins += coins_per_click;
+    total_clicks++;
+    show_status();
+}
+
+void on_reset_confirm(gui_event e) {
+    if (e.checked) {
+        coins = 0.0;
+        coins_per_click = 1.0;
+        coins_per_second = 0.0;
+        total_clicks = 0;
+        cursors = 0;
+        grandmas = 0;
+        farms = 0;
+        mines = 0;
+        factories = 0;
+        cursor_cost = 15.0;
+        grandma_cost = 100.0;
+        farm_cost = 1100.0;
+        mine_cost = 12000.0;
+        factory_cost = 130000.0;
+        gui_alert_info("🔄 Game reset!");
+    }
+}
+
+void on_reset(gui_event e) {
+    gui_confirm("Reset all progress?", on_reset_confirm);
+}
+
+void on_stats(gui_event e) {
+    show_status();
+}
+
+// ============== MAIN ==============
+
+fn main() {
+    // Create the game window
+    gui_start("🪙 Coin Clicker!", 450, 700);
+    gui_set_spacing(12);
+    gui_set_margin(20);
+    
+    // === HEADER ===
+    gui_add(gui_label("═══════════════════════════"));
+    gui_add(gui_label("      🪙 COIN CLICKER 🪙"));
+    gui_add(gui_label("═══════════════════════════"));
+    
+    gui_spacing(10);
+    
+    // === THE BIG BUTTON ===
+    gui_add(gui_label("═══ CLICK FOR COINS ═══"));
+    gui_add(gui_button("🪙 CLICK! 🪙", on_click));
+    gui_add(gui_button("📊 Show Stats", on_stats));
+    
+    gui_spacing(20);
+    
+    // === UPGRADES ===
+    gui_add(gui_label("══════ UPGRADES ══════"));
+    
+    // Cursor
+    gui_add(gui_label("👋 Cursor - 0.1 coins/sec"));
+    gui_add(gui_button("Buy Cursor (15 coins)", buy_cursor));
+    
+    gui_spacing(8);
+    
+    // Grandma
+    gui_add(gui_label("👵 Grandma - 1 coin/sec"));
+    gui_add(gui_button("Buy Grandma (100 coins)", buy_grandma));
+    
+    gui_spacing(8);
+    
+    // Farm
+    gui_add(gui_label("🌾 Farm - 8 coins/sec"));
+    gui_add(gui_button("Buy Farm (1,100 coins)", buy_farm));
+    
+    gui_spacing(8);
+    
+    // Mine
+    gui_add(gui_label("⛏️ Mine - 47 coins/sec"));
+    gui_add(gui_button("Buy Mine (12,000 coins)", buy_mine));
+    
+    gui_spacing(8);
+    
+    // Factory
+    gui_add(gui_label("🏭 Factory - 260 coins/sec"));
+    gui_add(gui_button("Buy Factory (130,000 coins)", buy_factory));
+    
+    gui_spacing(20);
+    
+    // === INFO ===
+    gui_add(gui_label("════════ INFO ════════"));
+    gui_add(gui_label("Click to earn coins!"));
+    gui_add(gui_label("Buy upgrades to earn faster!"));
+    gui_add(gui_label("How rich can you get?"));
+    
+    gui_spacing(15);
+    
+    // Reset button
+    gui_add(gui_button("🔄 Reset Game", on_reset));
+    
+    // Run the game!
+    gui_run();
+}
