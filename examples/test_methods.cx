@@ -1,0 +1,25 @@
+// Test struct methods
+
+#include <stdio.h>
+
+struct Point {
+    float x;
+    float y;
+    
+    float length() {
+        return x * x + y * y;
+    }
+    
+    void scale(float s) {
+        x = x * s;
+        y = y * s;
+    }
+}
+
+void main() {
+    Point pt = Point(3.0, 4.0);
+    println("Point: " + pt.x + ", " + pt.y);
+    println("Length squared: " + pt.length());
+    pt.scale(2.0);
+    println("After scale: " + pt.x + ", " + pt.y);
+}

@@ -754,6 +754,8 @@ var standardCHeaders = map[string]bool{
 	"ctype.h": true, "errno.h": true, "assert.h": true, "signal.h": true,
 	"gui_runtime.h": true, "core.h": true, "game.h": true, "network.h": true,
 	"async.h": true, "thread.h": true, "managed.h": true,
+	"std.h": true, "std_math.h": true, "std_string.h": true,
+	"std_array.h": true, "std_dict.h": true, "std_time.h": true,
 }
 
 // collectLinkPragmas returns library names from #pragma link, #use, and #include <name.h> (C-style: include implies -l name).
@@ -806,6 +808,7 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 		args = append(args, "-mconsole") // Force console mode so main() works
 	}
 	args = append(args, "-I", includeDir)
+	args = append(args, "-I", runtimeDir) // For runtime headers like std.h
 	for _, p := range c.config.IncludePaths {
 		args = append(args, "-I", p)
 	}

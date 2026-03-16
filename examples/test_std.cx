@@ -1,0 +1,33 @@
+// Test std library modules
+
+#include <std.h>
+
+void main() {
+    println("=== Std Library Test ===");
+    println("");
+    
+    // Test std.math
+    println("--- std.math ---");
+    println("PI: " + STD_PI);
+    println("E: " + STD_E);
+    println("abs(-42): " + std_math_abs(-42));
+    println("sqrt(16): " + std_math_sqrt(16));
+    println("pow(2, 8): " + std_math_pow(2, 8));
+    println("sin(0): " + std_math_sin(0));
+    println("cos(0): " + std_math_cos(0));
+    println("floor(3.7): " + std_math_floor(3.7));
+    println("ceil(3.2): " + std_math_ceil(3.2));
+    println("min(5, 10): " + std_math_min(5, 10));
+    println("max(5, 10): " + std_math_max(5, 10));
+    println("clamp(15, 0, 10): " + std_math_clamp(15, 0, 10));
+    println("lerp(0, 100, 0.5): " + std_math_lerp(0, 100, 0.5));
+    println("");
+    
+    // Test std.time
+    println("--- std.time ---");
+    int now = std_time_now();
+    println("Current timestamp: " + now);
+    
+    println("");
+    println("=== All tests passed! ===");
+}

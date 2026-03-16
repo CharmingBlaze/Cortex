@@ -38,15 +38,15 @@ int factorial(int n) { if (n <= 1) { return 1; } return n * factorial(n - 1); }
 
 void main() {
     println("");
-    println("  ╔════════════════════════════════════════╗");
-    println("  ║     CORTEX LANGUAGE FEATURE DEMO       ║");
-    println("  ╚════════════════════════════════════════╝");
+    println("  ================================");
+    println("  |  CORTEX LANGUAGE FEATURE DEMO  |");
+    println("  ================================");
     println("");
     
     // ENUMS
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  --------------------------------");
     println("  ENUMS");
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  --------------------------------");
     println("  Pending = " + Pending);
     println("  Active  = " + Active);
     println("  Done    = " + Done);
@@ -56,9 +56,9 @@ void main() {
     println("");
     
     // STRUCTS
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  --------------------------------");
     println("  STRUCTS");
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  --------------------------------");
     
     Point pt = Point(15.5, 25.5);
     println("  Point: x=" + pt.x + " y=" + pt.y);
@@ -90,9 +90,9 @@ void main() {
     println("");
     
     // MATH
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  --------------------------------");
     println("  MATH");
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  --------------------------------");
     println("  abs(-42)     = " + abs_val(-42));
     println("  min(10,20)   = " + min_val(10, 20));
     println("  max(10,20)   = " + max_val(10, 20));
@@ -101,9 +101,9 @@ void main() {
     println("");
     
     // CONTROL FLOW
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  --------------------------------");
     println("  CONTROL FLOW");
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  --------------------------------");
     
     int sum = 0;
     int i = 1;
@@ -116,9 +116,9 @@ void main() {
     println("");
     
     // GAME SIM
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  --------------------------------");
     println("  GAME SIMULATION");
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  --------------------------------");
     
     Stats player;
     player.hp = 50;
@@ -145,10 +145,10 @@ void main() {
     println("  Gained 150 XP: LVL=" + player.level + " XP=" + player.xp);
     println("");
     
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println("  --------------------------------");
     println("  ALL FEATURES WORKING!");
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println("  ✓ Enums  ✓ Structs  ✓ Functions");
-    println("  ✓ Pointers  ✓ Math  ✓ Loops");
+    println("  --------------------------------");
+    println("  [OK] Enums  [OK] Structs  [OK] Functions");
+    println("  [OK] Pointers  [OK] Math  [OK] Loops");
     println("");
 }
