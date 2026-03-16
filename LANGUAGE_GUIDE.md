@@ -133,36 +133,57 @@ Use `const` for:
 - Magic numbers with meaningful names
 - Values that should never change
 
-### Extern declarations
+### C Library Functions (Auto-Extern)
 
-**`extern`** declares functions from C libraries. However, many common C functions are **automatically available** without needing `extern`:
-
-**Auto-available functions (no extern needed):**
-- Memory: `malloc`, `free`, `calloc`, `realloc`
-- Memory ops: `memcpy`, `memset`, `memmove`, `memcmp`
-- Strings: `strlen`, `strcpy`, `strncpy`, `strcat`, `strncat`, `strcmp`, `strncmp`, `strdup`
-- I/O: `printf`, `sprintf`, `snprintf`, `fprintf`, `fopen`, `fclose`, `fread`, `fwrite`, `fgets`, `fputs`
-- Utility: `exit`, `atoi`, `atof`, `rand`, `srand`, `time`, `sleep`, `getenv`, `system`
+**Cortex automatically generates extern declarations** for C functions when you include headers. No manual `extern` needed!
 
 ```c
-// These work directly - no extern needed!
+#include <stdio.h>
+#include <stdlib.h>
+
 void main() {
+    // Just call C functions directly - extern is auto-generated!
     var buf = malloc(1024);
     printf("Buffer allocated\n");
     free(buf);
 }
 ```
 
-**For other C functions, use extern:**
+When Cortex sees `#include`, it automatically:
+1. Detects undefined function calls
+2. Infers parameter types from your arguments
+3. Generates the extern declaration in the output C code
+
+### Manual Extern Declarations
+
+Use manual `extern` when you need:
+- **Cleanup annotations** for automatic memory management
+- **Specific return types** (default is `int`)
+- **Pointer return types** for type safety
 
 ```c
-// Declare C functions that aren't auto-available
-extern int my_custom_func(int x, int y);
-extern void* custom_alloc(int size) cleanup(free);
+// Manual extern with cleanup annotation
+extern void* my_alloc(int size) cleanup(free);
+var buf = my_alloc(1024);  // Auto-freed on scope exit!
+
+// Manual extern for pointer return type
+extern char* strdup(string s);  // Returns char*, not int
+```
+
+### Extern declarations
+
+**`extern`** declares functions from C libraries (optional with auto-extern):
+
+```c
+// Declare C functions you want to call (optional if header included)
+extern void* malloc(int size);
+extern void free(void* ptr);
+extern int printf(string format, ...);
 
 void main() {
-    int result = my_custom_func(10, 20);
-    var buf = custom_alloc(1024);  // Auto-freed on scope exit!
+    var buf = malloc(1024);
+    printf("Buffer allocated at: %p\n", buf);
+    free(buf);
 }
 ```
 

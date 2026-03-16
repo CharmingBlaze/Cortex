@@ -72,14 +72,15 @@ func (s *Scope) Resolve(name string) *Symbol {
 }
 
 type SemanticAnalyzer struct {
-	globalScope  *Scope
-	currentScope *Scope
-	errors       []error
-	diagnostics  *errors.Collector // optional: when set, errors are also emitted as structured diagnostics
-	features     config.FeatureSet
-	hasInclude   bool
-	inCoroutine  bool
-	inAsync      bool
+	globalScope         *Scope
+	currentScope        *Scope
+	errors              []error
+	diagnostics         *errors.Collector // optional: when set, errors are also emitted as structured diagnostics
+	features            config.FeatureSet
+	hasInclude          bool
+	inCoroutine         bool
+	inAsync             bool
+	autoExternFunctions map[string]*ast.ExternDeclNode // auto-generated extern declarations
 }
 
 var blockchainBuiltins = map[string]struct{}{
@@ -162,9 +163,10 @@ var qolBuiltins = map[string]struct{}{
 func NewSemanticAnalyzer(cfg config.Config) *SemanticAnalyzer {
 	globalScope := NewScope(nil)
 	analyzer := &SemanticAnalyzer{
-		globalScope:  globalScope,
-		currentScope: globalScope,
-		features:     cfg.Features,
+		globalScope:         globalScope,
+		currentScope:        globalScope,
+		features:            cfg.Features,
+		autoExternFunctions: make(map[string]*ast.ExternDeclNode),
 	}
 
 	// Add built-in functions to global scope
@@ -207,228 +209,7 @@ func (a *SemanticAnalyzer) RegisterBuiltins() {
 	})
 	a.globalScope.Define(&Symbol{
 		Name:       "printf",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-
-	// Standard C library functions (auto-available, no extern needed)
-	// Memory allocation
-	a.globalScope.Define(&Symbol{
-		Name:       "malloc",
-		Type:       "void*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "free",
 		Type:       "void",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "calloc",
-		Type:       "void*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "realloc",
-		Type:       "void*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-
-	// Memory operations
-	a.globalScope.Define(&Symbol{
-		Name:       "memcpy",
-		Type:       "void*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "memset",
-		Type:       "void*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "memmove",
-		Type:       "void*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "memcmp",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-
-	// String operations
-	a.globalScope.Define(&Symbol{
-		Name:       "strlen",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "strcpy",
-		Type:       "char*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "strncpy",
-		Type:       "char*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "strcat",
-		Type:       "char*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "strncat",
-		Type:       "char*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "strcmp",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "strncmp",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "strdup",
-		Type:       "char*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-
-	// I/O functions
-	a.globalScope.Define(&Symbol{
-		Name:       "sprintf",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "snprintf",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "fprintf",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "fopen",
-		Type:       "void*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "fclose",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "fread",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "fwrite",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "fgets",
-		Type:       "char*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "fputs",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-
-	// Utility functions
-	a.globalScope.Define(&Symbol{
-		Name:       "exit",
-		Type:       "void",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "atoi",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "atof",
-		Type:       "double",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "itoa",
-		Type:       "char*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "rand",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "srand",
-		Type:       "void",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "time",
-		Type:       "int",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "sleep",
-		Type:       "void",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "getenv",
-		Type:       "char*",
-		SymbolType: SymbolFunction,
-		Node:       nil,
-	})
-	a.globalScope.Define(&Symbol{
-		Name:       "system",
-		Type:       "int",
 		SymbolType: SymbolFunction,
 		Node:       nil,
 	})
@@ -2268,6 +2049,51 @@ func (a *SemanticAnalyzer) VisitCallExpr(node *ast.CallExprNode) {
 		}
 		seenNames[namedArg.Name] = true
 	}
+
+	// Auto-extern: if function is undefined and we have includes, generate extern declaration
+	if id, ok := node.Function.(*ast.IdentifierNode); ok {
+		sym := a.currentScope.Resolve(id.Name)
+		if sym == nil && a.hasInclude {
+			// Infer return type from context or default to int
+			returnType := a.GetFunctionReturnType(node.Function)
+			if returnType == "" || returnType == "any" {
+				returnType = "int" // Default C return type
+			}
+
+			// Build parameter list from arguments
+			var params []*ast.ParameterNode
+			for i, arg := range node.Args {
+				argType := a.GetExpressionType(arg)
+				if argType == "" || argType == "any" {
+					argType = "int" // Default C type
+				}
+				params = append(params, &ast.ParameterNode{
+					BaseNode: ast.BaseNode{Type: ast.NodeParameter, Line: node.GetLine(), Column: node.GetColumn()},
+					Name:     fmt.Sprintf("arg%d", i),
+					Type:     argType,
+				})
+			}
+
+			// Create extern declaration
+			externNode := &ast.ExternDeclNode{
+				BaseNode:   ast.BaseNode{Type: ast.NodeExternDecl, Line: node.GetLine(), Column: node.GetColumn()},
+				Name:       id.Name,
+				ReturnType: returnType,
+				Parameters: params,
+			}
+
+			// Store for code generator to emit
+			a.autoExternFunctions[id.Name] = externNode
+
+			// Add to scope so we don't re-process
+			a.globalScope.Define(&Symbol{
+				Name:       id.Name,
+				Type:       returnType,
+				SymbolType: SymbolFunction,
+				Node:       externNode,
+			})
+		}
+	}
 }
 
 func (a *SemanticAnalyzer) VisitUnaryExpr(node *ast.UnaryExprNode) {
@@ -2456,6 +2282,11 @@ func (a *SemanticAnalyzer) AddErrorAt(err error, node ast.ASTNode, code errors.C
 
 func (a *SemanticAnalyzer) GetErrors() []error {
 	return a.errors
+}
+
+// GetAutoExternFunctions returns the auto-generated extern declarations for undefined function calls
+func (a *SemanticAnalyzer) GetAutoExternFunctions() map[string]*ast.ExternDeclNode {
+	return a.autoExternFunctions
 }
 
 // SetDiagnosticsCollector enables structured diagnostics (line, column, code, suggestion).

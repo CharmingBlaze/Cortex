@@ -741,40 +741,40 @@ fn main() {
 
 Cortex works seamlessly with C libraries:
 
-### Auto-Available C Functions
-
-Many common C functions are **automatically available** without needing `extern` declarations:
-
-**Memory:** `malloc`, `free`, `calloc`, `realloc`
-**Memory ops:** `memcpy`, `memset`, `memmove`, `memcmp`
-**Strings:** `strlen`, `strcpy`, `strncpy`, `strcat`, `strncat`, `strcmp`, `strncmp`, `strdup`
-**I/O:** `printf`, `sprintf`, `snprintf`, `fprintf`, `fopen`, `fclose`, `fread`, `fwrite`, `fgets`, `fputs`
-**Utility:** `exit`, `atoi`, `atof`, `rand`, `srand`, `time`, `sleep`, `getenv`, `system`
-
-```c
-fn main() {
-    var buf = malloc(1024);  // Works directly!
-    printf("Buffer allocated\n");
-    free(buf);
-}
-```
-
 ### Including C Headers
-
-For other C libraries, include headers and link:
-
 ```c
+#include <stdio.h>
 #include <math.h>
 #pragma link("m")
 ```
 
 ### External Function Declarations
 
-For C functions that aren't auto-available, declare them with `extern`:
+**Auto-Extern**: Cortex automatically generates extern declarations for C functions when you include headers:
 
 ```c
+#include <stdio.h>
+#include <stdlib.h>
+
+fn main() {
+    // Just call C functions - extern is auto-generated!
+    var buf = malloc(1024);
+    printf("Buffer allocated\n");
+    free(buf);
+}
+```
+
+**Manual extern** is optional but needed for:
+- Cleanup annotations (`cleanup(free)`)
+- Specific return types (default is `int`)
+- Pointer return types
+
+```c
+extern int printf(string fmt, ...);
 extern double sqrt(double x);
-extern int my_custom_func(int a, int b);
+
+// With cleanup for automatic memory management
+extern void* malloc(int size) cleanup(free);
 ```
 
 ### Managed C Handles

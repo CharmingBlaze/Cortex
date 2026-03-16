@@ -57,15 +57,16 @@ type CodeGenerator struct {
 	arrayDimensions        map[string]int    // var name -> 1 or 2 for 1D/2D array (used for bounds check)
 	typeEmitNames          map[string]string // Cortex type -> C name (e.g. Vec2 -> math__Vec2 when module set)
 	closureCounter         int
-	closureCaptureMap      map[string]string       // capture name -> env field when emitting lambda body
-	lambdaClosureCache     map[*ast.LambdaNode]int // lambda -> closure id (so we emit struct/fn once)
-	usesNetwork            bool                    // if true, emit #include "runtime/network.h"
-	usesGui                bool                    // if true, emit #include "runtime/gui_runtime.h"
-	usesAsync              bool                    // if true, emit #include "runtime/async.h"
-	usesThread             bool                    // if true, emit #include "runtime/thread.h"
-	usesManaged            bool                    // if true, emit #include "runtime/managed.h"
-	includedHeaders        map[string]bool         // track headers to prevent duplicates
-	cleanupFunctions       map[string]string       // function name -> cleanup function name
+	closureCaptureMap      map[string]string              // capture name -> env field when emitting lambda body
+	lambdaClosureCache     map[*ast.LambdaNode]int        // lambda -> closure id (so we emit struct/fn once)
+	usesNetwork            bool                           // if true, emit #include "runtime/network.h"
+	usesGui                bool                           // if true, emit #include "runtime/gui_runtime.h"
+	usesAsync              bool                           // if true, emit #include "runtime/async.h"
+	usesThread             bool                           // if true, emit #include "runtime/thread.h"
+	usesManaged            bool                           // if true, emit #include "runtime/managed.h"
+	includedHeaders        map[string]bool                // track headers to prevent duplicates
+	cleanupFunctions       map[string]string              // function name -> cleanup function name
+	autoExternFunctions    map[string]*ast.ExternDeclNode // auto-generated extern declarations
 }
 
 func BoolToInt(v bool) int {
@@ -98,6 +99,11 @@ func (g *CodeGenerator) SetUsesThread(v bool) { g.usesThread = v }
 
 // SetUsesManaged sets whether to emit #include "runtime/managed.h" (set by compiler when AST uses cleanup annotations).
 func (g *CodeGenerator) SetUsesManaged(v bool) { g.usesManaged = v }
+
+// SetAutoExternFunctions sets the auto-generated extern declarations to emit at the top of the file.
+func (g *CodeGenerator) SetAutoExternFunctions(externs map[string]*ast.ExternDeclNode) {
+	g.autoExternFunctions = externs
+}
 
 func (g *CodeGenerator) Generate(node ast.ASTNode) (string, error) {
 	g.output.Reset()
@@ -132,8 +138,32 @@ func (g *CodeGenerator) Generate(node ast.ASTNode) (string, error) {
 		}
 		registerTests.WriteString("}\n")
 	}
-	// Order: headers -> forward decls -> main code -> lambda definitions -> tests
-	return g.headerOutput.String() + g.lambdaForwardDecls.String() + g.output.String() + g.lambdaDefs.String() + g.testDefs.String() + registerTests.String(), nil
+
+	// Build auto-extern declarations
+	var autoExternCode strings.Builder
+	if len(g.autoExternFunctions) > 0 {
+		autoExternCode.WriteString("// Auto-generated extern declarations for C library functions\n")
+		for name, extern := range g.autoExternFunctions {
+			returnType := g.ConvertType(extern.ReturnType)
+			autoExternCode.WriteString(fmt.Sprintf("extern %s %s(", returnType, name))
+			for i, param := range extern.Parameters {
+				if i > 0 {
+					autoExternCode.WriteString(", ")
+				}
+				paramType := g.ConvertType(param.Type)
+				if param.Name != "" {
+					autoExternCode.WriteString(fmt.Sprintf("%s %s", paramType, param.Name))
+				} else {
+					autoExternCode.WriteString(paramType)
+				}
+			}
+			autoExternCode.WriteString(");\n")
+		}
+		autoExternCode.WriteString("\n")
+	}
+
+	// Order: headers -> auto-extern -> forward decls -> main code -> lambda definitions -> tests
+	return g.headerOutput.String() + autoExternCode.String() + g.lambdaForwardDecls.String() + g.output.String() + g.lambdaDefs.String() + g.testDefs.String() + registerTests.String(), nil
 }
 
 func (g *CodeGenerator) CollectTests(node ast.ASTNode) {

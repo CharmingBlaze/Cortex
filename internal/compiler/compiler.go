@@ -556,6 +556,7 @@ func (c *Compiler) GenerateC(inputFiles []string) (string, error) {
 	}
 	merged = optimizer.Run(merged, optimizer.Options{ConstantFolding: true}).(*ast.ProgramNode)
 	c.generator.SetUsesNetwork(usesNetworkBuiltins(merged))
+	c.generator.SetAutoExternFunctions(c.analyzer.GetAutoExternFunctions())
 	code, err := c.generator.Generate(merged)
 	if err != nil {
 		return "", fmt.Errorf("code generation error: %w", err)
