@@ -705,57 +705,109 @@ m[1][0] = 99;
 
 ### Dynamic array (growing list)
 
-For a list that grows at runtime, use the **array** API:
+For a list that grows at runtime, use the **array** type with method syntax:
 
 ```c
 array a = array_create();
-array_push(a, 42);
-array_push(a, "hello");
-array_push(a, 3.14);
+a.push(42);
+a.push("hello");
+a.push(3.14);
 
-int n = array_len(a);        // 3
-any first = array_get(a, 0);
-int val = as_int(first);     // 42
+int n = a.len();           // 3
+any first = a.get(0);
+int val = as_int(first);   // 42
 
-array_set(a, 1, make_any_string("world"));
-array_free(a);               // free when done
+a.set(1, make_any_string("world"));
+a.pop();                   // remove last element
+a.free();                  // free when done
 ```
 
-- **`array_create()`** — new empty array  
-- **`array_push(a, value)`** — add at end  
-- **`array_get(a, index)`** — get element (returns `any`)  
-- **`array_set(a, index, value)`** — set element  
-- **`array_len(a)`** — number of elements  
-- **`array_free(a)`** — release memory  
+**Array Methods:**
+- **`a.push(value)`** — add element at end
+- **`a.pop()`** — remove and return last element
+- **`a.len()`** — number of elements
+- **`a.get(index)`** — get element (returns `any`)
+- **`a.set(index, value)`** — set element at index
+- **`a.insert(index, value)`** — insert at index
+- **`a.remove(index)`** — remove element at index
+- **`a.capacity()`** — current capacity
+- **`a.reserve(size)`** — pre-allocate capacity
+- **`a.free()`** — release memory
+
+**Legacy API (still supported):**
+- `array_push(a, value)`, `array_get(a, index)`, `array_set(a, index, value)`, etc.  
 
 ---
 
 ## Dictionaries (key–value storage)
 
-**dict** stores string keys and values (as `any`). You can use a **dict literal** or the API:
+**dict** stores string keys and values (as `any`). You can use a **dict literal** or method syntax:
 
 ```c
 dict d = { "name": "Cortex", "score": 100 };
 // or: dict d = dict_create();
-//     dict_set(d, "name", make_any_string("Cortex"));
-//     dict_set(d, "score", make_any_int(100));
+//     d.set("name", make_any_string("Cortex"));
+//     d.set("score", make_any_int(100));
 
-bool has = dict_has(d, "name");   // true
-any val = dict_get(d, "score");
+bool has = d.has("name");   // true
+any val = d.get("score");
 int score = as_int(val);
 
-int size = dict_len(d);
-dict_free(d);
+int size = d.len();
+d.remove("score");
+d.free();
 ```
 
-- **`dict_create()`** — new empty dictionary  
-- **`dict_set(d, "key", value)`** — set or overwrite  
-- **`dict_get(d, "key")`** — get value (`any`)  
-- **`dict_has(d, "key")`** — true if key exists  
-- **`dict_len(d)`** — number of entries  
-- **`dict_free(d)`** — release memory  
+**Dict Methods:**
+- **`d.set("key", value)`** — set or overwrite a key
+- **`d.get("key")`** — get value (returns `any`)
+- **`d.has("key")`** — true if key exists
+- **`d.remove("key")`** — remove a key
+- **`d.len()`** — number of entries
+- **`d.keys()`** — get array of keys
+- **`d.values()`** — get array of values
+- **`d.free()`** — release memory
+
+**Legacy API (still supported):**
+- `dict_set(d, "key", value)`, `dict_get(d, "key")`, `dict_has(d, "key")`, etc.
 
 Use `make_any_int`, `make_any_string`, `make_any_float`, etc. when you need to pass a typed value as `any`.
+
+---
+
+## String Methods
+
+Strings have built-in methods for common operations:
+
+```c
+string s = "  Hello World  ";
+
+// Basic operations
+int length = s.len();              // 14
+string trimmed = s.trim();         // "Hello World"
+string upper = s.upper();          // "  HELLO WORLD  "
+string lower = s.lower();          // "  hello world  "
+
+// Search and check
+bool found = s.contains("World");  // true
+bool starts = s.starts_with("  H"); // true
+bool ends = s.ends_with("  ");     // true
+
+// Transform
+string replaced = s.replace("World", "Cortex");  // "  Hello Cortex  "
+array parts = s.split(" ");         // Split by space
+```
+
+**String Methods:**
+- **`s.len()`** — string length
+- **`s.trim()`** — remove leading/trailing whitespace
+- **`s.upper()`** — convert to uppercase
+- **`s.lower()`** — convert to lowercase
+- **`s.contains(sub)`** — check if substring exists
+- **`s.starts_with(prefix)`** — check prefix
+- **`s.ends_with(suffix)`** — check suffix
+- **`s.replace(old, new)`** — replace all occurrences
+- **`s.split(delim)`** — split into array
 
 ---
 
@@ -793,6 +845,145 @@ match (r) {
 ```
 
 Use `as_int(v)`, `as_string(v)`, etc. on `v` depending on what the function returns.
+
+---
+
+## Null Coalescing Operator (`??`)
+
+The **`??`** operator provides a default value when a nullable expression is null:
+
+```c
+string? name = null;
+string result = name ?? "default";  // result = "default"
+
+string? value = "hello";
+string result2 = value ?? "default";  // result2 = "hello"
+```
+
+This is useful for providing fallback values without explicit null checks.
+
+---
+
+## Optional Chaining (`?.`)
+
+The **`?.`** operator safely accesses members and methods on nullable objects:
+
+```c
+struct Person {
+    string name;
+    int age;
+}
+
+Person? person = get_person();
+string? name = person?.name;  // Safe access - returns null if person is null
+int? age = person?.age;       // Also safe
+```
+
+If `person` is null, the expression returns null instead of crashing. This chains safely:
+
+```c
+string? city = person?.address?.city;  // Safe nested access
+```
+
+---
+
+## Range Operators
+
+Cortex supports range expressions for creating numeric ranges:
+
+### Inclusive Range (`..`)
+
+Creates a range from start to end (inclusive):
+
+```c
+// For loop with range
+for (int i in 0..5) {
+    print(i);  // Prints 0, 1, 2, 3, 4, 5
+}
+
+// Range expression
+var r = 1..10;  // Range from 1 to 10 inclusive
+```
+
+### Exclusive Range (`..<`)
+
+Creates a range from start to end (exclusive):
+
+```c
+for (int i in 0..<5) {
+    print(i);  // Prints 0, 1, 2, 3, 4
+}
+
+var r = 1..<10;  // Range from 1 to 9
+```
+
+Ranges are useful in for loops and array slicing operations.
+
+---
+
+## Exception Handling with `try`/`catch`/`throw`
+
+Cortex supports structured exception handling:
+
+### Basic try/catch
+
+```c
+try {
+    risky_operation();
+} catch (Exception e) {
+    show("Caught: " + e.message);
+}
+```
+
+### Multiple catch clauses
+
+```c
+try {
+    process_file(path);
+} catch (FileNotFound e) {
+    show("File not found: " + path);
+} catch (PermissionDenied e) {
+    show("Permission denied");
+} catch (Exception e) {
+    show("Unknown error: " + e.message);
+}
+```
+
+### Catch-all
+
+```c
+try {
+    do_something();
+} catch {
+    show("An error occurred");
+}
+```
+
+### Finally block
+
+```c
+try {
+    var file = open("data.txt");
+    process(file);
+} catch (Exception e) {
+    show("Error: " + e.message);
+} finally {
+    close(file);  // Always runs
+}
+```
+
+### Throwing exceptions
+
+```c
+fn validate(int age) {
+    if (age < 0) {
+        throw Exception("Age cannot be negative");
+    }
+    if (age > 150) {
+        throw Exception("Age seems unrealistic");
+    }
+}
+```
 
 ---
 

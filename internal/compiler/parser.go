@@ -913,6 +913,12 @@ func (p *Parser) ParseStatement() (ast.ASTNode, error) {
 	if p.Match(TokenYield) {
 		return p.ParseYieldStatement()
 	}
+	if p.Match(TokenTry) {
+		return p.ParseTryStatement()
+	}
+	if p.Match(TokenThrow) {
+		return p.ParseThrowStatement()
+	}
 	if p.Match(TokenLBrace) {
 		return p.ParseBlock()
 	}
@@ -1790,6 +1796,86 @@ func (p *Parser) ParseYieldStatement() (ast.ASTNode, error) {
 	}, nil
 }
 
+func (p *Parser) ParseTryStatement() (ast.ASTNode, error) {
+	line, col := p.Peek().Line, p.Peek().Column
+
+	// Parse try block
+	tryBlock, err := p.ParseBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	var catchBlocks []*ast.CatchClauseNode
+	var finally ast.ASTNode
+
+	// Parse catch clauses
+	for p.Match(TokenCatch) {
+		catchLine, catchCol := p.Previous().Line, p.Previous().Column
+
+		var exceptionType string
+		var exceptionVar string
+
+		// Check for catch with type and variable: catch (Type var)
+		if p.Match(TokenLParen) {
+			// Parse exception type (optional)
+			if p.Check(TokenIdentifier) {
+				exceptionType = p.Advance().Value
+			}
+			// Parse exception variable name
+			if p.Check(TokenIdentifier) {
+				exceptionVar = p.Advance().Value
+			}
+			p.Consume(TokenRParen, "Expected ')' after catch clause")
+		}
+
+		// Parse catch block
+		catchBody, err := p.ParseBlock()
+		if err != nil {
+			return nil, err
+		}
+
+		catchBlocks = append(catchBlocks, &ast.CatchClauseNode{
+			BaseNode:      ast.BaseNode{Type: ast.NodeCatchClause, Line: catchLine, Column: catchCol},
+			ExceptionType: exceptionType,
+			ExceptionVar:  exceptionVar,
+			Body:          catchBody,
+		})
+	}
+
+	// Parse finally block (optional)
+	if p.Match(TokenIdentifier) && p.Previous().Value == "finally" {
+		var err error
+		finally, err = p.ParseBlock()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &ast.TryStmtNode{
+		BaseNode:    ast.BaseNode{Type: ast.NodeTryStmt, Line: line, Column: col},
+		TryBlock:    tryBlock,
+		CatchBlocks: catchBlocks,
+		Finally:     finally,
+	}, nil
+}
+
+func (p *Parser) ParseThrowStatement() (ast.ASTNode, error) {
+	line, col := p.Peek().Line, p.Peek().Column
+
+	// Parse the expression to throw
+	expr, err := p.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	p.Consume(TokenSemicolon, "Expected ';' after throw expression")
+
+	return &ast.ThrowStmtNode{
+		BaseNode:   ast.BaseNode{Type: ast.NodeThrowStmt, Line: line, Column: col},
+		Expression: expr,
+	}, nil
+}
+
 func (p *Parser) ParseSpawnStatement() (ast.ASTNode, error) {
 	line, col := p.Peek().Line, p.Peek().Column
 
@@ -2036,6 +2122,22 @@ func (p *Parser) ParseLogicalOr() (ast.ASTNode, error) {
 		}
 	}
 
+	// Handle null coalescing: a ?? b
+	for p.Match(TokenNullCoalesce) {
+		operator := p.Previous()
+		right, err := p.ParseLogicalAnd()
+		if err != nil {
+			return nil, err
+		}
+
+		expr = &ast.BinaryExprNode{
+			BaseNode: ast.BaseNode{Type: ast.NodeBinaryExpr, Line: operator.Line, Column: operator.Column},
+			Left:     expr,
+			Operator: "??",
+			Right:    right,
+		}
+	}
+
 	return expr, nil
 }
 
@@ -2105,6 +2207,31 @@ func (p *Parser) ParseComparison() (ast.ASTNode, error) {
 			Left:     expr,
 			Operator: operator.Value,
 			Right:    right,
+		}
+	}
+
+	// Check for range operators: 0..10 or 0..<n
+	if p.Match(TokenRange) {
+		right, err := p.ParseTerm()
+		if err != nil {
+			return nil, err
+		}
+		expr = &ast.RangeNode{
+			BaseNode:  ast.BaseNode{Type: ast.NodeRange, Line: expr.GetLine(), Column: expr.GetColumn()},
+			Start:     expr,
+			End:       right,
+			Exclusive: false,
+		}
+	} else if p.Match(TokenRangeExclusive) {
+		right, err := p.ParseTerm()
+		if err != nil {
+			return nil, err
+		}
+		expr = &ast.RangeNode{
+			BaseNode:  ast.BaseNode{Type: ast.NodeRange, Line: expr.GetLine(), Column: expr.GetColumn()},
+			Start:     expr,
+			End:       right,
+			Exclusive: true,
 		}
 	}
 
@@ -2371,6 +2498,15 @@ func (p *Parser) ParseCall() (ast.ASTNode, error) {
 				BaseNode: ast.BaseNode{Type: ast.NodeMemberAccess, Line: member.Line, Column: member.Column},
 				Object:   expr,
 				Member:   member.Value,
+			}
+		} else if p.Match(TokenOptionalChain) {
+			// Optional chaining: obj?.member
+			member := p.Consume(TokenIdentifier, "Expected property name after '?.'")
+			expr = &ast.MemberAccessNode{
+				BaseNode: ast.BaseNode{Type: ast.NodeMemberAccess, Line: member.Line, Column: member.Column},
+				Object:   expr,
+				Member:   member.Value,
+				Optional: true,
 			}
 		} else if p.Match(TokenLBracket) {
 			index, err := p.ParseExpression()

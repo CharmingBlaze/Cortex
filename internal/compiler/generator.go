@@ -318,6 +318,14 @@ func (g *CodeGenerator) VisitNode(node ast.ASTNode) {
 		g.VisitAwaitExpr(n)
 	case *ast.SpawnStmtNode:
 		g.VisitSpawnStmt(n)
+	case *ast.RangeNode:
+		g.VisitRange(n)
+	case *ast.TryStmtNode:
+		g.VisitTryStmt(n)
+	case *ast.CatchClauseNode:
+		g.VisitCatchClause(n)
+	case *ast.ThrowStmtNode:
+		g.VisitThrowStmt(n)
 	default:
 		g.Write(fmt.Sprintf("// Unknown node type: %T\n", node))
 	}
@@ -1505,6 +1513,15 @@ func (g *CodeGenerator) VisitBinaryExpr(node *ast.BinaryExprNode) {
 		g.GenerateComparison(node.Left, node.Right, node.Operator, leftType, rightType)
 	case "&&", "||":
 		g.GenerateLogicalOperation(node.Left, node.Right, node.Operator, leftType, rightType)
+	case "??":
+		// Null coalescing: left ?? right -> (left != null ? left : right)
+		g.Write("(")
+		g.VisitNode(node.Left)
+		g.Write(" != NULL ? ")
+		g.VisitNode(node.Left)
+		g.Write(" : ")
+		g.VisitNode(node.Right)
+		g.Write(")")
 	default:
 		// Default case
 		g.Write("(")
@@ -1823,6 +1840,220 @@ func (g *CodeGenerator) VisitCallExpr(node *ast.CallExprNode) {
 		}
 
 		objType := g.GetExpressionType(member.Object)
+
+		// Check for array methods: arr.push(val), arr.len(), etc.
+		if objType == "array" || objType == "cortex_array*" {
+			switch member.Member {
+			case "push":
+				g.Write("array_push(")
+				g.VisitNode(member.Object)
+				if len(node.Args) > 0 {
+					g.Write(", ")
+					g.EmitExprAsAny(node.Args[0])
+				}
+				g.Write(")")
+				return
+			case "pop":
+				g.Write("array_pop(")
+				g.VisitNode(member.Object)
+				g.Write(")")
+				return
+			case "len", "length":
+				g.Write("array_len(")
+				g.VisitNode(member.Object)
+				g.Write(")")
+				return
+			case "capacity":
+				g.Write("array_capacity(")
+				g.VisitNode(member.Object)
+				g.Write(")")
+				return
+			case "reserve":
+				g.Write("array_reserve(")
+				g.VisitNode(member.Object)
+				if len(node.Args) > 0 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+				}
+				g.Write(")")
+				return
+			case "get":
+				g.Write("array_get(")
+				g.VisitNode(member.Object)
+				if len(node.Args) > 0 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+				}
+				g.Write(")")
+				return
+			case "set":
+				g.Write("array_set(")
+				g.VisitNode(member.Object)
+				if len(node.Args) >= 2 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+					g.Write(", ")
+					g.EmitExprAsAny(node.Args[1])
+				}
+				g.Write(")")
+				return
+			case "insert":
+				g.Write("array_insert(")
+				g.VisitNode(member.Object)
+				if len(node.Args) >= 2 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+					g.Write(", ")
+					g.EmitExprAsAny(node.Args[1])
+				}
+				g.Write(")")
+				return
+			case "remove":
+				g.Write("array_remove_at(")
+				g.VisitNode(member.Object)
+				if len(node.Args) > 0 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+				}
+				g.Write(")")
+				return
+			case "free":
+				g.Write("array_free(")
+				g.VisitNode(member.Object)
+				g.Write(")")
+				return
+			}
+		}
+
+		// Check for string methods: s.len(), s.upper(), etc.
+		if objType == "string" || objType == "char*" {
+			switch member.Member {
+			case "len", "length":
+				g.Write("strlen(")
+				g.VisitNode(member.Object)
+				g.Write(")")
+				return
+			case "split":
+				g.Write("cortex_str_split(")
+				g.VisitNode(member.Object)
+				if len(node.Args) > 0 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+				} else {
+					g.Write(", \" \"")
+				}
+				g.Write(")")
+				return
+			case "upper", "to_upper":
+				g.Write("cortex_str_to_upper(")
+				g.VisitNode(member.Object)
+				g.Write(")")
+				return
+			case "lower", "to_lower":
+				g.Write("cortex_str_to_lower(")
+				g.VisitNode(member.Object)
+				g.Write(")")
+				return
+			case "trim":
+				g.Write("cortex_str_trim(")
+				g.VisitNode(member.Object)
+				g.Write(")")
+				return
+			case "contains":
+				g.Write("string_contains(")
+				g.VisitNode(member.Object)
+				if len(node.Args) > 0 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+				}
+				g.Write(")")
+				return
+			case "replace":
+				g.Write("cortex_str_replace(")
+				g.VisitNode(member.Object)
+				if len(node.Args) >= 2 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+					g.Write(", ")
+					g.VisitNode(node.Args[1])
+				}
+				g.Write(")")
+				return
+			case "starts_with":
+				g.Write("cortex_str_starts_with(")
+				g.VisitNode(member.Object)
+				if len(node.Args) > 0 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+				}
+				g.Write(")")
+				return
+			case "ends_with":
+				g.Write("cortex_str_ends_with(")
+				g.VisitNode(member.Object)
+				if len(node.Args) > 0 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+				}
+				g.Write(")")
+				return
+			case "index_of":
+				g.Write("string_index_of(")
+				g.VisitNode(member.Object)
+				if len(node.Args) > 0 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+				}
+				g.Write(")")
+				return
+			}
+		}
+
+		// Check for dict methods: d.keys(), d.has(), etc.
+		if objType == "dict" || objType == "cortex_dict*" {
+			switch member.Member {
+			case "len", "length":
+				g.Write("dict_len(")
+				g.VisitNode(member.Object)
+				g.Write(")")
+				return
+			case "has":
+				g.Write("dict_has(")
+				g.VisitNode(member.Object)
+				if len(node.Args) > 0 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+				}
+				g.Write(")")
+				return
+			case "get":
+				g.Write("dict_get(")
+				g.VisitNode(member.Object)
+				if len(node.Args) > 0 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+				}
+				g.Write(")")
+				return
+			case "set":
+				g.Write("dict_set(")
+				g.VisitNode(member.Object)
+				if len(node.Args) >= 2 {
+					g.Write(", ")
+					g.VisitNode(node.Args[0])
+					g.Write(", ")
+					g.EmitExprAsAny(node.Args[1])
+				}
+				g.Write(")")
+				return
+			case "free":
+				g.Write("dict_free(")
+				g.VisitNode(member.Object)
+				g.Write(")")
+				return
+			}
+		}
+
 		// Check if objType is a struct with this method
 		if methods, exists := g.structMethods[objType]; exists {
 			if _, hasMethod := methods[member.Member]; hasMethod {
@@ -2383,8 +2614,97 @@ func (g *CodeGenerator) VisitMemberAccess(node *ast.MemberAccessNode) {
 		g.Write(fmt.Sprintf(".%s", node.Member))
 		return
 	}
+
+	// Handle optional chaining: obj?.member -> (obj ? obj.member : NULL)
+	if node.Optional {
+		g.Write("(")
+		g.VisitNode(node.Object)
+		g.Write(" ? ")
+		g.VisitNode(node.Object)
+		g.Write(fmt.Sprintf(".%s : NULL)", node.Member))
+		return
+	}
+
 	g.VisitNode(node.Object)
 	g.Write(fmt.Sprintf(".%s", node.Member))
+}
+
+// VisitRange generates C code for range expressions.
+// Ranges are typically used in for loops, so we generate a struct that holds the range bounds.
+func (g *CodeGenerator) VisitRange(node *ast.RangeNode) {
+	// Generate a cortex_range struct literal
+	// struct cortex_range { int start; int end; bool exclusive; }
+	g.Write("((cortex_range){")
+	g.VisitNode(node.Start)
+	g.Write(", ")
+	g.VisitNode(node.End)
+	if node.Exclusive {
+		g.Write(", 1")
+	} else {
+		g.Write(", 0")
+	}
+	g.Write("})")
+}
+
+// VisitTryStmt generates C code for try-catch statements using setjmp/longjmp.
+func (g *CodeGenerator) VisitTryStmt(node *ast.TryStmtNode) {
+	// Use setjmp/longjmp for exception handling in C
+	g.Write("do {\n")
+	g.Write("    cortex_exception_frame_t __frame;\n")
+	g.Write("    if (setjmp(__frame.env) == 0) {\n")
+	g.Write("        cortex_push_exception_frame(&__frame);\n")
+
+	// Generate try block
+	g.VisitNode(node.TryBlock)
+
+	g.Write("        cortex_pop_exception_frame();\n")
+	g.Write("    } else {\n")
+
+	// Generate catch blocks
+	for _, catch := range node.CatchBlocks {
+		g.VisitCatchClause(catch)
+	}
+
+	// If no catch blocks matched, re-throw
+	if len(node.CatchBlocks) > 0 {
+		g.Write("        cortex_rethrow();\n")
+	}
+
+	g.Write("    }\n")
+
+	// Generate finally block if present
+	if node.Finally != nil {
+		g.VisitNode(node.Finally)
+	}
+
+	g.Write("} while(0)")
+}
+
+// VisitCatchClause generates C code for a catch clause.
+func (g *CodeGenerator) VisitCatchClause(node *ast.CatchClauseNode) {
+	// Generate catch condition check
+	if node.ExceptionType != "" {
+		g.Write(fmt.Sprintf("        if (cortex_exception_matches(\"%s\")) {\n", node.ExceptionType))
+	} else {
+		g.Write("        {\n")
+	}
+
+	// Store exception in variable if specified
+	if node.ExceptionVar != "" {
+		g.Write(fmt.Sprintf("            %s = cortex_get_exception();\n", node.ExceptionVar))
+	}
+
+	// Generate catch body
+	g.VisitNode(node.Body)
+
+	g.Write("        }\n")
+}
+
+// VisitThrowStmt generates C code for throw statements.
+func (g *CodeGenerator) VisitThrowStmt(node *ast.ThrowStmtNode) {
+	g.Write("cortex_throw(")
+	g.VisitNode(node.Expression)
+	g.Write(")")
 }
 
 func (g *CodeGenerator) ConvertType(cortexType string) string {

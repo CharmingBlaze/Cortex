@@ -129,6 +129,13 @@ const (
 	TokenQuestion
 	TokenArrow
 	TokenFatArrow
+	TokenNullCoalesce   // ?? - null coalescing
+	TokenOptionalChain  // ?. - optional chaining
+	TokenRange          // .. - inclusive range
+	TokenRangeExclusive // ..< - exclusive range
+	TokenTry
+	TokenCatch
+	TokenThrow
 
 	// Special
 	TokenComment
@@ -312,6 +319,25 @@ func (l *Lexer) Tokenize(input string) ([]Token, error) {
 				l.position++
 				value = "||"
 				tokenType = TokenOr
+			} else if char == '?' && l.PeekChar() == '?' {
+				l.position++
+				value = "??"
+				tokenType = TokenNullCoalesce
+			} else if char == '?' && l.PeekChar() == '.' {
+				l.position++
+				value = "?."
+				tokenType = TokenOptionalChain
+			} else if char == '.' && l.PeekChar() == '.' {
+				l.position++
+				// Check for ..< (exclusive range) vs .. (inclusive range)
+				if l.PeekChar() == '<' {
+					l.position++
+					value = "..<"
+					tokenType = TokenRangeExclusive
+				} else {
+					value = ".."
+					tokenType = TokenRange
+				}
 			} else if char == '|' {
 				// Single | for union types
 				tokenType = TokenPipe
@@ -584,6 +610,9 @@ func (l *Lexer) GetKeywordType(identifier string) TokenType {
 		"test":      TokenTest,
 		"coroutine": TokenCoroutine,
 		"yield":     TokenYield,
+		"try":       TokenTry,
+		"catch":     TokenCatch,
+		"throw":     TokenThrow,
 	}
 
 	if tokenType, exists := keywords[lowerIdent]; exists {

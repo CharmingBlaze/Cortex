@@ -37,6 +37,10 @@ const (
 	NodeCastExpr
 	NodeInclude
 	NodeRawC
+	NodeRange
+	NodeTryStmt
+	NodeCatchClause
+	NodeThrowStmt
 )
 
 // Node is the interface implemented by all AST nodes.
@@ -759,12 +763,67 @@ func (n *ArrayAccessNode) String() string {
 // MemberAccessNode represents a member access.
 type MemberAccessNode struct {
 	BaseNode
-	Object Node
-	Member string
+	Object   Node
+	Member   string
+	Optional bool // true if using ?. syntax
 }
 
 func (n *MemberAccessNode) String() string {
-	return fmt.Sprintf("MemberAccess{Object: %v, Member: %s}", n.Object, n.Member)
+	op := ""
+	if n.Optional {
+		op = "?"
+	}
+	return fmt.Sprintf("MemberAccess{Object: %v, Member: %s%s}", n.Object, op, n.Member)
+}
+
+// RangeNode represents a range expression (e.g., 0..10 or 0..<n).
+type RangeNode struct {
+	BaseNode
+	Start     Node
+	End       Node
+	Exclusive bool // true for ..<, false for ..
+}
+
+func (n *RangeNode) String() string {
+	op := ".."
+	if n.Exclusive {
+		op = "..<"
+	}
+	return fmt.Sprintf("Range{Start: %v, End: %v, Op: %s}", n.Start, n.End, op)
+}
+
+// TryStmtNode represents a try-catch statement.
+type TryStmtNode struct {
+	BaseNode
+	TryBlock    Node
+	CatchBlocks []*CatchClauseNode
+	Finally     Node // optional finally block
+}
+
+func (n *TryStmtNode) String() string {
+	return fmt.Sprintf("Try{Block: %v, Catches: %v, Finally: %v}", n.TryBlock, n.CatchBlocks, n.Finally)
+}
+
+// CatchClauseNode represents a single catch clause.
+type CatchClauseNode struct {
+	BaseNode
+	ExceptionType string // type of exception to catch (empty for catch-all)
+	ExceptionVar  string // variable name for the caught exception
+	Body          Node
+}
+
+func (n *CatchClauseNode) String() string {
+	return fmt.Sprintf("Catch{Type: %s, Var: %s, Body: %v}", n.ExceptionType, n.ExceptionVar, n.Body)
+}
+
+// ThrowStmtNode represents a throw statement.
+type ThrowStmtNode struct {
+	BaseNode
+	Expression Node
+}
+
+func (n *ThrowStmtNode) String() string {
+	return fmt.Sprintf("Throw{Expr: %v}", n.Expression)
 }
 
 // SpawnStmtNode represents a spawn statement that runs a function in a new thread.

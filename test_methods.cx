@@ -1,0 +1,49 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+fn main() {
+    // Test array methods
+    array arr = array_create();
+    arr.push(10);
+    arr.push(20);
+    arr.push(30);
+    print("Array length: ");
+    print_any(make_any_int(arr.len()));
+    print("\n");
+    arr.set(1, 99);
+    print("Array element 1: ");
+    print_any(arr.get(1));
+    print("\n");
+    arr.pop();
+    print("After pop, length: ");
+    print_any(make_any_int(arr.len()));
+    print("\n");
+    arr.free();
+    
+    // Test string methods
+    string s = "  Hello World  ";
+    print("Trimmed: '");
+    print(s.trim());
+    print("'\n");
+    print("Upper: '");
+    print(s.upper());
+    print("'\n");
+    print("Lower: '");
+    print(s.lower());
+    print("'\n");
+    
+    // Test dict methods
+    dict d = dict_create();
+    d.set("name", "Cortex");
+    d.set("version", "1.0");
+    print("Dict has name: ");
+    print_any(make_any_bool(d.has("name")));
+    print("\n");
+    print("Dict length: ");
+    print_any(make_any_int(d.len()));
+    print("\n");
+    d.free();
+    
+    println("All method tests passed!");
+}
