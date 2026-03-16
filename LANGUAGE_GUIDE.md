@@ -636,6 +636,70 @@ void main() {
 - **Create** a variable: `Player p;`
 - **Use** fields with a dot: `p.x`, `p.health`.
 
+### TYPE...ENDTYPE (BASIC-style user-defined types)
+
+Cortex also supports a more readable TYPE block syntax for defining custom types:
+
+```c
+TYPE AccountEntry
+    Number AS int
+    Name AS string
+    Amount AS float
+ENDTYPE
+
+void main() {
+    AccountEntry account;
+    account.Number = 12345;
+    account.Name = "Lee";
+    account.Amount = 0.42;
+    show("Account: " + account.Name + " has $" + account.Amount);
+}
+```
+
+**Rules:**
+- Fields without `AS` default to `int`
+- `AS` specifies the type: `FieldName AS Type`
+- Types can be built-in (`int`, `float`, `string`) or other user-defined types
+
+### Nested Types
+
+You can nest types within types for complex data structures:
+
+```c
+TYPE Amounts
+    CurrentBalance AS float
+    SavingsBalance AS float
+    CreditCardBalance AS float
+ENDTYPE
+
+TYPE AccountEntry
+    Number AS int
+    Name AS string
+    Amount AS Amounts
+ENDTYPE
+
+void main() {
+    AccountEntry account;
+    account.Number = 12345;
+    account.Name = "Lee";
+    account.Amount.CurrentBalance = 0.42;
+    account.Amount.SavingsBalance = 100.0;
+    account.Amount.CreditCardBalance = -5000.0;
+}
+```
+
+### Variable Declaration with AS
+
+You can also declare variables using the `AS` syntax:
+
+```c
+void main() {
+    account AS AccountEntry;
+    numbers AS int[100];  // Array of 100 integers
+    account.Name = "Test";
+}
+```
+
 ### Struct methods
 
 You can define **methods** inside the struct. They use the struct’s fields directly and are called with a dot:

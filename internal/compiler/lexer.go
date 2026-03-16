@@ -69,6 +69,9 @@ const (
 	TokenTest
 	TokenCoroutine
 	TokenYield
+	TokenTypeKeyword
+	TokenEndType
+	TokenAs
 
 	// Preprocessor
 	TokenInclude
@@ -613,6 +616,9 @@ func (l *Lexer) GetKeywordType(identifier string) TokenType {
 		"try":       TokenTry,
 		"catch":     TokenCatch,
 		"throw":     TokenThrow,
+		"type":      TokenTypeKeyword,
+		"endtype":   TokenEndType,
+		"as":        TokenAs,
 	}
 
 	if tokenType, exists := keywords[lowerIdent]; exists {

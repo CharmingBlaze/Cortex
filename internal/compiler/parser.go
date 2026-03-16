@@ -173,6 +173,9 @@ func (p *Parser) ParseDeclaration() (ast.ASTNode, error) {
 	if p.Match(TokenStruct) {
 		return p.ParseStructDeclaration()
 	}
+	if p.Match(TokenTypeKeyword) {
+		return p.ParseTypeDeclaration()
+	}
 	if p.Match(TokenEnum) {
 		return p.ParseEnumDeclaration()
 	}
@@ -555,6 +558,60 @@ func (p *Parser) ParseEnumDeclaration() (ast.ASTNode, error) {
 	}, nil
 }
 
+// ParseTypeDeclaration parses TYPE...ENDTYPE user-defined type blocks
+// Syntax: TYPE TypeName
+//
+//	  FieldName1
+//	  FieldName2 AS Type
+//	ENDTYPE
+func (p *Parser) ParseTypeDeclaration() (ast.ASTNode, error) {
+	nameToken := p.Consume(TokenIdentifier, "Expected type name after 'type'")
+
+	var fields []*ast.VariableDeclNode
+
+	// Parse fields until ENDTYPE
+	for !p.Check(TokenEndType) && !p.IsAtEnd() {
+		// Field name comes first
+		fieldNameTok := p.Consume(TokenIdentifier, "Expected field name in type definition")
+
+		// Check for AS Type syntax, otherwise default to int
+		fieldType := "int" // default type
+		if p.Match(TokenAs) {
+			// Parse the type - can be a keyword type or identifier (custom type)
+			if p.IsTypeToken(p.Peek().Type) {
+				typeTok := p.ConsumeType("Expected type after 'as'")
+				fieldType = typeTok.Value
+			} else if p.Check(TokenIdentifier) {
+				// Custom type reference (nested types)
+				typeTok := p.Advance()
+				fieldType = typeTok.Value
+			} else {
+				return nil, fmt.Errorf("expected type after 'as' at line %d", p.Peek().Line)
+			}
+		}
+
+		fields = append(fields, &ast.VariableDeclNode{
+			BaseNode:    ast.BaseNode{Type: ast.NodeVariableDecl, Line: fieldNameTok.Line, Column: fieldNameTok.Column},
+			Name:        fieldNameTok.Value,
+			Type:        fieldType,
+			Initializer: nil,
+		})
+
+		// Optional semicolon or newline between fields
+		p.Match(TokenSemicolon)
+	}
+
+	p.Consume(TokenEndType, "Expected 'endtype' to close type definition")
+
+	return &ast.StructDeclNode{
+		BaseNode: ast.BaseNode{Type: ast.NodeStructDecl, Line: nameToken.Line, Column: nameToken.Column},
+		Name:     nameToken.Value,
+		Module:   p.currentModule,
+		Fields:   fields,
+		Methods:  nil,
+	}, nil
+}
+
 func (p *Parser) ParseTupleReturnTypeAndName() (types []string, name string, err error) {
 	p.Advance() // consume (
 	var list []string
@@ -929,7 +986,60 @@ func (p *Parser) ParseStatement() (ast.ASTNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Variable declarations in statements need semicolons
+		return decl, nil
+	}
+
+	// Check for var AS Type syntax (user-defined type style)
+	// Pattern: identifier AS Type
+	if p.position+2 < len(p.tokens) && p.tokens[p.position].Type == TokenIdentifier && p.tokens[p.position+1].Type == TokenAs {
+		// Parse: varName AS Type
+		nameTok := p.Advance()
+		p.Advance() // consume AS
+		typeTok := p.ConsumeType("Expected type after 'as'")
+		var initializer ast.ASTNode
+		var arraySize int = -1
+
+		// Check for array size: var AS Type[size]
+		if p.Match(TokenLBracket) {
+			if p.Check(TokenNumber) {
+				sizeTok := p.Advance()
+				arraySize = 0
+				if s, err := strconv.Atoi(sizeTok.Value); err == nil {
+					arraySize = s
+				}
+			}
+			p.Consume(TokenRBracket, "Expected ']' after array size")
+		}
+
+		if p.Match(TokenAssign) {
+			init, err := p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+			initializer = init
+		}
+		p.Consume(TokenSemicolon, "Expected ';' after variable declaration")
+
+		node := &ast.VariableDeclNode{
+			BaseNode:    ast.BaseNode{Type: ast.NodeVariableDecl, Line: nameTok.Line, Column: nameTok.Column},
+			Name:        nameTok.Value,
+			Module:      p.currentModule,
+			Type:        typeTok.Value,
+			Initializer: initializer,
+		}
+		if arraySize >= 0 {
+			node.Type = typeTok.Value + "[]"
+			node.ArraySize = arraySize
+		}
+		return node, nil
+	}
+
+	// Variable declarations in statements need semicolons
+	if p.position < len(p.tokens) && p.IsTypeToken(p.tokens[p.position].Type) {
+		decl, err := p.ParseVariableDeclaration()
+		if err != nil {
+			return nil, err
+		}
 		if !p.Match(TokenSemicolon) {
 			return nil, fmt.Errorf("Expected ';' after variable declaration")
 		}
