@@ -76,6 +76,7 @@ const (
 	TokenEnd
 	TokenPublic
 	TokenPrivate
+	TokenTo
 
 	// Preprocessor
 	TokenInclude
@@ -627,6 +628,7 @@ func (l *Lexer) GetKeywordType(identifier string) TokenType {
 		"as":        TokenAs,
 		"public":    TokenPublic,
 		"private":   TokenPrivate,
+		"to":        TokenTo,
 	}
 
 	if tokenType, exists := keywords[lowerIdent]; exists {

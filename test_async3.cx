@@ -1,0 +1,5 @@
+fn foo() -> int { return 1; }
+fn test() -> void
+{
+    async t1 = foo();
+}

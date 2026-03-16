@@ -1,0 +1,6 @@
+fn fetch_data(string url) -> string { return url; }
+fn test() -> void
+{
+    async t1 = fetch_data("test");
+    println(t1);
+}

@@ -1,0 +1,8 @@
+fn test() -> int
+{
+    for (n in [1, 2, 3])
+    {
+        println(n);
+    }
+    return 0;
+}

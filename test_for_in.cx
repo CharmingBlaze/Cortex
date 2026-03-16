@@ -1,0 +1,9 @@
+fn test() -> int
+{
+    array numbers = [1, 2, 3];
+    for (n in numbers)
+    {
+        println(n);
+    }
+    return 0;
+}

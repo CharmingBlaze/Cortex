@@ -443,13 +443,15 @@ fn vector_example() -> int
     nums.push(10);
     nums.push(20);
     nums.push(30);
-    
+
     int total = 0;
-    for (i in 0..nums.len())
+    int i = 0;
+    while (i < nums.len())
     {
         total = total + nums.get(i);
+        i = i + 1;
     }
-    
+
     nums.free();
     return total;
 }

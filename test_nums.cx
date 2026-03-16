@@ -1,0 +1,7 @@
+fn test() -> void
+{
+    vector<int> nums = vector_create_int();
+    for (i in 0..nums.len())
+    {
+    }
+}

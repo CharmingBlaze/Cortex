@@ -78,12 +78,63 @@ func (p *Parser) ParseDeclaration() (ast.ASTNode, error) {
 	}
 	// async void name(params) { body } — parse as normal function (no-op at codegen for now)
 	if p.Match(TokenAsync) {
-		typeToken := p.ConsumeType("Expected return type after 'async'")
-		for p.Match(TokenMultiply) {
-			typeToken.Value += "*"
+		// Support: async fn name(), async returnType name(), async varName = expr
+		var typeToken Token
+		var nameToken Token
+
+		// Check for 'fn' BEFORE ConsumeType since fn is in IsTypeToken
+		if p.Match(TokenFn) {
+			// async fn name(params) -> returnType
+			nameToken = p.Consume(TokenIdentifier, "Expected function name after 'async fn'")
+			typeToken = Token{Type: TokenFn, Value: "fn"}
+		} else if p.Check(TokenIdentifier) {
+			// Could be: async name = expr (variable) or async Type name() (function)
+			// Peek ahead to check for = vs (
+			savedPos := p.position
+			nameToken = p.Advance()
+			if p.Match(TokenAssign) {
+				// async varName = expr - variable declaration with async modifier
+				value, err := p.ParseExpression()
+				if err != nil {
+					return nil, err
+				}
+				p.Consume(TokenSemicolon, "Expected ';' after async variable declaration")
+				return &ast.VariableDeclNode{
+					BaseNode:    ast.BaseNode{Type: ast.NodeVariableDecl, Line: nameToken.Line, Column: nameToken.Column},
+					Name:        nameToken.Value,
+					Type:        "async",
+					Initializer: value,
+				}, nil
+			}
+			// Not a variable, restore and continue as function
+			p.position = savedPos
+			typeToken = p.ConsumeType("Expected return type after 'async'")
+			for p.Match(TokenMultiply) {
+				typeToken.Value += "*"
+			}
+			nameToken = p.Consume(TokenIdentifier, "Expected function name after 'async'")
+		} else {
+			// async returnType name(params)
+			typeToken = p.ConsumeType("Expected return type after 'async'")
+			for p.Match(TokenMultiply) {
+				typeToken.Value += "*"
+			}
+			nameToken = p.Consume(TokenIdentifier, "Expected function name after 'async'")
 		}
-		nameToken := p.Consume(TokenIdentifier, "Expected function name after 'async'")
-		return p.ParseFunctionDeclaration(typeToken, nameToken)
+		fn, err := p.ParseFunctionDeclaration(typeToken, nameToken)
+		if err != nil {
+			return nil, err
+		}
+		fn.(*ast.FunctionDeclNode).IsAsync = true
+		// If using 'fn' syntax, default to void and check for -> returnType
+		if typeToken.Type == TokenFn {
+			fn.(*ast.FunctionDeclNode).ReturnType = "void"
+			if p.Match(TokenArrow) {
+				returnTypeTok := p.ConsumeType("Expected return type after ->")
+				fn.(*ast.FunctionDeclNode).ReturnType = returnTypeTok.Value
+			}
+		}
+		return fn, nil
 	}
 
 	// Handle spawn statement: spawn function(args) or spawn var = function(args)
@@ -149,6 +200,12 @@ func (p *Parser) ParseDeclaration() (ast.ASTNode, error) {
 		return p.ParseRawCBlock()
 	}
 
+	// Handle visibility modifiers (public/private)
+	isPublic := p.Match(TokenPublic)
+	isPrivate := p.Match(TokenPrivate)
+	_ = isPublic // Track for semantic analysis
+	_ = isPrivate
+
 	// Handle extern declarations
 	if p.Match(TokenExtern) {
 		return p.ParseExternDeclaration()
@@ -178,6 +235,29 @@ func (p *Parser) ParseDeclaration() (ast.ASTNode, error) {
 	}
 	if p.Match(TokenEnum) {
 		return p.ParseEnumDeclaration()
+	}
+
+	// Handle fn keyword for function declarations: fn name(params) -> returnType
+	if p.Match(TokenFn) {
+		// Accept identifier or keyword as function name (e.g., "test" is a keyword but valid fn name)
+		var nameToken Token
+		if p.Check(TokenIdentifier) || p.IsTypeToken(p.Peek().Type) || p.Peek().Type == TokenTest {
+			nameToken = p.Advance()
+		} else {
+			nameToken = p.Consume(TokenIdentifier, "Expected function name after 'fn'")
+		}
+		fn, err := p.ParseFunctionDeclaration(Token{Type: TokenFn, Value: "fn"}, nameToken)
+		if err != nil {
+			return nil, err
+		}
+		// Default to void return type for fn
+		fn.(*ast.FunctionDeclNode).ReturnType = "void"
+		// Check for explicit return type
+		if p.Match(TokenArrow) {
+			returnTypeTok := p.ConsumeType("Expected return type after ->")
+			fn.(*ast.FunctionDeclNode).ReturnType = returnTypeTok.Value
+		}
+		return fn, nil
 	}
 
 	// Tuple return type: ( type , type ) name ( ... ) — only when we see ( type , or ( type )
@@ -565,14 +645,25 @@ func (p *Parser) ParseEnumDeclaration() (ast.ASTNode, error) {
 //	  FieldName2 AS Type
 //	ENDTYPE
 func (p *Parser) ParseTypeDeclaration() (ast.ASTNode, error) {
-	nameToken := p.Consume(TokenIdentifier, "Expected type name after 'type'")
+	// Type name can be an identifier OR a type keyword (e.g., Vec2, Vec3)
+	var nameToken Token
+	if p.IsTypeToken(p.Peek().Type) {
+		nameToken = p.Advance()
+	} else {
+		nameToken = p.Consume(TokenIdentifier, "Expected type name after 'type'")
+	}
 
 	var fields []*ast.VariableDeclNode
 
 	// Parse fields until ENDTYPE
 	for !p.Check(TokenEndType) && !p.IsAtEnd() {
-		// Field name comes first
-		fieldNameTok := p.Consume(TokenIdentifier, "Expected field name in type definition")
+		// Field name comes first - can be identifier or type keyword
+		var fieldNameTok Token
+		if p.IsTypeToken(p.Peek().Type) {
+			fieldNameTok = p.Advance()
+		} else {
+			fieldNameTok = p.Consume(TokenIdentifier, "Expected field name in type definition")
+		}
 
 		// Check for AS Type syntax, otherwise default to int
 		fieldType := "int" // default type
@@ -745,7 +836,8 @@ func (p *Parser) ParseFunctionDeclaration(typeToken, nameToken Token) (ast.ASTNo
 		}
 		paramName := p.Consume(TokenIdentifier, "Expected parameter name")
 		var defaultVal ast.ASTNode
-		if p.Match(TokenAssign) { // Use TokenAssign (=) for default values
+		// Support both = and : for default values
+		if p.Match(TokenAssign) || p.Match(TokenColon) {
 			def, err := p.ParseExpression()
 			if err != nil {
 				return nil, err
@@ -906,6 +998,31 @@ func (p *Parser) ParseStatement() (ast.ASTNode, error) {
 		p.Advance() // Consume 'c'
 		return p.ParseRawCBlock()
 	}
+	// Handle async variable declaration inside functions: async name = expr;
+	if p.Match(TokenAsync) {
+		// Check if this is a variable declaration: async name = expr
+		if p.Check(TokenIdentifier) {
+			nameToken := p.Advance()
+			if p.Match(TokenAssign) {
+				value, err := p.ParseExpression()
+				if err != nil {
+					return nil, err
+				}
+				p.Consume(TokenSemicolon, "Expected ';' after async variable declaration")
+				return &ast.VariableDeclNode{
+					BaseNode:    ast.BaseNode{Type: ast.NodeVariableDecl, Line: nameToken.Line, Column: nameToken.Column},
+					Name:        nameToken.Value,
+					Type:        "async",
+					Initializer: value,
+				}, nil
+			}
+			// Not a variable assignment, put tokens back
+			p.position -= 2 // back up over name and async
+		} else {
+			// Not a variable, put async token back
+			p.position--
+		}
+	}
 	if p.Match(TokenIf) {
 		return p.ParseIfStatement()
 	}
@@ -921,34 +1038,98 @@ func (p *Parser) ParseStatement() (ast.ASTNode, error) {
 	if p.Match(TokenLoop) {
 		return p.ParseLoopStatement()
 	}
-	// for ( x in collection ) vs for ( init; cond; incr ) — use lookahead
-	if p.Check(TokenFor) && p.position+3 < len(p.tokens) &&
-		p.tokens[p.position+1].Type == TokenLParen &&
-		p.tokens[p.position+2].Type == TokenIdentifier &&
-		p.tokens[p.position+3].Type == TokenIn {
-		p.Advance() // for
-		p.Advance() // (
-		idName := p.Peek().Value
-		p.Advance() // id
-		p.Advance() // in
-		collection, err := p.ParseExpression()
-		if err != nil {
-			return nil, err
+	// Handle for statement - check for for-in vs standard for
+	if p.Match(TokenFor) {
+		p.Consume(TokenLParen, "Expected '(' after 'for'")
+
+		// Check for for-in: for (var in collection)
+		// Peek at the token after the first identifier
+		if p.Check(TokenIdentifier) || p.Check(TokenVar) {
+			// Save position in case this is a standard for loop
+			savedPos := p.position
+
+			// Try to parse as for-in
+			var varName string
+			if p.Match(TokenVar) {
+				varName = p.Consume(TokenIdentifier, "Expected variable name after 'var'").Value
+			} else {
+				varName = p.Advance().Value
+			}
+
+			if p.Match(TokenIn) {
+				// This is for-in
+				collection, err := p.ParseExpression()
+				if err != nil {
+					return nil, err
+				}
+				p.Consume(TokenRParen, "Expected ')' after for-in")
+				body, err := p.ParseBlock()
+				if err != nil {
+					return nil, err
+				}
+				return &ast.ForInStmtNode{
+					BaseNode:   ast.BaseNode{Type: ast.NodeForInStmt, Line: p.Previous().Line, Column: p.Previous().Column},
+					VarName:    varName,
+					Collection: collection,
+					Body:       body.(*ast.BlockNode),
+				}, nil
+			}
+
+			// Not for-in, restore position and parse as standard for
+			p.position = savedPos
 		}
-		p.Consume(TokenRParen, "Expected ')' after for-in")
+
+		// Standard for loop: for (init; cond; incr)
+		var initializer ast.ASTNode
+		if !p.Check(TokenSemicolon) {
+			// Could be a variable declaration or expression
+			if p.IsTypeToken(p.Peek().Type) || p.Check(TokenVar) {
+				decl, err := p.ParseVariableDeclaration()
+				if err != nil {
+					return nil, err
+				}
+				initializer = decl
+			} else {
+				init, err := p.ParseExpression()
+				if err != nil {
+					return nil, err
+				}
+				initializer = init
+			}
+		}
+		p.Consume(TokenSemicolon, "Expected ';' after for initializer")
+
+		var condition ast.ASTNode
+		if !p.Check(TokenSemicolon) {
+			cond, err := p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+			condition = cond
+		}
+		p.Consume(TokenSemicolon, "Expected ';' after for condition")
+
+		var increment ast.ASTNode
+		if !p.Check(TokenRParen) {
+			incr, err := p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+			increment = incr
+		}
+		p.Consume(TokenRParen, "Expected ')' after for clauses")
+
 		body, err := p.ParseBlock()
 		if err != nil {
 			return nil, err
 		}
-		return &ast.ForInStmtNode{
-			BaseNode:   ast.BaseNode{Type: ast.NodeForInStmt, Line: p.Previous().Line, Column: p.Previous().Column},
-			VarName:    idName,
-			Collection: collection,
-			Body:       body.(*ast.BlockNode),
+		return &ast.ForStmtNode{
+			BaseNode:    ast.BaseNode{Type: ast.NodeForStmt, Line: body.GetLine(), Column: body.GetColumn()},
+			Initializer: initializer,
+			Condition:   condition,
+			Increment:   increment,
+			Body:        body.(*ast.BlockNode),
 		}, nil
-	}
-	if p.Match(TokenFor) {
-		return p.ParseForStatement()
 	}
 	if p.Match(TokenMatch) {
 		return p.ParseMatchStatement()
@@ -1520,24 +1701,68 @@ func (p *Parser) ParseSelectStatement() (ast.ASTNode, error) {
 			return nil, fmt.Errorf("expected 'CASE' in select statement at line %d", p.Peek().Line)
 		}
 
+		// Check for CASE ELSE (default case)
+		if p.Match(TokenElse) {
+			// Parse body until next CASE or END SELECT
+			var statements []ast.ASTNode
+			for !p.Check(TokenCase) && !p.Check(TokenEnd) && !p.IsAtEnd() {
+				stmt, err := p.ParseStatement()
+				if err != nil {
+					return nil, err
+				}
+				statements = append(statements, stmt)
+			}
+			body := &ast.BlockNode{
+				BaseNode:   ast.BaseNode{Type: ast.NodeBlock, Line: p.Previous().Line, Column: p.Previous().Column},
+				Statements: statements,
+			}
+			cases = append(cases, &ast.SwitchCaseNode{
+				BaseNode: ast.BaseNode{Type: ast.NodeSwitchCase, Line: p.Previous().Line, Column: p.Previous().Column},
+				Constant: nil, // default case
+				Body:     body,
+			})
+			continue
+		}
+
 		// Parse case values (can be multiple: CASE 1, 2, 3)
 		// Or ranges: CASE 1 TO 10
 		var constants []ast.ASTNode
 
 		for {
-			// Check for range: value TO value
-			startConst, err := p.ParseExpression()
-			if err != nil {
-				return nil, err
+			// Parse a simple value (not full expression to avoid consuming return/etc)
+			var startConst ast.ASTNode
+			if p.Check(TokenNumber) {
+				tok := p.Advance()
+				startConst = &ast.NumberLiteralNode{Value: tok.Value}
+			} else if p.Check(TokenString) {
+				tok := p.Advance()
+				startConst = &ast.StringLiteralNode{Value: tok.Value}
+			} else if p.Check(TokenIdentifier) {
+				tok := p.Advance()
+				startConst = &ast.IdentifierNode{Name: tok.Value}
+			} else if p.Check(TokenTrue) || p.Check(TokenFalse) {
+				tok := p.Advance()
+				startConst = &ast.BoolLiteralNode{Value: tok.Type == TokenTrue}
+			} else {
+				return nil, fmt.Errorf("expected case value at line %d", p.Peek().Line)
 			}
 			constants = append(constants, startConst)
 
 			// Check for TO (range)
-			if p.Check(TokenIdentifier) && p.Peek().Value == "to" {
-				p.Advance() // consume 'to'
-				endConst, err := p.ParseExpression()
-				if err != nil {
-					return nil, err
+			if p.Match(TokenTo) {
+				// Parse end value
+				var endConst ast.ASTNode
+				if p.Check(TokenNumber) {
+					tok := p.Advance()
+					endConst = &ast.NumberLiteralNode{Value: tok.Value}
+				} else if p.Check(TokenString) {
+					tok := p.Advance()
+					endConst = &ast.StringLiteralNode{Value: tok.Value}
+				} else if p.Check(TokenIdentifier) {
+					tok := p.Advance()
+					endConst = &ast.IdentifierNode{Name: tok.Value}
+				} else {
+					return nil, fmt.Errorf("expected end value for range at line %d", p.Peek().Line)
 				}
 				// Create a range expression node
 				constants = append(constants, &ast.BinaryExprNode{
@@ -2440,7 +2665,7 @@ func (p *Parser) ParseComparison() (ast.ASTNode, error) {
 
 	// Check for range operators: 0..10 or 0..<n
 	if p.Match(TokenRange) {
-		right, err := p.ParseTerm()
+		right, err := p.ParseCall()
 		if err != nil {
 			return nil, err
 		}
@@ -2451,7 +2676,7 @@ func (p *Parser) ParseComparison() (ast.ASTNode, error) {
 			Exclusive: false,
 		}
 	} else if p.Match(TokenRangeExclusive) {
-		right, err := p.ParseTerm()
+		right, err := p.ParseCall()
 		if err != nil {
 			return nil, err
 		}
@@ -2834,6 +3059,14 @@ func (p *Parser) ParsePrimary() (ast.ASTNode, error) {
 				return nil, fmt.Errorf("expected type in channel<T> at line %d", line)
 			}
 			p.Consume(TokenGreater, "Expected '>' after channel type")
+		}
+		// Check if this is a constructor call: channel<T>(size) or just type: channel<T>
+		if !p.Check(TokenLParen) {
+			// Just a type reference, return as identifier
+			return &ast.IdentifierNode{
+				BaseNode: ast.BaseNode{Type: ast.NodeIdentifier, Line: line, Column: col},
+				Name:     "channel<" + elemType + ">",
+			}, nil
 		}
 		// Parse constructor arguments: (size)
 		p.Consume(TokenLParen, "Expected '(' after channel")
@@ -3276,12 +3509,12 @@ func (p *Parser) Match(types ...TokenType) bool {
 }
 
 func (p *Parser) MatchType() bool {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent, TokenChannel}
 	return p.Match(typeTokens...)
 }
 
 func (p *Parser) ConsumeTypeOrVar() Token {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent, TokenChannel}
 	for _, tokenType := range typeTokens {
 		if p.Check(tokenType) {
 			tok := p.Advance()
@@ -3331,7 +3564,7 @@ func (p *Parser) ConsumeTypeOrVar() Token {
 }
 
 func (p *Parser) ConsumeType(errorMessage string) Token {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent, TokenChannel}
 	for _, tokenType := range typeTokens {
 		if p.Check(tokenType) {
 			tok := p.Advance()
@@ -3383,7 +3616,7 @@ func (p *Parser) ConsumeType(errorMessage string) Token {
 }
 
 func (p *Parser) IsTypeToken(tokenType TokenType) bool {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent, TokenChannel}
 	for _, tt := range typeTokens {
 		if tt == tokenType {
 			return true

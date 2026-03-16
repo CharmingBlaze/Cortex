@@ -1,0 +1,6 @@
+fn test() -> void
+{
+    for (x in [1, 2])
+    {
+    }
+}
