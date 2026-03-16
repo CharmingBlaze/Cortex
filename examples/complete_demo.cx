@@ -60,9 +60,7 @@ void main() {
     println("  STRUCTS");
     println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     
-    Point pt;
-    pt.x = 15.5;
-    pt.y = 25.5;
+    Point pt = Point(15.5, 25.5);
     println("  Point: x=" + pt.x + " y=" + pt.y);
     
     Stats hero;

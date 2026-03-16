@@ -2188,6 +2188,10 @@ func (a *SemanticAnalyzer) GetFunctionReturnType(funcExpr ast.ASTNode) string {
 			}
 			return retType
 		}
+		// Check for struct constructor
+		if symbol != nil && symbol.SymbolType == SymbolStruct {
+			return f.Name // Return the struct type name
+		}
 		// Check built-in functions
 		switch f.Name {
 		case "printf", "println", "print", "writeline":
@@ -2289,6 +2293,22 @@ func (a *SemanticAnalyzer) VisitCallExpr(node *ast.CallExprNode) {
 			a.AddError(fmt.Errorf("duplicate named argument '%s' (line %d)", namedArg.Name, node.GetLine()))
 		}
 		seenNames[namedArg.Name] = true
+	}
+
+	// Check for struct constructor call: TypeName(args) -> struct literal
+	// Validation is done here, but transformation happens in codegen
+	if id, ok := node.Function.(*ast.IdentifierNode); ok {
+		sym := a.currentScope.Resolve(id.Name)
+		if sym != nil && sym.SymbolType == SymbolStruct {
+			// Validate argument count
+			structNode := sym.Node.(*ast.StructDeclNode)
+			if len(node.Args) > len(structNode.Fields) {
+				a.AddError(fmt.Errorf("too many arguments for struct '%s' constructor (expected %d, got %d) at line %d",
+					id.Name, len(structNode.Fields), len(node.Args), node.GetLine()))
+			}
+			// Mark as struct constructor by setting a flag (we use a special attribute)
+			// The codegen will check if function name is a struct type
+		}
 	}
 
 	// Auto-extern: if function is undefined and we have includes, generate extern declaration

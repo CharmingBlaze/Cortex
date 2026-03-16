@@ -47,6 +47,7 @@ type CodeGenerator struct {
 	testCounter            int
 	cfg                    ast.Config
 	structMethods          map[string]map[string]*ast.FunctionDeclNode // struct name -> method name -> method node
+	structTypes            map[string]bool                             // all known struct type names
 	functionParams         map[string][]*ast.ParameterNode             // function name -> parameters for defaults
 	currentMethodStruct    string                                      // when generating method body
 	currentMethodReceiver  string
@@ -115,6 +116,7 @@ func (g *CodeGenerator) Generate(node ast.ASTNode) (string, error) {
 	g.testRegistrations = nil
 	g.testCounter = 0
 	g.structMethods = make(map[string]map[string]*ast.FunctionDeclNode)
+	g.structTypes = make(map[string]bool)
 	g.functionParams = make(map[string][]*ast.ParameterNode)
 	g.arrayDimensions = make(map[string]int)
 	g.typeEmitNames = make(map[string]string) // Cortex type name -> C name (e.g. Vec2 -> math__Vec2)
@@ -809,6 +811,7 @@ func (g *CodeGenerator) VisitStructDecl(node *ast.StructDeclNode) {
 	if g.typeEmitNames != nil {
 		g.typeEmitNames[node.Name] = cName
 	}
+	g.structTypes[node.Name] = true
 
 	if g.structMethods[node.Name] == nil {
 		g.structMethods[node.Name] = make(map[string]*ast.FunctionDeclNode)
@@ -2095,6 +2098,25 @@ func (g *CodeGenerator) VisitCallExpr(node *ast.CallExprNode) {
 		if id.EmitName != "" {
 			name = id.EmitName
 		}
+
+		// Check if this is a struct constructor call FIRST
+		if g.structTypes[name] {
+			emitName := name
+			if g.typeEmitNames[name] != "" {
+				emitName = g.typeEmitNames[name]
+			}
+			// Struct constructor: Point(15.5, 25.5) -> ({ Point __s = { 15.5, 25.5 }; __s; })
+			g.Write("({ " + emitName + " __s = { ")
+			for i, arg := range node.Args {
+				if i > 0 {
+					g.Write(", ")
+				}
+				g.VisitNode(arg)
+			}
+			g.Write(" }; __s; })")
+			return
+		}
+
 		// Case-insensitive matching for built-in functions
 		switch strings.ToLower(name) {
 		case "print", "say":
