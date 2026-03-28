@@ -60,6 +60,7 @@ const (
 	TokenAny
 	TokenConst
 	TokenArray
+	TokenSlice
 	TokenDict
 	TokenResult
 	TokenEvent
@@ -613,6 +614,7 @@ func (l *Lexer) GetKeywordType(identifier string) TokenType {
 		"false":     TokenFalse,
 		"null":      TokenNull,
 		"array":     TokenArray,
+		"slice":     TokenSlice,
 		"dict":      TokenDict,
 		"result":    TokenResult,
 		"event":     TokenEvent,

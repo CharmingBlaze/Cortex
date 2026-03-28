@@ -53,6 +53,11 @@ typedef struct {
     float w;
 } vec4;
 
+/* Slice views (Cortex slice<T>): borrowed range; ptr is not owned by the slice */
+typedef struct { int* ptr; int len; } cortex_slice_int;
+typedef struct { float* ptr; int len; } cortex_slice_float;
+typedef struct { double* ptr; int len; } cortex_slice_double;
+
 /* Optional type support: T? -> cortex_optional_T with has_value flag */
 typedef struct { bool has_value; int value; } cortex_optional_int;
 typedef struct { bool has_value; float value; } cortex_optional_float;

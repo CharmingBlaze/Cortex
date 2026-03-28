@@ -23,7 +23,8 @@ This document is the **normative roadmap** for how Cortex stays **free of user-v
 | Cortex concept | Typical C at the boundary |
 |----------------|---------------------------|
 | `string` / string literal | `char *` to a temporary or stable buffer; callee must not retain unless documented |
-| Fixed array / future slice | `T *` + length (`size_t`); synthesized at call site |
+| Stack `T[]` from array literal + `view()` slice | C `cortex_slice_T` (`{ T* ptr; int len; }`) referencing the array and companion `name_len` |
+| Fixed array (other forms) | `T *` + length where synthesized at call site |
 | Struct value passed where C wants pointer | Address of temporary or stack value—**lifetime** ends after the call unless API is documented otherwise |
 | Opaque handle | `void *` or typedef behind a Cortex `struct` name |
 
@@ -35,11 +36,15 @@ If a C API **stores** a pointer past the call (callbacks, async completion, glob
 - A future **pinned buffer** / **arena** type, and/or
 - Wrapper C code in the project.
 
-## Slices (roadmap)
+## Slices (MVP)
 
-**Today:** fixed-size arrays and array literals are the main sequence model.
+Cortex exposes **borrowed slice views** for numeric stack arrays only:
 
-**Planned:** a **slice** type as a **view** `(reference, length)` in the language, lowered to `T *` + `size_t` only in generated C—never as user-written `*T`.
+- **Syntax:** `slice<int>`, `slice<float>`, or `slice<double>` (internal names `slice_int`, `slice_float`, `slice_double`).
+- **Construction:** `view(arr)` where `arr` is a **named** variable whose type is `int[]`, `float[]`, or `double[]` **and** was initialized with an **array literal** (the compiler emits a companion `arr_len` next to the C array, same contract as today).
+- **Operations:** `s.len` or `len(s)` for length; `s[i]` uses runtime **bounds checking** via `cortex_bounds_check`; `for (x in s)` iterates elements.
+- **C lowering:** `cortex_slice_int` / `cortex_slice_float` / `cortex_slice_double` in `runtime/core.h` (`ptr` + `len`).
+- **Not in v1:** `view` of dynamic `array` / `cortex_array*`, slices over non-literal stack arrays without `_len`, or generic `slice<T>` beyond the three primitives above.
 
 ## Related documents
 

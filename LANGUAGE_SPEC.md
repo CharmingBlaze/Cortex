@@ -163,6 +163,22 @@ int[] nums = {1, 2, 3, 4, 5};
 string[] names = {"Alice", "Bob", "Charlie"};
 ```
 
+#### Slice types (`slice<T>`)
+
+A **slice** is a small **view** (pointer + length) over an existing array. The MVP supports `T` ∈ `int`, `float`, `double` only.
+
+```c
+int[] data = {10, 20, 30};
+slice<int> s = view(data);
+println(len(s));       // or s.len
+println(s[1]);         // bounds-checked
+for (x in s) {
+    println(x);
+}
+```
+
+`view(expr)` requires `expr` to be an **identifier** for a stack `int[]` / `float[]` / `double[]` backed by an array literal (so the compiler can pair it with `name_len`). It does not apply to heap `array` values in v1.
+
 ### Optional Types
 Optional types represent a value that may or may not exist:
 ```c

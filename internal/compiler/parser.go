@@ -3523,11 +3523,36 @@ func (p *Parser) Match(types ...TokenType) bool {
 }
 
 func (p *Parser) MatchType() bool {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent, TokenChannel}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenSlice, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent, TokenChannel}
 	return p.Match(typeTokens...)
 }
 
+// tryConsumeSliceType parses slice<int>, slice<float>, or slice<double> into internal names slice_int, etc.
+func (p *Parser) tryConsumeSliceType() (Token, bool) {
+	if !p.Check(TokenSlice) {
+		return Token{}, false
+	}
+	line, col := p.Peek().Line, p.Peek().Column
+	p.Advance()
+	p.Consume(TokenLess, "Expected '<' after slice")
+	inner := p.ConsumeType("Expected element type inside slice<...>")
+	p.Consume(TokenGreater, "Expected '>' after slice element type")
+	ev := strings.TrimSpace(inner.Value)
+	if strings.Contains(ev, "?") || strings.Contains(ev, " | ") || strings.Contains(ev, "<") {
+		panic(fmt.Sprintf("slice<%s>: invalid element type", ev))
+	}
+	switch ev {
+	case "int", "float", "double":
+		return Token{Type: TokenIdentifier, Value: "slice_" + ev, Line: line, Column: col}, true
+	default:
+		panic(fmt.Sprintf("slice<%s> not supported (use int, float, or double)", ev))
+	}
+}
+
 func (p *Parser) ConsumeTypeOrVar() Token {
+	if tok, ok := p.tryConsumeSliceType(); ok {
+		return tok
+	}
 	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent, TokenChannel}
 	for _, tokenType := range typeTokens {
 		if p.Check(tokenType) {
@@ -3578,6 +3603,9 @@ func (p *Parser) ConsumeTypeOrVar() Token {
 }
 
 func (p *Parser) ConsumeType(errorMessage string) Token {
+	if tok, ok := p.tryConsumeSliceType(); ok {
+		return tok
+	}
 	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent, TokenChannel}
 	for _, tokenType := range typeTokens {
 		if p.Check(tokenType) {
@@ -3630,7 +3658,7 @@ func (p *Parser) ConsumeType(errorMessage string) Token {
 }
 
 func (p *Parser) IsTypeToken(tokenType TokenType) bool {
-	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent, TokenChannel}
+	typeTokens := []TokenType{TokenVoid, TokenInt, TokenFloat, TokenDouble, TokenCharType, TokenBool, TokenStringType, TokenVec2, TokenVec3, TokenVar, TokenLet, TokenFn, TokenAny, TokenConst, TokenArray, TokenSlice, TokenDict, TokenResult, TokenEvent, TokenGuiWindow, TokenGuiWidget, TokenGuiContainer, TokenGuiEvent, TokenChannel}
 	for _, tt := range typeTokens {
 		if tt == tokenType {
 			return true

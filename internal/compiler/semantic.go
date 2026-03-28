@@ -307,6 +307,12 @@ func (a *SemanticAnalyzer) RegisterBuiltins() {
 		SymbolType: SymbolFunction,
 		Node:       nil,
 	})
+	a.globalScope.Define(&Symbol{
+		Name:       "view",
+		Type:       "any",
+		SymbolType: SymbolFunction,
+		Node:       nil,
+	})
 
 	// Array builtins
 	a.globalScope.Define(&Symbol{
@@ -1965,6 +1971,16 @@ func (a *SemanticAnalyzer) GetExpressionType(expr ast.ASTNode) string {
 	case *ast.UnaryExprNode:
 		return a.GetExpressionType(e.Operand)
 	case *ast.CallExprNode:
+		if id, ok := e.Function.(*ast.IdentifierNode); ok && strings.EqualFold(id.Name, "view") && len(e.Args) == 1 {
+			at := a.GetExpressionType(e.Args[0])
+			if strings.HasSuffix(at, "[]") {
+				elem := strings.TrimSuffix(at, "[]")
+				switch elem {
+				case "int", "float", "double":
+					return "slice_" + elem
+				}
+			}
+		}
 		return a.GetFunctionReturnType(e.Function)
 	case *ast.ArrayLiteralNode:
 		if len(e.Elements) == 0 {
@@ -1999,13 +2015,19 @@ func (a *SemanticAnalyzer) GetExpressionType(expr ast.ASTNode) string {
 		return "any"
 	case *ast.IndexExprNode:
 		objType := a.GetExpressionType(e.Object)
+		if strings.HasPrefix(objType, "slice_") {
+			return strings.TrimPrefix(objType, "slice_")
+		}
 		if strings.HasSuffix(objType, "[]") {
 			return objType[:len(objType)-2]
 		}
 		return "any"
 	case *ast.MemberAccessNode:
-		// Try to resolve field type from struct definition
 		objType := a.GetExpressionType(e.Object)
+		if strings.HasPrefix(objType, "slice_") && e.Member == "len" {
+			return "int"
+		}
+		// Try to resolve field type from struct definition
 		if objType != "" && objType != "any" {
 			// Look up struct definition
 			if sym := a.globalScope.Resolve(objType); sym != nil && sym.SymbolType == SymbolStruct {
@@ -2208,6 +2230,10 @@ func (a *SemanticAnalyzer) IsAssignableTo(valueType, targetType string) bool {
 	if strings.HasSuffix(targetType, "[]") {
 		return valueType == targetType || valueType == "any[]" || valueType == "any"
 	}
+	// Slice views: exact match only
+	if strings.HasPrefix(targetType, "slice_") {
+		return valueType == targetType
+	}
 	// Strict: no other cross-type assignment for static types
 	return false
 }
@@ -2330,6 +2356,25 @@ func (a *SemanticAnalyzer) VisitCallExpr(node *ast.CallExprNode) {
 			a.AddError(fmt.Errorf("duplicate named argument '%s' (line %d)", namedArg.Name, node.GetLine()))
 		}
 		seenNames[namedArg.Name] = true
+	}
+
+	if id, ok := node.Function.(*ast.IdentifierNode); ok && strings.EqualFold(id.Name, "view") {
+		if len(node.Args) != 1 {
+			a.AddError(fmt.Errorf("view() expects exactly one array argument (line %d)", node.GetLine()))
+		} else {
+			t := a.GetExpressionType(node.Args[0])
+			if !strings.HasSuffix(t, "[]") {
+				a.AddError(fmt.Errorf("view() requires int[], float[], or double[] (got %s) (line %d)", t, node.GetLine()))
+			} else {
+				elem := strings.TrimSuffix(t, "[]")
+				if elem != "int" && elem != "float" && elem != "double" {
+					a.AddError(fmt.Errorf("view() only supports int[], float[], double[] (got %s[]) (line %d)", elem, node.GetLine()))
+				}
+			}
+			if _, ok := node.Args[0].(*ast.IdentifierNode); !ok {
+				a.AddError(fmt.Errorf("view() requires a named array variable (line %d)", node.GetLine()))
+			}
+		}
 	}
 
 	// Check for struct constructor call: TypeName(args) -> struct literal

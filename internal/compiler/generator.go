@@ -3,6 +3,7 @@ package compiler
 import (
 	"cortex/internal/ast"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -1342,7 +1343,50 @@ func (g *CodeGenerator) VisitMatchStmt(node *ast.MatchStmtNode) {
 }
 
 func (g *CodeGenerator) VisitForInStmt(node *ast.ForInStmtNode) {
-	// for (x in arr) -> for (int _i = 0; _i < arr_len; _i++) { type x = arr[_i]; body }
+	colType := g.GetExpressionType(node.Collection)
+	line := node.GetLine()
+	elemType := "int"
+	if strings.HasPrefix(colType, "slice_") {
+		elemType = strings.TrimPrefix(colType, "slice_")
+	} else if strings.HasSuffix(colType, "[]") {
+		elemType = strings.TrimSuffix(colType, "[]")
+	}
+	elemC := g.ConvertType(elemType)
+
+	if strings.HasPrefix(colType, "slice_") {
+		if _, ok := node.Collection.(*ast.IdentifierNode); ok {
+			g.Write("for (int _i = 0; _i < ")
+			g.VisitNode(node.Collection)
+			g.Write(".len; _i++) {\n")
+			g.Indent()
+			g.Write(elemC + " " + node.VarName + " = ")
+			g.VisitNode(node.Collection)
+			g.Write(".ptr[cortex_bounds_check(")
+			g.VisitNode(node.Collection)
+			g.Write(".len, _i, " + strconv.Itoa(line) + ")];\n")
+			g.VisitBlock(node.Body)
+			g.Dedent()
+			g.Write("}\n")
+			return
+		}
+		cSlice := g.ConvertType(colType)
+		g.Write("{\n")
+		g.Indent()
+		g.Write(cSlice + " __for_slice = ")
+		g.VisitNode(node.Collection)
+		g.Write(";\n")
+		g.Write("for (int _i = 0; _i < __for_slice.len; _i++) {\n")
+		g.Indent()
+		g.Write(elemC + " " + node.VarName + " = __for_slice.ptr[cortex_bounds_check(__for_slice.len, _i, " + strconv.Itoa(line) + ")];\n")
+		g.VisitBlock(node.Body)
+		g.Dedent()
+		g.Write("}\n")
+		g.Dedent()
+		g.Write("}\n")
+		return
+	}
+
+	// for (x in arr) -> for (int _i = 0; _i < arr_len; _i++) { T x = arr[_i]; body }
 	colName := ""
 	if id, ok := node.Collection.(*ast.IdentifierNode); ok {
 		colName = id.Name
@@ -1352,7 +1396,7 @@ func (g *CodeGenerator) VisitForInStmt(node *ast.ForInStmtNode) {
 	}
 	g.Write("for (int _i = 0; _i < " + colName + "_len; _i++) {\n")
 	g.Indent()
-	g.Write(fmt.Sprintf("int %s = ", node.VarName))
+	g.Write(elemC + " " + node.VarName + " = ")
 	g.VisitNode(node.Collection)
 	g.Write("[_i];\n")
 	g.VisitBlock(node.Body)
@@ -1690,6 +1734,19 @@ func (g *CodeGenerator) GetExpressionType(expr ast.ASTNode) string {
 		}
 		return g.InferBinaryExpressionType(e)
 	case *ast.CallExprNode:
+		if id, ok := e.Function.(*ast.IdentifierNode); ok && strings.EqualFold(id.Name, "view") && len(e.Args) == 1 {
+			at := g.GetExpressionType(e.Args[0])
+			if strings.HasSuffix(at, "[]") {
+				elem := strings.TrimSuffix(at, "[]")
+				switch elem {
+				case "int", "float", "double":
+					return "slice_" + elem
+				}
+			}
+		}
+		if id, ok := e.Function.(*ast.IdentifierNode); ok && strings.EqualFold(id.Name, "len") && len(e.Args) == 1 {
+			return "int"
+		}
 		if id, ok := e.Function.(*ast.IdentifierNode); ok && id.ResolvedType != "" {
 			// If this is a function pointer type, return the return type
 			if strings.HasPrefix(id.ResolvedType, "fn_") {
@@ -1701,8 +1758,20 @@ func (g *CodeGenerator) GetExpressionType(expr ast.ASTNode) string {
 			return id.ResolvedType
 		}
 		return "any"
+	case *ast.IndexExprNode:
+		objType := g.GetExpressionType(e.Object)
+		if strings.HasPrefix(objType, "slice_") {
+			return strings.TrimPrefix(objType, "slice_")
+		}
+		if strings.HasSuffix(objType, "[]") {
+			return objType[:len(objType)-2]
+		}
+		return "any"
 	case *ast.MemberAccessNode:
 		objType := g.GetExpressionType(e.Object)
+		if strings.HasPrefix(objType, "slice_") && e.Member == "len" {
+			return "int"
+		}
 		if objType != "" && objType != "any" {
 			return "any" // Field type would require struct info; use any for safety
 		}
@@ -1843,6 +1912,16 @@ func (g *CodeGenerator) VisitCallExpr(node *ast.CallExprNode) {
 		}
 
 		objType := g.GetExpressionType(member.Object)
+
+		if strings.HasPrefix(objType, "slice_") {
+			switch member.Member {
+			case "len", "length":
+				g.Write("(")
+				g.VisitNode(member.Object)
+				g.Write(").len")
+				return
+			}
+		}
 
 		// Check for array methods: arr.push(val), arr.len(), etc.
 		if objType == "array" || objType == "cortex_array*" {
@@ -2097,6 +2176,20 @@ func (g *CodeGenerator) VisitCallExpr(node *ast.CallExprNode) {
 		name := id.Name
 		if id.EmitName != "" {
 			name = id.EmitName
+		}
+
+		if strings.EqualFold(name, "view") && len(node.Args) == 1 {
+			if aid, ok := node.Args[0].(*ast.IdentifierNode); ok {
+				argT := g.GetExpressionType(node.Args[0])
+				elem := strings.TrimSuffix(argT, "[]")
+				cSlice := g.ConvertType("slice_" + elem)
+				bn := g.EmitName(aid)
+				if bn == "" {
+					bn = aid.Name
+				}
+				g.Write("((" + cSlice + "){ .ptr = " + bn + ", .len = " + bn + "_len })")
+				return
+			}
 		}
 
 		// Check if this is a struct constructor call FIRST
@@ -2394,6 +2487,40 @@ func (g *CodeGenerator) VisitCallExpr(node *ast.CallExprNode) {
 			g.Write(fmt.Sprintf("%d", node.GetLine()))
 			g.Write(", \"assertion failed\"))")
 			return
+		case "len":
+			if len(node.Args) == 1 {
+				arg := node.Args[0]
+				at := g.GetExpressionType(arg)
+				if strings.HasPrefix(at, "slice_") {
+					g.Write("(")
+					g.VisitNode(arg)
+					g.Write(").len")
+					return
+				}
+				if strings.HasSuffix(at, "[]") {
+					if aid, ok := arg.(*ast.IdentifierNode); ok {
+						bn := g.EmitName(aid)
+						if bn == "" {
+							bn = aid.Name
+						}
+						g.Write(bn + "_len")
+						return
+					}
+				}
+				if at == "array" || at == "cortex_array*" {
+					g.Write("array_len(")
+					g.VisitNode(arg)
+					g.Write(")")
+					return
+				}
+				if at == "string" || at == "char*" {
+					g.Write("strlen(")
+					g.VisitNode(arg)
+					g.Write(")")
+					return
+				}
+			}
+			fallthrough
 		default:
 			g.Write(name)
 		}
@@ -2621,7 +2748,26 @@ func (g *CodeGenerator) VisitArrayAccess(node *ast.ArrayAccessNode) {
 }
 
 func (g *CodeGenerator) VisitIndexExpr(node *ast.IndexExprNode) {
-	// Simple array indexing: obj[index]
+	line := node.GetLine()
+	objType := g.GetExpressionType(node.Object)
+	if strings.HasPrefix(objType, "slice_") {
+		cSlice := g.ConvertType(objType)
+		if _, ok := node.Object.(*ast.IdentifierNode); ok {
+			g.VisitNode(node.Object)
+			g.Write(".ptr[cortex_bounds_check(")
+			g.VisitNode(node.Object)
+			g.Write(".len, ")
+			g.VisitNode(node.Index)
+			g.Write(fmt.Sprintf(", %d)]", line))
+			return
+		}
+		g.Write("({ " + cSlice + " __slice_ix = ")
+		g.VisitNode(node.Object)
+		g.Write("; __slice_ix.ptr[cortex_bounds_check(__slice_ix.len, ")
+		g.VisitNode(node.Index)
+		g.Write(fmt.Sprintf(", %d)]; })", line))
+		return
+	}
 	g.VisitNode(node.Object)
 	g.Write("[")
 	g.VisitNode(node.Index)
@@ -2645,6 +2791,14 @@ func (g *CodeGenerator) VisitMemberAccess(node *ast.MemberAccessNode) {
 		g.Write(" ? ")
 		g.VisitNode(node.Object)
 		g.Write(fmt.Sprintf(".%s : NULL)", node.Member))
+		return
+	}
+
+	objType := g.GetExpressionType(node.Object)
+	if strings.HasPrefix(objType, "slice_") && node.Member == "len" {
+		g.Write("(")
+		g.VisitNode(node.Object)
+		g.Write(").len")
 		return
 	}
 
@@ -2788,6 +2942,12 @@ func (g *CodeGenerator) ConvertType(cortexType string) string {
 		return "gui_widget" // GUI widget handle
 	case "result", "result_ok", "result_err":
 		return "cortex_result" // Result type
+	case "slice_int":
+		return "cortex_slice_int"
+	case "slice_float":
+		return "cortex_slice_float"
+	case "slice_double":
+		return "cortex_slice_double"
 	default:
 		if strings.HasPrefix(cortexType, "array_") {
 			baseType := strings.TrimPrefix(cortexType, "array_")

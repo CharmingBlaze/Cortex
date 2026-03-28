@@ -1,0 +1,13 @@
+// Slice MVP: stack int[] + view, len, index, for-in
+int[] data = {10, 20, 30};
+slice<int> s = view(data);
+
+println("len(s) = " + len(s));
+println("s.len = " + s.len);
+println("s[0] = " + s[0]);
+
+int sum = 0;
+for (x in s) {
+    sum = sum + x;
+}
+println("sum = " + sum);
