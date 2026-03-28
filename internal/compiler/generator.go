@@ -418,7 +418,7 @@ func (g *CodeGenerator) VisitInclude(node *ast.IncludeNode) {
 }
 
 func (g *CodeGenerator) VisitUseLib(node *ast.UseLibNode) {
-	// #use "name" -> #include <name.h> and link -l name (link collected in collectLinkPragmas)
+	// #use "name" -> #include <name.h> and link -l name (link collected in collectExplicitLinkLibs)
 	header := node.LibName + ".h"
 	g.Write(fmt.Sprintf("#include <%s>\n", header))
 }
@@ -2224,13 +2224,14 @@ func (g *CodeGenerator) VisitCallExpr(node *ast.CallExprNode) {
 			// Convert to float from AnyValue
 			if len(node.Args) > 0 {
 				argType := g.GetExpressionType(node.Args[0])
-				if argType == "float" || argType == "double" {
+				switch argType {
+				case "float", "double":
 					g.VisitNode(node.Args[0])
-				} else if argType == "int" {
+				case "int":
 					g.Write("(float)(")
 					g.VisitNode(node.Args[0])
 					g.Write(")")
-				} else {
+				default:
 					g.Write("as_float(")
 					g.EmitExprAsAny(node.Args[0])
 					g.Write(")")

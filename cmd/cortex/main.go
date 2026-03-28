@@ -140,14 +140,22 @@ func runCommand(args []string) {
 	runFile(inputFile, cfg, debug)
 }
 
-// newCommand handles: cortex new <project_name>
+// newCommand handles: cortex new <project_name> [raylib]
 func newCommand(args []string) {
 	if len(args) == 0 {
-		cli.Colors.PrintError("Usage: cortex new <project_name>")
+		cli.Colors.PrintError("Usage: cortex new <project_name> [raylib]")
 		os.Exit(1)
 	}
 
 	name := args[0]
+	template := ""
+	if len(args) > 1 {
+		template = strings.ToLower(strings.TrimSpace(args[1]))
+	}
+	if template != "" && template != "raylib" {
+		cli.Colors.PrintError("unknown template %q (try: raylib)", template)
+		os.Exit(1)
+	}
 
 	// Create project directory
 	if err := os.MkdirAll(name, 0755); err != nil {
@@ -162,7 +170,7 @@ version = "0.1.0"
 entry = "main.cx"
 
 [dependencies]
-# Add libraries here, e.g.:
+# Optional: vendor raylib and point include/lib here, e.g.:
 # raylib = { path = "third_party/raylib" }
 `, name)
 
@@ -171,12 +179,49 @@ entry = "main.cx"
 		os.Exit(1)
 	}
 
-	// Create main.cx
-	mainContent := `// Cortex Project
+	var mainContent string
+	if template == "raylib" {
+		configsDir := filepath.Join(name, "configs")
+		if err := os.MkdirAll(configsDir, 0755); err != nil {
+			cli.Colors.PrintError("creating configs: %v", err)
+			os.Exit(1)
+		}
+		raylibJSON := `{
+  "includePaths": ["third_party/raylib/src"],
+  "libraryPaths": ["third_party/raylib/build/raylib"],
+  "libraries": ["raylib", "opengl32", "gdi32", "winmm", "shell32"],
+  "linkerFlags": ["-lraylib", "-lopengl32", "-lgdi32", "-lwinmm", "-lshell32"],
+  "helperFiles": [],
+  "cflags": []
+}
+`
+		if err := os.WriteFile(filepath.Join(configsDir, "raylib.json"), []byte(raylibJSON), 0644); err != nil {
+			cli.Colors.PrintError("creating configs/raylib.json: %v", err)
+			os.Exit(1)
+		}
+		mainContent = `// Cortex + raylib — place raylib under third_party/raylib or edit configs/raylib.json
+#include <raylib.h>
+
+void main() {
+    InitWindow(800, 450, "Cortex + raylib");
+    SetTargetFPS(60);
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        DrawText("Congrats! You created a window!", 190, 200, 20, LIGHTGRAY);
+        EndDrawing();
+    }
+    CloseWindow();
+}
+`
+	} else {
+		mainContent = `// Cortex Project
 void main() {
     println("Hello from Cortex!");
 }
 `
+	}
+
 	if err := os.WriteFile(filepath.Join(name, "main.cx"), []byte(mainContent), 0644); err != nil {
 		cli.Colors.PrintError("creating main.cx: %v", err)
 		os.Exit(1)
@@ -186,6 +231,9 @@ void main() {
 	cli.Colors.PrintViolet("")
 	cli.Colors.PrintStep("→", "Next steps:")
 	fmt.Printf("    cd %s\n", name)
+	if template == "raylib" {
+		fmt.Println("    # Add raylib under third_party/raylib or fix paths in configs/raylib.json")
+	}
 	fmt.Println("    cortex run")
 }
 
@@ -194,8 +242,18 @@ func bindCommand(args []string) {
 	fs := flag.NewFlagSet("bind", flag.ExitOnError)
 	var headerPath string
 	var outputPath string
+	var includeDirs stringList
+	var defineFlags stringList
+	var includeHdr string
+	var legacyBind bool
+	var noPreprocess bool
 	fs.StringVar(&headerPath, "i", "", "Input C header file")
 	fs.StringVar(&outputPath, "o", "", "Output Cortex binding file")
+	fs.Var(&includeDirs, "I", "Include directory for preprocess / parser (repeatable)")
+	fs.Var(&defineFlags, "D", "Preprocessor define NAME or NAME=value (repeatable)")
+	fs.StringVar(&includeHdr, "include", "", "Override generated #include line (e.g. SDL2/SDL.h)")
+	fs.BoolVar(&legacyBind, "legacy-bind", false, "Regex-only parser (no AST; no HostConfig required)")
+	fs.BoolVar(&noPreprocess, "no-preprocess", false, "Skip external zig/gcc/clang -E (parser still runs internal CPP)")
 
 	// Parse flags first (they can appear anywhere with ParseAll)
 	err := fs.Parse(args)
@@ -205,11 +263,12 @@ func bindCommand(args []string) {
 	}
 
 	if fs.NArg() == 0 {
-		cli.Colors.PrintError("Usage: cortex bind <libname> -i <header.h> [-o output.cx]")
+		cli.Colors.PrintError("Usage: cortex bind <libname> -i <header.h> [-o output.cx] [-I dir]... [-D NAME[=val]]... [-include hdr]")
 		fmt.Println("")
 		fmt.Println("Examples:")
 		fmt.Println("  cortex bind raylib -i third_party/raylib/src/raylib.h")
-		fmt.Println("  cortex bind mylib -i mylib.h -o bindings/mylib.cx")
+		fmt.Println("  cortex bind sdl2 -i SDL.h -I /usr/include/SDL2 -include SDL2/SDL.h")
+		fmt.Println("  cortex bind mylib -i mylib.h -o bindings/mylib.cx -legacy-bind")
 		os.Exit(1)
 	}
 
@@ -251,8 +310,14 @@ func bindCommand(args []string) {
 	// Create binder
 	b := binder.NewBinder(libName)
 
-	// Parse header
-	if err := b.ParseHeader(headerPath); err != nil {
+	opt := binder.ParseOptions{
+		LegacyBind:     legacyBind,
+		IncludeDirs:    []string(includeDirs),
+		Defines:        []string(defineFlags),
+		IncludeHeader:  includeHdr,
+		SkipPreprocess: noPreprocess,
+	}
+	if err := b.ParseHeaderWithOptions(headerPath, opt); err != nil {
 		cli.Colors.PrintError("parsing header: %v", err)
 		os.Exit(1)
 	}
@@ -363,6 +428,7 @@ func legacyMode() {
 	var libraryPaths stringList
 	var libraries stringList
 	var debug bool
+	var strict bool
 
 	flag.Var(&inputFiles, "i", "Input .cx source file (repeat for multi-file)")
 	flag.StringVar(&outputFile, "o", "", "Output executable file")
@@ -376,6 +442,7 @@ func legacyMode() {
 	flag.Var(&libraryPaths, "L", "Library search path (can be repeated)")
 	flag.Var(&libraries, "l", "Library to link, e.g. raylib (can be repeated)")
 	flag.BoolVar(&debug, "debug", false, "Enable debug output")
+	flag.BoolVar(&strict, "strict", false, "Stricter semantic checks (e.g. no shadowing outer declarations)")
 	flag.Parse()
 
 	// Handle -mkconfig: create a config template and exit
@@ -404,6 +471,7 @@ func legacyMode() {
 		fmt.Println("  -I         Add include path (repeat for multiple); for C libraries like raylib")
 		fmt.Println("  -L         Add library search path (repeat for multiple)")
 		fmt.Println("  -l         Link library (repeat for multiple); e.g. -l raylib -l m")
+		fmt.Println("  -strict    Stricter semantic checks (e.g. no shadowing outer declarations)")
 		return
 	}
 
@@ -437,6 +505,9 @@ func legacyMode() {
 		cfg.Backend = backend
 	}
 	cfg.Debug = debug
+	if strict {
+		cfg.Strict = true
+	}
 	if cfg.Backend == "" {
 		cfg.Backend = "auto"
 	}
@@ -489,20 +560,22 @@ func createConfigTemplate(libName string) {
 		return
 	}
 
-	// Create template
+	// Library JSON format (same keys as configs/raylib.json) — used by automatic #include linking.
 	template := fmt.Sprintf(`{
-  "features": { "qol": true },
-  "include_paths": [
+  "includePaths": [
     "C:/%s/include",
     "/usr/local/include",
     "/usr/include"
   ],
-  "library_paths": [
+  "libraryPaths": [
     "C:/%s/lib",
     "/usr/local/lib",
     "/usr/lib"
   ],
-  "libraries": ["%s"]
+  "libraries": ["%s"],
+  "linkerFlags": [],
+  "helperFiles": [],
+  "cflags": []
 }
 `, libName, libName, libName)
 
@@ -514,6 +587,7 @@ func createConfigTemplate(libName string) {
 
 	fmt.Printf("Created: %s\n", configFile)
 	fmt.Println("")
-	fmt.Println("Edit the file to set your library paths, then use:")
-	fmt.Printf("  cortex -i game.cx -o game -use %s\n", libName)
+	fmt.Println("Edit includePaths/libraryPaths for your install. Then:")
+	fmt.Printf("  cortex run game.cx   # #include pulls in this config automatically\n")
+	fmt.Printf("  # optional override: cortex -i game.cx -use %s\n", libName)
 }

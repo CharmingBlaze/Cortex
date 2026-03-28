@@ -15,6 +15,7 @@ type ProjectConfig struct {
 		Version  string          `toml:"version"`
 		Entry    string          `toml:"entry"`
 		Backend  string          `toml:"backend"`
+		Strict   bool            `toml:"strict"`
 		Features map[string]bool `toml:"features"`
 	} `toml:"project"`
 	Dependencies map[string]Dependency `toml:"dependencies"`
@@ -90,6 +91,7 @@ func (p *ProjectConfig) ToConfig() *Config {
 	} else {
 		cfg.Backend = "auto"
 	}
+	cfg.Strict = p.Project.Strict
 
 	// Collect all include paths, library paths, and libraries from dependencies
 	for name, dep := range p.Dependencies {

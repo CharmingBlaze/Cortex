@@ -647,6 +647,8 @@ func (c *Compiler) CompileMulti(inputFiles []string, outputFile string) error {
 	if len(inputFiles) == 0 {
 		return fmt.Errorf("no input files")
 	}
+	c.includes = nil
+	c.libraries = nil
 	expanded, err := c.resolveImportPaths(inputFiles)
 	if err != nil {
 		return err
@@ -707,12 +709,25 @@ func (c *Compiler) CompileMulti(inputFiles []string, outputFile string) error {
 
 	c.collectIncludes(program)
 	c.inferLibraries()
-
-	linkLibs := c.libraries
+	explicit := collectExplicitLinkLibs(program)
+	mergedLibs := append(append([]string{}, c.libraries...), explicit...)
+	mergedLibs = append(mergedLibs, c.config.Libraries...)
+	mergedLibs = clibs.DedupeLibraries(mergedLibs)
+	cwd, _ := os.Getwd()
+	resolved, err := clibs.ResolveLibraries(mergedLibs, cwd)
+	if err != nil {
+		return err
+	}
+	for _, hdr := range c.includes {
+		lib := clibs.InferLibraryFromHeader(hdr)
+		if lib != "" && !resolved.ConfiguredLibs[lib] {
+			fmt.Fprintf(os.Stderr, "cortex: %s\n", clibs.MissingConfigHint(lib))
+		}
+	}
 	usesGui := usesGuiBuiltins(program)
 	usesAsync := usesAsyncBuiltins(program)
 	usesThread := usesThreadBuiltins(program)
-	return c.compileCCode(cFile, outputFile, linkLibs, usesNet, usesGui, usesAsync, usesThread)
+	return c.compileCCode(cFile, outputFile, mergedLibs, resolved, usesNet, usesGui, usesAsync, usesThread)
 }
 
 func (c *Compiler) collectIncludes(program *ast.ProgramNode) {
@@ -733,33 +748,25 @@ func (c *Compiler) inferLibraries() {
 	c.libraries = clibs.DedupeLibraries(c.libraries)
 }
 
-func linksRaylib(libs []string, pragmas []string) bool {
-	for _, l := range libs {
+func linksRaylib(mergedLinkLibs []string) bool {
+	for _, l := range mergedLinkLibs {
 		if l == "raylib" {
-			return true
-		}
-	}
-	for _, p := range pragmas {
-		if p == "raylib" {
 			return true
 		}
 	}
 	return false
 }
 
-// standardCHeaders are include names that are part of the C runtime; we do not infer -l for them.
-var standardCHeaders = map[string]bool{
-	"stdio.h": true, "stdlib.h": true, "string.h": true, "time.h": true,
-	"stdbool.h": true, "math.h": true, "stddef.h": true, "limits.h": true,
-	"ctype.h": true, "errno.h": true, "assert.h": true, "signal.h": true,
-	"gui_runtime.h": true, "core.h": true, "game.h": true, "network.h": true,
-	"async.h": true, "thread.h": true, "managed.h": true,
-	"std.h": true, "std_math.h": true, "std_string.h": true,
-	"std_array.h": true, "std_dict.h": true, "std_time.h": true,
+func linkFailureHint(mergedLinkLibs []string) string {
+	if len(mergedLinkLibs) == 0 {
+		return ""
+	}
+	return "\nHint: For C libraries, check configs/<name>.json (includePaths, libraryPaths) or run from the project root. Use cortex -mkconfig <name> to create a template."
 }
 
-// collectLinkPragmas returns library names from #pragma link, #use, and #include <name.h> (C-style: include implies -l name).
-func collectLinkPragmas(node ast.ASTNode) []string {
+// collectExplicitLinkLibs returns library names from #pragma link and #use only.
+// Third-party linking from headers uses clibs.InferLibraryFromHeader in inferLibraries.
+func collectExplicitLinkLibs(node ast.ASTNode) []string {
 	program, ok := node.(*ast.ProgramNode)
 	if !ok {
 		return nil
@@ -781,20 +788,11 @@ func collectLinkPragmas(node ast.ASTNode) []string {
 		if u, ok := decl.(*ast.UseLibNode); ok && u.LibName != "" {
 			add(u.LibName)
 		}
-		if inc, ok := decl.(*ast.IncludeNode); ok && inc.Filename != "" {
-			base := filepath.Base(inc.Filename)
-			if strings.HasSuffix(base, ".h") {
-				if !standardCHeaders[base] {
-					lib := strings.TrimSuffix(base, ".h")
-					add(lib)
-				}
-			}
-		}
 	}
 	return libs
 }
 
-func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, usesNetwork bool, usesGui bool, usesAsync bool, usesThread bool) error {
+func (c *Compiler) compileCCode(cFile, outputFile string, mergedLinkLibs []string, resolved clibs.ResolvedBuild, usesNetwork bool, usesGui bool, usesAsync bool, usesThread bool) error {
 	runtimeDir := FindRuntimeDir()
 	if runtimeDir == "" {
 		return fmt.Errorf("could not find runtime directory (run from project root or set CORTEX_ROOT)")
@@ -809,13 +807,20 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 	}
 	args = append(args, "-I", includeDir)
 	args = append(args, "-I", runtimeDir) // For runtime headers like std.h
+	for _, p := range resolved.IncludePaths {
+		args = append(args, "-I", p)
+	}
 	for _, p := range c.config.IncludePaths {
 		args = append(args, "-I", p)
+	}
+	for _, p := range resolved.LibraryPaths {
+		args = append(args, "-L", p)
 	}
 	for _, p := range c.config.LibraryPaths {
 		args = append(args, "-L", p)
 	}
 	args = append(args, featureDefineArgs(c.config.Features)...)
+	args = append(args, resolved.CFlags...)
 	args = append(args, "-o", outputFile, cFile, runtimeSource)
 	if _, err := os.Stat(gameSource); err == nil {
 		args = append(args, gameSource)
@@ -878,20 +883,20 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 		}
 	}
 	helperSource := filepath.Join(runtimeDir, "raylib_helper.c")
-	if linksRaylib(c.config.Libraries, linkPragmas) {
+	if linksRaylib(mergedLinkLibs) {
 		if _, err := os.Stat(helperSource); err == nil {
 			args = append(args, helperSource)
 		}
 	}
-	for _, lib := range c.config.Libraries {
-		args = append(args, "-l"+lib)
+	for _, src := range resolved.HelperSources {
+		if src == "" {
+			continue
+		}
+		if _, err := os.Stat(src); err == nil {
+			args = append(args, src)
+		}
 	}
-	for _, lib := range linkPragmas {
-		args = append(args, "-l"+lib)
-	}
-	for _, lib := range c.libraries {
-		args = append(args, "-l"+lib)
-	}
+	args = append(args, resolved.LinkArgv...)
 
 	backend := c.config.Backend
 	if backend == "" {
@@ -910,7 +915,7 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 			output, err := cmd.CombinedOutput()
 			os.Remove(cFile)
 			if err != nil {
-				return fmt.Errorf("Zig CC compilation failed: %v\nOutput: %s", err, string(output))
+				return fmt.Errorf("Zig CC compilation failed: %v\nOutput: %s%s", err, string(output), linkFailureHint(mergedLinkLibs))
 			}
 			return nil
 		}
@@ -920,7 +925,7 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 			output, err := cmd.CombinedOutput()
 			os.Remove(cFile)
 			if err != nil {
-				return fmt.Errorf("Zig CC compilation failed: %v\nOutput: %s", err, string(output))
+				return fmt.Errorf("Zig CC compilation failed: %v\nOutput: %s%s", err, string(output), linkFailureHint(mergedLinkLibs))
 			}
 			return nil
 		}
@@ -934,7 +939,7 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 			output, err := cmd.CombinedOutput()
 			os.Remove(cFile)
 			if err != nil {
-				return fmt.Errorf("TCC compilation failed: %v\nOutput: %s", err, string(output))
+				return fmt.Errorf("TCC compilation failed: %v\nOutput: %s%s", err, string(output), linkFailureHint(mergedLinkLibs))
 			}
 			return nil
 		}
@@ -948,7 +953,7 @@ func (c *Compiler) compileCCode(cFile, outputFile string, linkPragmas []string, 
 	cmd := exec.Command("gcc", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("C compilation failed: %v\nOutput: %s", err, string(output))
+		return fmt.Errorf("C compilation failed: %v\nOutput: %s%s", err, string(output), linkFailureHint(mergedLinkLibs))
 	}
 
 	os.Remove(cFile)

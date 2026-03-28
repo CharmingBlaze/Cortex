@@ -21,8 +21,10 @@ Creates a new Cortex project with proper structure.
 ### Usage
 
 ```bash
-cortex new <project_name>
+cortex new <project_name> [raylib]
 ```
+
+With the optional **`raylib`** argument, Cortex also creates **`configs/raylib.json`** (paths defaulting to **`third_party/raylib`**) and a minimal **`#include <raylib.h>`** window example in **`main.cx`**.
 
 ### What It Creates
 
@@ -268,7 +270,21 @@ cortex -i main.cx -L ./lib -L /usr/local/lib
 
 # Link libraries
 cortex -i main.cx -l raylib -l opengl32
+
+# Stricter semantic checks (e.g. no shadowing outer declarations)
+cortex -strict -i main.cx -o app.exe
 ```
+
+### `cortex.toml` — `strict`
+
+```toml
+[project]
+name = "my_game"
+entry = "main.cx"
+strict = true
+```
+
+When `strict = true`, the compiler rejects bindings that **shadow** an outer variable, function, or parameter (same spirit as stricter C-adjacent style guides).
 
 ---
 

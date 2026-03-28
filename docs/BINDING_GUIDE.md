@@ -59,13 +59,43 @@ void main() {
 }
 ```
 
-### Step 3: Build with the Library
+### Step 3: Library paths (one small JSON per library)
+
+Cortex infers the library name from your `#include` (for example `raylib.h` → `raylib`) and loads **`configs/raylib.json`** automatically when it exists. That file lists `includePaths`, `libraryPaths`, and link flags — same idea as `-I` / `-L` / `-l`, but you set them once.
+
+**Default workflow (recommended):**
 
 ```bash
-cortex build main.cx -o myapp --use raylib
+# From a project/repo that has configs/raylib.json (or create one — see below)
+cortex run main.cx
+```
+
+**Optional overrides** (same as before): `-use raylib` loads `configs/raylib.json` into the legacy top-level config, or pass `-I` / `-L` / `-l` by hand.
+
+**No config yet?** Create a template and edit the paths for your machine:
+
+```bash
+cortex -mkconfig mylib
+```
+
+This repository ships **`configs/raylib.json`** and **`configs/sdl2.json`** at the project root — copy or adjust them for your layout (for example `third_party/raylib`).
+
+**Starter project with raylib:**
+
+```bash
+cortex new my_game raylib
+cd my_game
+# Point configs/raylib.json at your raylib build, then:
+cortex run
 ```
 
 That's it! You're using a C library in Cortex.
+
+### Header-to-library inference
+
+Cortex maps common `#include` names to link names (for example `raylib.h` → `raylib`, `SDL.h` / `SDL2/SDL.h` → `sdl2`, `curl/curl.h` → `curl`, `sqlite3.h` → `sqlite3`, `GLFW/glfw3.h` → `glfw`, and more). Unknown headers use the **basename** (`foo.h` → `foo`). The table lives in the compiler source [`internal/clibs/inference.go`](../internal/clibs/inference.go) — extend it when you add first-class support for another library.
+
+**Pointer-free interop** (what `.cx` code should look like vs generated C) is described in [POINTER_FREE_AND_FFI.md](POINTER_FREE_AND_FFI.md).
 
 ---
 
@@ -139,8 +169,11 @@ cortex bind <library_name> -i <header_file>
 # Raylib
 cortex bind raylib -i third_party/raylib/src/raylib.h
 
-# SDL2
-cortex bind sdl2 -i /usr/include/SDL2/SDL.h
+# SDL2 (include path + generated #include line)
+cortex bind sdl2 -i /usr/include/SDL2/SDL.h -I /usr/include/SDL2 -include SDL2/SDL.h
+
+# Regex-only (no host gcc/clang required)
+cortex bind mylib -i include/mylib.h -legacy-bind
 
 # Your own library
 cortex bind mylib -i include/mylib.h
@@ -160,14 +193,38 @@ your_project/
 
 ### What the Binder Does
 
-1. **Parses** the C header file
-2. **Extracts** functions, structs, enums, constants
-3. **Converts** them to Cortex syntax
-4. **Generates** a `.cx` file you can include
+By default `cortex bind` uses a **preprocessor + C AST** pipeline ([modernc.org/cc/v3](https://pkg.go.dev/modernc.org/cc/v3)):
+
+1. **Optional external preprocess** — if `zig cc`, `gcc`, or `clang` is available, the header is run through `cc -E -P` with your `-I` / `-D` flags so macros and includes match your real toolchain. If none is found, a warning is printed and the **raw header** is parsed (macros and includes are then handled only by the internal parser, which is weaker for heavy system headers).
+2. **Parse & type-check** — the translation unit is built with host `cpp`-style predefined macros (`CC`, `gcc`, `clang`, or `cpp` via `HostConfig`) plus a small built-in prelude (derived from the cc test suite).
+3. **Lower to the binder model** — file-scope function prototypes, typedefs, structs, and enums are mapped into Cortex-facing structs.
+4. **Codegen** — `GenerateCortex()` emits a `.cx` file; object-like `#define` lines are still scraped from the **original** header text (best effort).
+
+#### Flags
+
+| Flag | Meaning |
+|------|---------|
+| `-i path` | Input header (required unless a default path is found). |
+| `-o path` | Output `.cx` (default `bindings/<lib>.cx`). |
+| `-I dir` | Include directory for preprocess / `#include` resolution (repeatable). |
+| `-D NAME` / `-D NAME=value` | Preprocessor define (repeatable). |
+| `-include hdr` | Override the generated `#include` line (e.g. `SDL2/SDL.h`). |
+| `-no-preprocess` | Skip external `zig cc` / `gcc` / `clang -E` (internal CPP only). |
+| `-legacy-bind` | **Regex-only** parser (previous behavior). Does not need a host C toolchain; accuracy is lower on real headers. |
+
+**Requirements (AST mode):** a POSIX-style C preprocessor must be discoverable for predefined macros and system include paths (typically `gcc` or `clang` on Linux/macOS; on Windows install a toolchain or set `CC` to a working compiler). If that fails, use `-legacy-bind` or install `gcc`/`clang`.
 
 ---
 
 ## What Gets Converted
+
+AST mode understands typical **function prototypes**, **typedef** names, **struct** definitions with named fields, and **enum** definitions with enumerators. It does **not** fully model C++ templates, macro-generated declarations that are not visible as C declarations after preprocessing, or function-like macros as Cortex functions.
+
+**Limitations:**
+
+- **Function pointers** are emitted as `void*` with `// TODO` comments; you may need `@c` or hand-written prototypes.
+- **Multi-level pointers** are collapsed to a single opaque `void*` where the binder does not preserve arity.
+- **`const char*`** is mapped to `string`; other pointers stay `void*` with comments pointing to [POINTER_FREE_AND_FFI.md](POINTER_FREE_AND_FFI.md) where relevant.
 
 ### Functions
 
@@ -364,8 +421,9 @@ void main() {
 # Generate bindings
 cortex bind raylib -i raylib.h
 
-# Build
-cortex build game.cx -o game --use raylib
+# Build / run (ensure configs/raylib.json paths match your install)
+cortex run game.cx
+# Legacy single-shot: cortex -i game.cx -o game.exe -use raylib
 ```
 
 ```c
@@ -397,8 +455,9 @@ void main() {
 # Generate bindings
 cortex bind sdl2 -i SDL2/SDL.h
 
-# Build
-cortex build app.cx -o app --use sdl2
+# Build / run (configs/sdl2.json)
+cortex run app.cx
+# Legacy: cortex -i app.cx -o app.exe -use sdl2
 ```
 
 ```c

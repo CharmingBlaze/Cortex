@@ -7,11 +7,14 @@ import (
 )
 
 // LibraryConfig holds configuration data for a specific library.
+// JSON matches shipped configs (e.g. configs/raylib.json): camelCase keys.
 type LibraryConfig struct {
 	IncludePaths []string `json:"includePaths"`
 	LibraryPaths []string `json:"libraryPaths"`
 	LinkerFlags  []string `json:"linkerFlags"`
 	HelperFiles  []string `json:"helperFiles"`
+	Libraries    []string `json:"libraries"` // bare names → -lname when linking
+	CFlags       []string `json:"cflags"`    // extra compile flags (e.g. -DRAYGUI_IMPLEMENTATION)
 }
 
 // LoadLibraryConfig loads a library configuration from a JSON file in the configs directory.
@@ -41,4 +44,28 @@ func ApplyConfig(config *LibraryConfig, includePaths, libraryPaths, linkerFlags 
 	*includePaths = append(*includePaths, config.IncludePaths...)
 	*libraryPaths = append(*libraryPaths, config.LibraryPaths...)
 	*linkerFlags = append(*linkerFlags, config.LinkerFlags...)
+}
+
+// LinkArgvFromConfig returns linker argv pieces from a library JSON: linkerFlags as-is, plus -l for each Libraries entry.
+func LinkArgvFromConfig(config *LibraryConfig) []string {
+	if config == nil {
+		return nil
+	}
+	var out []string
+	out = append(out, config.LinkerFlags...)
+	for _, name := range config.Libraries {
+		if name == "" {
+			continue
+		}
+		out = append(out, "-l"+name)
+	}
+	return out
+}
+
+// CFlagsFromConfig returns extra C compiler flags from the library JSON.
+func CFlagsFromConfig(config *LibraryConfig) []string {
+	if config == nil {
+		return nil
+	}
+	return append([]string(nil), config.CFlags...)
 }

@@ -349,9 +349,13 @@ void main() {
 
 ### Step 3: Build with the Library
 
+Put **`configs/raylib.json`** in your project (or run from this repo) so Cortex can find headers and libs. Then:
+
 ```bash
-cortex build main.cx -o game --use raylib
+cortex run main.cx
 ```
+
+Legacy flag mode: `cortex -i main.cx -o game.exe -use raylib`
 
 ### How It Works
 
@@ -747,9 +751,10 @@ void main() {
 
 **Problem:** Missing library linkage.
 
-**Solution:**
+**Solution:** Add **`configs/mylib.json`** with `includePaths`, `libraryPaths`, and link entries (see `cortex -mkconfig mylib`), then `cortex run main.cx`. Or use legacy:
+
 ```bash
-cortex build main.cx -o myapp --use mylib
+cortex -i main.cx -o myapp.exe -use mylib
 ```
 
 Or add to `cortex.toml`:

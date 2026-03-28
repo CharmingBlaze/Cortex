@@ -67,6 +67,8 @@ cortex run hello.cx
 | [Beginner's Guide](docs/BEGINNERS_GUIDE.md) | Start here! Complete tutorial for beginners |
 | [CLI Reference](docs/CLI_REFERENCE.md) | All commands explained with examples |
 | [Binding Guide](docs/BINDING_GUIDE.md) | How to use and bind C libraries |
+| [Pointer-free FFI](docs/POINTER_FREE_AND_FFI.md) | No `*` in `.cx`; arrays/slices; C lowering |
+| [ADR 0001: Smart ergonomics](docs/adr/0001-smart-ergonomics-subset.md) | Scoped resources, optional, methods (direction) |
 | [Language Spec](LANGUAGE_SPEC.md) | Language syntax and features |
 | [Language Guide](LANGUAGE_GUIDE.md) | Comprehensive language reference |
 | [Changelog](CHANGELOG.md) | Version history and changes |
@@ -75,7 +77,7 @@ cortex run hello.cx
 
 ## What is Cortex?
 
-Cortex is a **systems programming language** that gives you C's power with modern ergonomics. It compiles to C, runs at native speed, and integrates seamlessly with any C library — but feels like a modern language.
+Cortex is **C-shaped systems programming** that compiles to **plain C**: native speed, familiar control flow, and **first-class C library interop** (`#include`, optional `configs/<lib>.json`). You **do not write pointers** in normal `.cx` code—use **values**, **arrays** (and planned **slice** views), **strings**, and **handles**; the compiler bridges to `T *` / `char *` at the FFI boundary. Ergonomics borrow from TypeScript, Go, and Swift-style enums—similar in spirit to languages like [Jule](https://github.com/julelang/jule) that prioritize interop and safety without becoming C++.
 
 ```c
 // This is Cortex - familiar C syntax, modern features
@@ -176,6 +178,9 @@ cortex new my_game
 cd my_game
 cortex run
 
+# Or a raylib starter (includes configs/raylib.json template)
+cortex new my_game raylib
+
 # Or run a single file
 cortex run hello.cx
 
@@ -205,6 +210,18 @@ cortex run
 ```
 
 No flags. No paths. No pain.
+
+### Games in about five minutes (raylib)
+
+1. Clone this repo (or any project that has a `configs/` folder) so **`configs/raylib.json`** exists, or run **`cortex new my_game raylib`** to get a starter `main.cx` plus **`configs/raylib.json`**.
+2. Put **raylib** where the JSON expects (by default **`third_party/raylib`** with include under `src` and the static lib under `build/raylib`), or edit **`includePaths`** / **`libraryPaths`** in **`configs/raylib.json`** to match your install.
+3. Run a windowed example from the repo root:
+
+```bash
+cortex run examples/raylib/core_basic_window.cx
+```
+
+Cortex picks up **`-I` / `-L` / link flags** from the JSON when it sees **`#include <raylib.h>`** — you do not need **`-use raylib`** unless you want the extra legacy merge path. More detail: [Binding Guide](docs/BINDING_GUIDE.md). More samples: [examples/raylib/](examples/raylib/).
 
 ### Install from Source
 
@@ -249,7 +266,7 @@ int calculate(int a, int b) {
 | `cortex new <name>` | Create a new project with cortex.toml |
 | `cortex run [file.cx]` | Compile and run (uses cortex.toml if found) |
 | `cortex build [file.cx] [-o output]` | Compile to executable |
-| `cortex bind <lib> -i <header.h>` | Generate Cortex bindings from C header |
+| `cortex bind <lib> -i <header.h> [-I dir] [-D DEF] [-include hdr] [-legacy-bind]` | Generate bindings (default: preprocess + AST; `-legacy-bind` = regex) |
 | `cortex -i file.cx -run` | Legacy: compile and run single file |
 | `cortex -i file.cx -o output -use raylib` | Legacy: compile with library |
 

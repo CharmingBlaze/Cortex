@@ -9,9 +9,17 @@ import (
 // Note: Standard C library headers (stdio.h, stdlib.h, etc.) don't need explicit linking
 // on any platform - GCC/MSVC automatically link the C runtime.
 var LibraryMapping = map[string]string{
-	"raylib.h":    "raylib",
-	"SDL.h":       "sdl2",
-	"curl/curl.h": "curl",
+	"raylib.h":       "raylib",
+	"SDL.h":          "sdl2",
+	"SDL2/SDL.h":     "sdl2",
+	"curl/curl.h":    "curl",
+	"sqlite3.h":      "sqlite3",
+	"GLFW/glfw3.h":   "glfw",
+	"png.h":          "png",
+	"jpeglib.h":      "jpeg",
+	"zlib.h":         "z",
+	"openssl/ssl.h":  "ssl",
+	"openssl/crypto.h": "crypto",
 	// Standard C headers - no explicit linking needed
 }
 

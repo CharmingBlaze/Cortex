@@ -2,34 +2,29 @@
 
 ## CORTEX LANGUAGE VISION
 
-### Overall Goal
-Cortex is designed to feel like the perfect blend of four worlds:
+### Overall goal (one paragraph)
+
+Cortex is **C-shaped systems programming** that compiles to **plain C**: predictable performance, familiar control flow, and **first-class C library interop** (`#include`, automatic link hints, optional `configs/<lib>.json`). You **do not write pointers** in normal Cortex code—only **values**, **arrays** (and, over time, **slices** as views), **strings**, and **handles**; the compiler and FFI layer insert `T *`, `char *`, and lifetimes at the boundary. Ergonomics borrow from **TypeScript** (inference, unions, async), **Go** (`defer`, channels, coroutines), and **Swift-style** enums and matching—without becoming C++.
+
+**Detailed pointer / FFI contract:** [docs/POINTER_FREE_AND_FFI.md](docs/POINTER_FREE_AND_FFI.md).
+
+**Ergonomics direction (scoped resources, optional, methods):** [docs/adr/0001-smart-ergonomics-subset.md](docs/adr/0001-smart-ergonomics-subset.md).
+
+### Design pillars (still accurate)
 
 **C — structure and performance**
-- Blocks, functions, types
-- Predictable execution
-- Low level control without the footguns
+- Blocks, functions, types; predictable execution
 
-**TypeScript — ergonomics and expressiveness**
-- Clean syntax
-- Implicit self
-- Optional types
-- Union types
-- Async/await
+**TypeScript — ergonomics**
+- Clean syntax, optional types, unions, async/await
 
-**Go — simplicity and concurrency**
-- defer
-- channels
-- coroutines
-- simple thread spawning
+**Go — concurrency**
+- `defer`, channels, coroutines, simple threading
 
-**Swift/Kotlin — readability and modern design**
-- Dot syntax
-- Constructors
-- Enums
-- Pattern matching
+**Swift/Kotlin — readability**
+- Dot syntax, enums, pattern matching
 
-This combination makes Cortex easy to learn, pleasant to write, and powerful enough for real systems programming.
+Together: learnable, pleasant, and strong enough for games and applications with real C dependencies.
 
 ---
 
@@ -76,6 +71,7 @@ name = "my_game"
 version = "0.1.0"
 entry = "main.cx"           # Entry point (default: main.cx)
 backend = "auto"            # C backend: zig, or auto
+strict = false              # If true: reject shadowing outer vars/functions/params (see below)
 
 [project.features]
 async = true                # Enable async/await
@@ -114,16 +110,20 @@ No flags. No paths. No pain.
 ---
 
 ## Overview
-Cortex is a modern systems programming language that combines C's performance with modern ergonomics. It removes pointers and manual memory management while adding TypeScript-style type features, Go-style concurrency, and Swift-style readability.
+Cortex is a modern systems programming language that combines C's performance with modern ergonomics. **You do not write pointers** in source; **arrays** (and planned **slices**) are how you work with sequences. Memory for many patterns is automatic via **`cleanup` annotations**, `defer`, and runtime helpers. The language also adds TypeScript-style types, Go-style concurrency, and Swift-style enums and matching.
 
 ## Key Differences from C
-- **No pointers**: All memory management is automatic via managed handles
+- **No pointers in `.cx`**: use values, arrays/slices, strings, and handles; see [POINTER_FREE_AND_FFI.md](docs/POINTER_FREE_AND_FFI.md)
 - **Dot syntax everywhere**: Use `.` for all member access (no `->`)
 - **Modern type system**: Optional types (`int?`), union types (`int | float | string`)
 - **Implicit self**: No need to write `self.field` in struct methods
 - **Defer**: Go-style cleanup with `defer expr;`
 - **Async/await**: TypeScript-style async functions
 - **Channels**: Built-in concurrency with method syntax
+
+### Strict mode (`strict` / `-strict`)
+
+When enabled (`strict = true` in `cortex.toml`, or `cortex -strict ...` in legacy flag mode), the semantic pass **rejects shadowing**: a local variable, `for`-`in` binding, `match` binding, or **function parameter** must not reuse the name of a **variable**, **const**, **parameter**, or **function** in an **outer** scope (case-insensitive). This is optional and off by default so existing C-style habits keep working.
 
 ## Types
 

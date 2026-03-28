@@ -22,6 +22,8 @@ type Config struct {
 	LibraryPaths []string   `json:"library_paths,omitempty"` // -L for linker
 	Libraries    []string   `json:"libraries,omitempty"`     // -l for linker (e.g. raylib, m)
 	Debug        bool       `json:"debug,omitempty"`         // enable debug output
+	// Strict enables extra semantic checks (e.g. no shadowing outer declarations).
+	Strict bool `json:"strict,omitempty"`
 }
 
 // DefaultFeatures returns the feature set enabled when no config is provided.

@@ -1,0 +1,18 @@
+// Test JSON support
+
+void main() {
+    println("=== JSON Test ===");
+    
+    // Parse JSON
+    string json = "{\"name\":\"Cortex\",\"version\":1,\"active\":true}";
+    println("Input: " + json);
+    
+    var data = json_parse(json);
+    println("Parsed dict");
+    
+    // Stringify back
+    string out = json_stringify(data);
+    println("Output: " + out);
+    
+    println("=== Done ===");
+}

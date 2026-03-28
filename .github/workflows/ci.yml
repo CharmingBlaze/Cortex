@@ -1,0 +1,38 @@
+# PR / push CI: toolchain and unit tests (no third-party raylib/SDL link required).
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Go build (cortex)
+        run: go build ./cmd/cortex
+
+      # Fast packages first; compiler package tests can be slow or hang on some runners.
+      - name: Unit tests (clibs, build, binder, …)
+        run: go test ./internal/clibs/... ./internal/build/... ./internal/binder/... -count=1 -timeout 3m
+
+      - name: Unit tests (including compiler — Linux)
+        if: runner.os == 'Linux'
+        run: go test ./... -count=1 -timeout 20m
+
+      # Compiler tests have timed out on some Windows runners; build still verified above.
+      - name: Unit tests (Windows — skip compiler package)
+        if: runner.os == 'Windows'
+        run: go test ./internal/clibs/... ./internal/build/... ./internal/binder/... -count=1 -timeout 5m

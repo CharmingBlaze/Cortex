@@ -77,6 +77,7 @@ type SemanticAnalyzer struct {
 	errors              []error
 	diagnostics         *errors.Collector // optional: when set, errors are also emitted as structured diagnostics
 	features            config.FeatureSet
+	strict              bool // extra checks: e.g. no shadowing outer declarations
 	hasInclude          bool
 	inCoroutine         bool
 	inAsync             bool
@@ -166,6 +167,7 @@ func NewSemanticAnalyzer(cfg config.Config) *SemanticAnalyzer {
 		globalScope:         globalScope,
 		currentScope:        globalScope,
 		features:            cfg.Features,
+		strict:              cfg.Strict,
 		autoExternFunctions: make(map[string]*ast.ExternDeclNode),
 	}
 
@@ -1377,6 +1379,28 @@ func (a *SemanticAnalyzer) isStringExpression(node ast.ASTNode) bool {
 	return false
 }
 
+// shadowsOuterScope reports whether an outer scope already has a binding that strict mode treats as shadowable.
+func (a *SemanticAnalyzer) shadowsOuterScope(name string) bool {
+	if !a.strict {
+		return false
+	}
+	lower := strings.ToLower(name)
+	s := a.currentScope.Parent
+	for s != nil {
+		for key, sym := range s.Symbols {
+			if strings.ToLower(key) != lower {
+				continue
+			}
+			switch sym.SymbolType {
+			case SymbolVariable, SymbolConst, SymbolParameter, SymbolFunction:
+				return true
+			}
+		}
+		s = s.Parent
+	}
+	return false
+}
+
 func (a *SemanticAnalyzer) VisitFunctionDecl(node *ast.FunctionDeclNode) {
 	// Register function in current (global) scope first
 	emitName := node.Name
@@ -1412,6 +1436,9 @@ func (a *SemanticAnalyzer) VisitFunctionDecl(node *ast.FunctionDeclNode) {
 
 	// Define parameters in scope
 	for _, param := range node.Parameters {
+		if a.shadowsOuterScope(param.Name) {
+			a.AddError(fmt.Errorf("strict: parameter '%s' shadows an outer declaration (line %d)", param.Name, param.GetLine()))
+		}
 		funcScope.Define(&Symbol{
 			Name:       param.Name,
 			Type:       param.Type,
@@ -1458,6 +1485,9 @@ func (a *SemanticAnalyzer) VisitVariableDecl(node *ast.VariableDeclNode) {
 	if _, exists := a.currentScope.Symbols[node.Name]; exists {
 		a.AddError(fmt.Errorf("variable '%s' already defined in this scope", node.Name))
 		return
+	}
+	if a.shadowsOuterScope(node.Name) {
+		a.AddError(fmt.Errorf("strict: variable '%s' shadows an outer declaration (line %d)", node.Name, node.GetLine()))
 	}
 
 	emitName := node.Name
@@ -1712,10 +1742,14 @@ func (a *SemanticAnalyzer) VisitMatchStmt(node *ast.MatchStmtNode) {
 		if c.VarName != "" && c.TypeName != "" {
 			// Result pattern: Ok(v) -> v is any, Err(e) -> e is string; else use TypeName (e.g. type pattern)
 			typ := c.TypeName
-			if c.TypeName == "Ok" {
+			switch c.TypeName {
+			case "Ok":
 				typ = "any"
-			} else if c.TypeName == "Err" {
+			case "Err":
 				typ = "string"
+			}
+			if a.shadowsOuterScope(c.VarName) {
+				a.AddError(fmt.Errorf("strict: match binding '%s' shadows an outer declaration (line %d)", c.VarName, c.GetLine()))
 			}
 			scope.Define(&Symbol{Name: c.VarName, Type: typ, SymbolType: SymbolVariable, Node: c})
 		}
@@ -1768,6 +1802,9 @@ func (a *SemanticAnalyzer) VisitForInStmt(node *ast.ForInStmtNode) {
 	a.VisitNode(node.Collection)
 	scope := NewScope(a.currentScope)
 	a.currentScope = scope
+	if a.shadowsOuterScope(node.VarName) {
+		a.AddError(fmt.Errorf("strict: for-in variable '%s' shadows an outer declaration (line %d)", node.VarName, node.GetLine()))
+	}
 	scope.Define(&Symbol{Name: node.VarName, Type: "any", SymbolType: SymbolVariable, Node: node})
 	a.VisitNode(node.Body)
 	a.currentScope = scope.Parent

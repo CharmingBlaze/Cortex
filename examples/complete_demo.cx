@@ -1,4 +1,4 @@
-// ============================================
+﻿// ============================================
 // Cortex Language - Complete Feature Demo
 // ============================================
 
@@ -6,47 +6,99 @@
 #include <stdlib.h>
 #include <string.h>
 
-// ============================================
-// ENUMS
-// ============================================
+// --------------------------------------------
+// Enums - Named constants with auto-increment
+// --------------------------------------------
 
 enum Status { Pending, Active, Done, Failed }
 enum Direction { North, South, East, West }
 
-// ============================================
-// STRUCTS
-// ============================================
+// --------------------------------------------
+// Structs - Custom data types
+// --------------------------------------------
 
-struct Point { float x; float y; }
-struct Stats { int hp; int max_hp; int mp; int level; int xp; }
-struct Item { int id; int value; int weight; bool equipped; }
-struct Rect { int x; int y; int w; int h; }
+struct Point {
+    float x;
+    float y;
+}
 
-// ============================================
-// MATH
-// ============================================
+struct Stats {
+    int hp;
+    int max_hp;
+    int mp;
+    int level;
+    int xp;
+}
 
-int abs_val(int n) { if (n < 0) { return -n; } return n; }
-int min_val(int a, int b) { if (a < b) { return a; } return b; }
-int max_val(int a, int b) { if (a > b) { return a; } return b; }
-int power(int base, int exp) { int r = 1; int i = 0; while (i < exp) { r = r * base; i = i + 1; } return r; }
-int factorial(int n) { if (n <= 1) { return 1; } return n * factorial(n - 1); }
+struct Item {
+    int id;
+    int value;
+    int weight;
+    bool equipped;
+}
 
-// ============================================
-// MAIN
-// ============================================
+struct Rect {
+    int x;
+    int y;
+    int w;
+    int h;
+}
+
+// --------------------------------------------
+// Functions - Reusable code blocks
+// --------------------------------------------
+
+int abs_val(int n) {
+    if (n < 0) {
+        return -n;
+    }
+    return n;
+}
+
+int min_val(int a, int b) {
+    if (a < b) {
+        return a;
+    }
+    return b;
+}
+
+int max_val(int a, int b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
+int power(int base, int exp) {
+    int result = 1;
+    int i = 0;
+    while (i < exp) {
+        result = result * base;
+        i = i + 1;
+    }
+    return result;
+}
+
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+// --------------------------------------------
+// Main - Program entry point
+// --------------------------------------------
 
 void main() {
     println("");
     println("  ================================");
-    println("  |  CORTEX LANGUAGE FEATURE DEMO  |");
+    println("     CORTEX LANGUAGE DEMO");
     println("  ================================");
     println("");
-    
-    // ENUMS
-    println("  --------------------------------");
-    println("  ENUMS");
-    println("  --------------------------------");
+
+    // ---------- ENUMS ----------
+    println("  [ENUMS]");
     println("  Pending = " + Pending);
     println("  Active  = " + Active);
     println("  Done    = " + Done);
@@ -54,15 +106,15 @@ void main() {
     println("  North   = " + North);
     println("  South   = " + South);
     println("");
-    
-    // STRUCTS
-    println("  --------------------------------");
-    println("  STRUCTS");
-    println("  --------------------------------");
-    
+
+    // ---------- STRUCTS ----------
+    println("  [STRUCTS]");
+
+    // Struct constructor syntax
     Point pt = Point(15.5, 25.5);
     println("  Point: x=" + pt.x + " y=" + pt.y);
-    
+
+    // Field-by-field initialization
     Stats hero;
     hero.hp = 100;
     hero.max_hp = 100;
@@ -70,56 +122,59 @@ void main() {
     hero.level = 1;
     hero.xp = 0;
     println("  Stats: HP=" + hero.hp + "/" + hero.max_hp + " MP=" + hero.mp + " LVL=" + hero.level);
-    
+
     Item sword;
     sword.id = 1;
     sword.value = 100;
     sword.weight = 5;
     sword.equipped = true;
-    println("  Item: id=" + sword.id + " val=" + sword.value + " eq=" + sword.equipped);
-    
+    println("  Item: id=" + sword.id + " val=" + sword.value + " equipped=" + sword.equipped);
+
     Rect box;
     box.x = 10;
     box.y = 20;
     box.w = 100;
     box.h = 50;
     int area = box.w * box.h;
-    int perim = box.w + box.h;
-    perim = perim + perim;
+    int perim = (box.w + box.h) * 2;
     println("  Rect: " + box.w + "x" + box.h + " area=" + area + " perim=" + perim);
     println("");
-    
-    // MATH
-    println("  --------------------------------");
-    println("  MATH");
-    println("  --------------------------------");
+
+    // ---------- MATH ----------
+    println("  [MATH]");
     println("  abs(-42)     = " + abs_val(-42));
     println("  min(10,20)   = " + min_val(10, 20));
     println("  max(10,20)   = " + max_val(10, 20));
     println("  power(2,10)  = " + power(2, 10));
     println("  factorial(6) = " + factorial(6));
     println("");
-    
-    // CONTROL FLOW
-    println("  --------------------------------");
-    println("  CONTROL FLOW");
-    println("  --------------------------------");
-    
+
+    // ---------- CONTROL FLOW ----------
+    println("  [CONTROL FLOW]");
+
+    // While loop
     int sum = 0;
     int i = 1;
-    while (i <= 10) { sum = sum + i; i = i + 1; }
+    while (i <= 10) {
+        sum = sum + i;
+        i = i + 1;
+    }
     println("  Sum 1-10: " + sum);
-    
+
+    // Infinite loop with break
     int count = 0;
-    loop { count = count + 1; if (count >= 5) { break; } }
+    loop {
+        count = count + 1;
+        if (count >= 5) {
+            break;
+        }
+    }
     println("  Loop broke at: " + count);
     println("");
-    
-    // GAME SIM
-    println("  --------------------------------");
-    println("  GAME SIMULATION");
-    println("  --------------------------------");
-    
+
+    // ---------- GAME SIMULATION ----------
+    println("  [GAME SIMULATION]");
+
     Stats player;
     player.hp = 50;
     player.max_hp = 50;
@@ -127,28 +182,35 @@ void main() {
     player.level = 1;
     player.xp = 0;
     println("  Created: HP=" + player.hp + " LVL=" + player.level);
-    
-    // Damage
+
+    // Take damage
     player.hp = player.hp - 20;
-    if (player.hp < 0) { player.hp = 0; }
+    if (player.hp < 0) {
+        player.hp = 0;
+    }
     println("  Took 20 dmg: HP=" + player.hp);
-    
+
     // Heal
     player.hp = player.hp + 10;
-    if (player.hp > player.max_hp) { player.hp = player.max_hp; }
+    if (player.hp > player.max_hp) {
+        player.hp = player.max_hp;
+    }
     println("  Healed 10: HP=" + player.hp);
-    
-    // XP
+
+    // Gain XP and level up
     player.xp = player.xp + 150;
     int needed = player.level * 100;
-    if (player.xp >= needed) { player.level = player.level + 1; }
+    if (player.xp >= needed) {
+        player.level = player.level + 1;
+    }
     println("  Gained 150 XP: LVL=" + player.level + " XP=" + player.xp);
     println("");
-    
-    println("  --------------------------------");
+
+    // ---------- SUMMARY ----------
+    println("  ================================");
     println("  ALL FEATURES WORKING!");
-    println("  --------------------------------");
-    println("  [OK] Enums  [OK] Structs  [OK] Functions");
-    println("  [OK] Pointers  [OK] Math  [OK] Loops");
+    println("  ================================");
+    println("  Enums    Structs   Functions");
+    println("  Pointers Math      Loops");
     println("");
 }

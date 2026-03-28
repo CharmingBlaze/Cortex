@@ -1631,25 +1631,43 @@ func (p *Parser) ParseSwitchStatement() (ast.ASTNode, error) {
 				return nil, err
 			}
 			p.Consume(TokenColon, "Expected ':' after case value")
-			body, err := p.ParseBlock()
-			if err != nil {
-				return nil, err
+			// Parse statements until next case/default or closing brace
+			body := &ast.BlockNode{
+				BaseNode: ast.BaseNode{Type: ast.NodeBlock, Line: constant.GetLine(), Column: constant.GetColumn()},
+			}
+			for !p.Check(TokenCase) && !p.Check(TokenDefault) && !p.Check(TokenRBrace) && !p.IsAtEnd() {
+				stmt, err := p.ParseDeclaration()
+				if err != nil {
+					return nil, err
+				}
+				if stmt != nil {
+					body.Statements = append(body.Statements, stmt)
+				}
 			}
 			cases = append(cases, &ast.SwitchCaseNode{
 				BaseNode: ast.BaseNode{Type: ast.NodeSwitchCase, Line: constant.GetLine(), Column: constant.GetColumn()},
 				Constant: constant,
-				Body:     body.(*ast.BlockNode),
+				Body:     body,
 			})
 		} else if p.Match(TokenDefault) {
 			p.Consume(TokenColon, "Expected ':' after default")
-			body, err := p.ParseBlock()
-			if err != nil {
-				return nil, err
+			// Parse statements until next case or closing brace
+			body := &ast.BlockNode{
+				BaseNode: ast.BaseNode{Type: ast.NodeBlock, Line: p.Previous().Line, Column: p.Previous().Column},
+			}
+			for !p.Check(TokenCase) && !p.Check(TokenDefault) && !p.Check(TokenRBrace) && !p.IsAtEnd() {
+				stmt, err := p.ParseDeclaration()
+				if err != nil {
+					return nil, err
+				}
+				if stmt != nil {
+					body.Statements = append(body.Statements, stmt)
+				}
 			}
 			cases = append(cases, &ast.SwitchCaseNode{
 				BaseNode: ast.BaseNode{Type: ast.NodeSwitchCase, Line: p.Previous().Line, Column: p.Previous().Column},
 				Constant: nil,
-				Body:     body.(*ast.BlockNode),
+				Body:     body,
 			})
 		} else {
 			return nil, fmt.Errorf("Expected 'case' or 'default' in switch at line %d", p.Peek().Line)
@@ -2403,7 +2421,7 @@ func (p *Parser) ParseBlock() (ast.ASTNode, error) {
 		BaseNode: ast.BaseNode{Type: ast.NodeBlock, Line: tok.Line, Column: tok.Column},
 	}
 
-	for !p.Check(TokenRBrace) && !p.Check(TokenElse) && !p.IsAtEnd() {
+	for !p.Check(TokenRBrace) && !p.Check(TokenCase) && !p.Check(TokenDefault) && !p.Check(TokenElse) && !p.IsAtEnd() {
 		stmt, err := p.ParseDeclaration()
 		if err != nil {
 			return nil, err
@@ -2411,10 +2429,6 @@ func (p *Parser) ParseBlock() (ast.ASTNode, error) {
 		if stmt != nil {
 			block.Statements = append(block.Statements, stmt)
 		}
-	}
-
-	if !p.IsAtEnd() && p.Check(TokenRBrace) {
-		p.Consume(TokenRBrace, "Expected '}' after block")
 	}
 
 	return block, nil
